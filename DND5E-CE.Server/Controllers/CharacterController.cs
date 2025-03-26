@@ -23,7 +23,14 @@ namespace DND5E_CE.Server.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Character>>> GetCharacters()
         {
-            return await _context.Characters.ToListAsync();
+            var characterList = await _context.Characters.ToListAsync();
+
+            if (!characterList.Any())
+            {
+                return NotFound();
+            }
+
+            return characterList;
         }
 
         // GET: api/Character/{id:int}
@@ -68,7 +75,7 @@ namespace DND5E_CE.Server.Controllers
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!CharacterExists(id))
+                if (!await CharacterExists(id))
                 {
                     return NotFound();
                 }
@@ -97,9 +104,9 @@ namespace DND5E_CE.Server.Controllers
             return NoContent(); // To show that update successed
         }
 
-        private bool CharacterExists(int id)
+        private async Task<bool> CharacterExists(int id)
         {
-            return _context.Characters.Any(e => e.Id == id);
+            return await _context.Characters.AnyAsync(e => e.Id == id);
         }
     }
 }

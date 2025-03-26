@@ -7,7 +7,7 @@ public partial class OtherProfiencyOrLanguage
 {
     public int Id { get; set; }
 
-    public int? CharacterId { get; set; }
+    public int CharacterId { get; set; }
 
     public OtherProfiencyOrLanguage? Type { get; set; }
 
