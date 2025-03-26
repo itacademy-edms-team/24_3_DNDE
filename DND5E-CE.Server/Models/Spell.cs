@@ -47,5 +47,7 @@ public partial class Spell
 
     public string? Type { get; set; }
 
+    public int Id { get; set; }
+
     public virtual Character Character { get; set; } = null!;
 }

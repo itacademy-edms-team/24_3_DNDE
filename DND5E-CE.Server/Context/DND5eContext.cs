@@ -32,6 +32,8 @@ public partial class DND5EContext : DbContext
 
     public virtual DbSet<GlobalDamageModifier> GlobalDamageModifiers { get; set; }
 
+    public virtual DbSet<OtherProfiencyOrLanguage> OtherProfiencyOrLanguages { get; set; }
+
     public virtual DbSet<OtherResource> OtherResources { get; set; }
 
     public virtual DbSet<Skill> Skills { get; set; }
@@ -44,7 +46,8 @@ public partial class DND5EContext : DbContext
     {
         modelBuilder
             .HasPostgresEnum("character_ability_short", new[] { "STR", "DEX", "CON", "INT", "WIS", "CHA", "-" })
-            .HasPostgresEnum("character_attribute", new[] { "strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma" });
+            .HasPostgresEnum("character_attribute", new[] { "strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma" })
+            .HasPostgresEnum("other_profiency_type", new[] { "armor", "language", "weapon", "other" });
 
         modelBuilder.Entity<Ability>(entity =>
         {
@@ -112,19 +115,19 @@ public partial class DND5EContext : DbContext
 
             entity.HasOne(d => d.Character).WithOne(p => p.Ability)
                 .HasForeignKey<Ability>(d => d.CharacterId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("fk_character_ability");
+                .HasConstraintName("fk_ability_character");
         });
 
         modelBuilder.Entity<AttackAndSpellcasting>(entity =>
         {
-            entity.HasKey(e => e.CharacterId).HasName("attack_and_spellcasting_pkey");
+            entity.HasKey(e => e.Id).HasName("attack_and_spellcasting_pkey");
 
             entity.ToTable("attack_and_spellcasting");
 
-            entity.Property(e => e.CharacterId)
-                .ValueGeneratedNever()
-                .HasColumnName("character_id");
+            entity.Property(e => e.Id)
+                .UseIdentityAlwaysColumn()
+                .HasColumnName("id");
+            entity.Property(e => e.CharacterId).HasColumnName("character_id");
             entity.Property(e => e.CritRange)
                 .HasDefaultValue(0)
                 .HasColumnName("crit_range");
@@ -157,10 +160,9 @@ public partial class DND5EContext : DbContext
                 .HasDefaultValueSql("'0'::character varying")
                 .HasColumnName("range");
 
-            entity.HasOne(d => d.Character).WithOne(p => p.AttackAndSpellcasting)
-                .HasForeignKey<AttackAndSpellcasting>(d => d.CharacterId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("fk_character_attack");
+            entity.HasOne(d => d.Character).WithMany(p => p.AttackAndSpellcastings)
+                .HasForeignKey(d => d.CharacterId)
+                .HasConstraintName("fk_attack_and_spellcasting_character");
         });
 
         modelBuilder.Entity<Bio>(entity =>
@@ -180,7 +182,6 @@ public partial class DND5EContext : DbContext
 
             entity.HasOne(d => d.Character).WithOne(p => p.Bio)
                 .HasForeignKey<Bio>(d => d.CharacterId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("fk_character_bio");
         });
 
@@ -304,8 +305,7 @@ public partial class DND5EContext : DbContext
 
             entity.HasOne(d => d.Character).WithOne(p => p.ClassResource)
                 .HasForeignKey<ClassResource>(d => d.CharacterId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("fk_character_class_resource");
+                .HasConstraintName("fk_class_resource_character");
         });
 
         modelBuilder.Entity<ExperienceToNextLevel>(entity =>
@@ -344,8 +344,32 @@ public partial class DND5EContext : DbContext
 
             entity.HasOne(d => d.Character).WithOne(p => p.GlobalDamageModifier)
                 .HasForeignKey<GlobalDamageModifier>(d => d.CharacterId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("fk_character_global_damage_modifier");
+                .HasConstraintName("fk_global_damage_modifier_character");
+        });
+
+        modelBuilder.Entity<OtherProfiencyOrLanguage>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("other_profiency_or_language_pkey");
+
+            entity.ToTable("other_profiency_or_language");
+
+            entity.Property(e => e.Id)
+                .UseIdentityAlwaysColumn()
+                .HasColumnName("id");
+            entity.Property(e => e.CharacterId).HasColumnName("character_id");
+            entity.Property(e => e.Type)
+                .HasColumnName("type")
+                .HasConversion(
+                    v => v.ToString(),
+                    v => (OtherProfiencyOrLanguage)Enum.Parse(typeof(OtherProfiencyOrLanguage), v));
+            entity.Property(e => e.Profiency)
+                .HasMaxLength(50)
+                .HasColumnName("profiency");
+
+            entity.HasOne(d => d.Character).WithMany(p => p.OtherProfiencyOrLanguages)
+                .HasForeignKey(d => d.CharacterId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_other_profiency_or_language_character");
         });
 
         modelBuilder.Entity<OtherResource>(entity =>
@@ -365,8 +389,7 @@ public partial class DND5EContext : DbContext
 
             entity.HasOne(d => d.Character).WithOne(p => p.OtherResource)
                 .HasForeignKey<OtherResource>(d => d.CharacterId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("fk_character_other_resource");
+                .HasConstraintName("fk_other_resource_character");
         });
 
         modelBuilder.Entity<Skill>(entity =>
@@ -561,23 +584,23 @@ public partial class DND5EContext : DbContext
 
             entity.HasOne(d => d.Character).WithOne(p => p.Skill)
                 .HasForeignKey<Skill>(d => d.CharacterId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("fk_character_skill");
+                .HasConstraintName("fk_skill_character");
         });
 
         modelBuilder.Entity<Spell>(entity =>
         {
-            entity.HasKey(e => e.CharacterId).HasName("spell_pkey");
+            entity.HasKey(e => e.Id).HasName("spell_pkey");
 
             entity.ToTable("spell");
 
-            entity.Property(e => e.CharacterId)
-                .ValueGeneratedNever()
-                .HasColumnName("character_id");
+            entity.Property(e => e.Id)
+                .UseIdentityAlwaysColumn()
+                .HasColumnName("id");
             entity.Property(e => e.AtHigherLevelsDescription).HasColumnName("at_higher_levels_description");
             entity.Property(e => e.CastingTime)
                 .HasMaxLength(255)
                 .HasColumnName("casting_time");
+            entity.Property(e => e.CharacterId).HasColumnName("character_id");
             entity.Property(e => e.Class)
                 .HasMaxLength(255)
                 .HasColumnName("class");
@@ -615,35 +638,30 @@ public partial class DND5EContext : DbContext
                 .HasColumnName("type");
             entity.Property(e => e.VComponent).HasColumnName("v_component");
 
-            entity.HasOne(d => d.Character).WithOne(p => p.Spell)
-                .HasForeignKey<Spell>(d => d.CharacterId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("fk_character_spell");
+            entity.HasOne(d => d.Character).WithMany(p => p.Spells)
+                .HasForeignKey(d => d.CharacterId)
+                .HasConstraintName("fk_spell_character");
         });
 
         modelBuilder.Entity<ToolOrCustomSkillProficiency>(entity =>
         {
-            entity.HasKey(e => e.CharacterId).HasName("tool_or_custom_skill_proficiency_pkey");
+            entity.HasKey(e => e.Id).HasName("tool_or_custom_skill_proficiency_pkey");
 
             entity.ToTable("tool_or_custom_skill_proficiency");
 
-            entity.Property(e => e.CharacterId)
-                .ValueGeneratedNever()
-                .HasColumnName("character_id");
+            entity.Property(e => e.Id)
+                .ValueGeneratedOnAdd()
+                .UseIdentityAlwaysColumn()
+                .HasColumnName("id");
+            entity.Property(e => e.CharacterId).HasColumnName("character_id");
             entity.Property(e => e.Name)
                 .HasMaxLength(255)
                 .HasColumnName("name");
-            entity.Property(e => e.ProficiencyLevel)
-                .HasColumnName("proficiency_level");
-            entity.Property(e => e.Attribute)
-                .HasConversion(
-                    v => v.ToString(),
-                    v => (CharacterAttribute)Enum.Parse(typeof(CharacterAttribute), v));
+            entity.Property(e => e.ProficiencyLevel).HasColumnName("proficiency_level");
 
-            entity.HasOne(d => d.Character).WithOne(p => p.ToolOrCustomSkillProficiency)
-                .HasForeignKey<ToolOrCustomSkillProficiency>(d => d.CharacterId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("fk_character_tool_proficiency");
+            entity.HasOne(d => d.IdNavigation).WithOne(p => p.ToolOrCustomSkillProficiency)
+                .HasForeignKey<ToolOrCustomSkillProficiency>(d => d.Id)
+                .HasConstraintName("fk_tool_or_custom_skill_proficiency_character");
         });
 
         OnModelCreatingPartial(modelBuilder);

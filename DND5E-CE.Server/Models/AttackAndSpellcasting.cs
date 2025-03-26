@@ -26,5 +26,7 @@ public partial class AttackAndSpellcasting
 
     public string? Damage1CritDice { get; set; }
 
+    public int Id { get; set; }
+
     public virtual Character Character { get; set; } = null!;
 }

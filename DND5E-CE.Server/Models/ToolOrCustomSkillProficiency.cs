@@ -14,5 +14,7 @@ public partial class ToolOrCustomSkillProficiency
 
     public CharacterAttribute Attribute { get; set; }
 
-    public virtual Character Character { get; set; } = null!;
+    public int Id { get; set; }
+
+    public virtual Character IdNavigation { get; set; } = null!;
 }

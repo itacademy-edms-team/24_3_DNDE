@@ -67,7 +67,7 @@ public partial class Character
 
     public virtual Ability? Ability { get; set; }
 
-    public virtual AttackAndSpellcasting? AttackAndSpellcasting { get; set; }
+    public virtual ICollection<AttackAndSpellcasting> AttackAndSpellcastings { get; set; } = new List<AttackAndSpellcasting>();
 
     public virtual Bio? Bio { get; set; }
 
@@ -77,11 +77,13 @@ public partial class Character
 
     public virtual GlobalDamageModifier? GlobalDamageModifier { get; set; }
 
+    public virtual ICollection<OtherProfiencyOrLanguage> OtherProfiencyOrLanguages { get; set; } = new List<OtherProfiencyOrLanguage>();
+
     public virtual OtherResource? OtherResource { get; set; }
 
     public virtual Skill? Skill { get; set; }
 
-    public virtual Spell? Spell { get; set; }
+    public virtual ICollection<Spell> Spells { get; set; } = new List<Spell>();
 
     public virtual ToolOrCustomSkillProficiency? ToolOrCustomSkillProficiency { get; set; }
 }
