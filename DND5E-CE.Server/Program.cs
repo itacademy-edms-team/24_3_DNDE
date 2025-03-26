@@ -1,3 +1,5 @@
+using DND5E_CE.Server.Models;
+using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
 namespace DND5E_CE.Server
@@ -14,35 +16,15 @@ namespace DND5E_CE.Server
                 builder.Configuration.AddUserSecrets<Program>();
             }
 
-            // Add services to the container.
+            // Register DND5EContext using connection string from secrets
+            builder.Services.AddDbContext<DND5eContext>(options =>
+                options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+            // Add services to the container.
             builder.Services.AddControllers();
-            // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
             builder.Services.AddOpenApi();
 
             var app = builder.Build();
-
-            // Check DB connection
-            using (var scope = app.Services.CreateScope())
-            {
-                var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
-
-                string? connectionString = configuration.GetConnectionString("DefaultConnection");
-                if (connectionString == null) throw new Exception("DefaultConnection to DB is not set in Secrets or Environment");
-
-                app.Logger.LogInformation("Checking connection: {ConnectionString}", connectionString);
-
-                try
-                {
-                    using var connection = new NpgsqlConnection(connectionString);
-                    connection.Open();
-                    app.Logger.LogInformation("Connection success!");
-                }
-                catch (Exception ex)
-                {
-                    app.Logger.LogError(ex, "Connection error.");
-                }
-            }
 
             app.UseDefaultFiles();
             app.MapStaticAssets();
@@ -56,7 +38,6 @@ namespace DND5E_CE.Server
             app.UseHttpsRedirection();
 
             app.UseAuthorization();
-
 
             app.MapControllers();
 
