@@ -5,13 +5,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DND5E_CE.Server.Models;
 
-public partial class DND5eContext : DbContext
+public partial class DND5EContext : DbContext
 {
-    public DND5eContext()
+    public DND5EContext()
     {
     }
 
-    public DND5eContext(DbContextOptions<DND5eContext> options)
+    public DND5EContext(DbContextOptions<DND5EContext> options)
         : base(options)
     {
     }
@@ -39,10 +39,6 @@ public partial class DND5eContext : DbContext
     public virtual DbSet<Spell> Spells { get; set; }
 
     public virtual DbSet<ToolOrCustomSkillProficiency> ToolOrCustomSkillProficiencies { get; set; }
-
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseNpgsql("Host=localhost;Port=5432;Database=dnd5e_ce;Username=postgres;Password=g&_f5S_5sPm_qZ");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -199,29 +195,42 @@ public partial class DND5eContext : DbContext
                 .HasDefaultValueSql("''::text")
                 .HasColumnName("bonds");
             entity.Property(e => e.ClassId).HasColumnName("class_id");
-            entity.Property(e => e.Cp).HasColumnName("cp");
+            entity.Property(e => e.Cp)
+                .HasDefaultValue(0)
+                .HasColumnName("cp");
             entity.Property(e => e.CreatureType)
                 .HasMaxLength(255)
                 .HasColumnName("creature_type");
-            entity.Property(e => e.DeathSaveFail).HasColumnName("death_save_fail");
-            entity.Property(e => e.DeathSaveSuccess).HasColumnName("death_save_success");
-            entity.Property(e => e.Ep).HasColumnName("ep");
+            entity.Property(e => e.DeathSaveFail)
+                .HasDefaultValue(0)
+                .HasColumnName("death_save_fail");
+            entity.Property(e => e.DeathSaveSuccess)
+                .HasDefaultValue(0)
+                .HasColumnName("death_save_success");
+            entity.Property(e => e.Ep)
+                .HasDefaultValue(0)
+                .HasColumnName("ep");
             entity.Property(e => e.Experience)
                 .HasDefaultValue(0)
                 .HasColumnName("experience");
-            entity.Property(e => e.ExperienceToNextLevelId).HasColumnName("experience_to_next_level_id");
             entity.Property(e => e.Flaws)
                 .HasDefaultValueSql("''::text")
                 .HasColumnName("flaws");
-            entity.Property(e => e.Gp).HasColumnName("gp");
+            entity.Property(e => e.Gp)
+                .HasDefaultValue(0)
+                .HasColumnName("gp");
             entity.Property(e => e.HitPointsCurrent).HasColumnName("hit_points_current");
             entity.Property(e => e.HitPointsMax).HasColumnName("hit_points_max");
-            entity.Property(e => e.HitPointsTemp).HasColumnName("hit_points_temp");
+            entity.Property(e => e.HitPointsTemp)
+                .HasDefaultValue(0)
+                .HasColumnName("hit_points_temp");
             entity.Property(e => e.Ideals)
                 .HasDefaultValueSql("''::text")
                 .HasColumnName("ideals");
             entity.Property(e => e.Initiative).HasColumnName("initiative");
-            entity.Property(e => e.Inspiration).HasColumnName("inspiration");
+            entity.Property(e => e.Inspiration)
+                .HasDefaultValue(false)
+                .HasColumnName("inspiration");
             entity.Property(e => e.Level)
                 .HasDefaultValue(1)
                 .HasColumnName("level");
@@ -231,18 +240,26 @@ public partial class DND5eContext : DbContext
             entity.Property(e => e.PersonalityTraits)
                 .HasDefaultValueSql("''::text")
                 .HasColumnName("personality_traits");
-            entity.Property(e => e.Pp).HasColumnName("pp");
+            entity.Property(e => e.Pp)
+                .HasDefaultValue(0)
+                .HasColumnName("pp");
             entity.Property(e => e.ProficiencyBonus).HasColumnName("proficiency_bonus");
             entity.Property(e => e.Race)
                 .HasMaxLength(255)
                 .HasColumnName("race");
-            entity.Property(e => e.Sp).HasColumnName("sp");
-            entity.Property(e => e.SpeedBase).HasColumnName("speed_base");
+            entity.Property(e => e.Sp)
+                .HasDefaultValue(0)
+                .HasColumnName("sp");
+            entity.Property(e => e.SpeedBase)
+                .HasDefaultValue(0)
+                .HasColumnName("speed_base");
             entity.Property(e => e.SpellAttackBonus).HasColumnName("spell_attack_bonus");
             entity.Property(e => e.SpellCastingAbility)
                 .HasMaxLength(255)
                 .HasColumnName("spell_casting_ability");
-            entity.Property(e => e.SpellSaveDc).HasColumnName("spell_save_dc");
+            entity.Property(e => e.SpellSaveDc)
+                .HasDefaultValue(0)
+                .HasColumnName("spell_save_dc");
             entity.Property(e => e.Subclass)
                 .HasMaxLength(255)
                 .HasColumnName("subclass");
@@ -253,10 +270,6 @@ public partial class DND5eContext : DbContext
             entity.HasOne(d => d.Class).WithMany(p => p.Characters)
                 .HasForeignKey(d => d.ClassId)
                 .HasConstraintName("fk_character_character_class");
-
-            entity.HasOne(d => d.ExperienceToNextLevel).WithMany(p => p.Characters)
-                .HasForeignKey(d => d.ExperienceToNextLevelId)
-                .HasConstraintName("fk_character_experience_to_next_level");
         });
 
         modelBuilder.Entity<CharacterClass>(entity =>

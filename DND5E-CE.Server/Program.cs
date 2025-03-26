@@ -17,7 +17,7 @@ namespace DND5E_CE.Server
             }
 
             // Register DND5EContext using connection string from secrets
-            builder.Services.AddDbContext<DND5eContext>(options =>
+            builder.Services.AddDbContext<DND5EContext>(options =>
                 options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
             // Add services to the container.

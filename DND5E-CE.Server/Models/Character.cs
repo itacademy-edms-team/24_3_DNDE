@@ -23,8 +23,6 @@ public partial class Character
 
     public int? Experience { get; set; }
 
-    public int? ExperienceToNextLevelId { get; set; }
-
     public bool? Inspiration { get; set; }
 
     public int? Initiative { get; set; }
@@ -76,8 +74,6 @@ public partial class Character
     public virtual CharacterClass? Class { get; set; }
 
     public virtual ClassResource? ClassResource { get; set; }
-
-    public virtual ExperienceToNextLevel? ExperienceToNextLevel { get; set; }
 
     public virtual GlobalDamageModifier? GlobalDamageModifier { get; set; }
 

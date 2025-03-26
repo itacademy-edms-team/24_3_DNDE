@@ -1,18 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using DND5E_CE.Server.Models.Enums;
 
 namespace DND5E_CE.Server.Models;
-
-public enum CharacterAbilityShort
-{
-  STR,
-  DEX,
-  CON,
-  INT,
-  WIS,
-  CHA,
-  None
-}
 
 public partial class AttackAndSpellcasting
 {
