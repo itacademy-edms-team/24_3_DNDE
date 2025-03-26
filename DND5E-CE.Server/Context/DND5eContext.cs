@@ -1,9 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using DND5E_CE.Server.Models;
 using DND5E_CE.Server.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 
-namespace DND5E_CE.Server.Models;
+namespace DND5E_CE.Server.Context;
 
 public partial class DND5EContext : DbContext
 {

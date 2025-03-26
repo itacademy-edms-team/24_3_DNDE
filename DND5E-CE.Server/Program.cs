@@ -1,4 +1,4 @@
-using DND5E_CE.Server.Models;
+using DND5E_CE.Server.Context;
 using Microsoft.EntityFrameworkCore;
 
 namespace DND5E_CE.Server
