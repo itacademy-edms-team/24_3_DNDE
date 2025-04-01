@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="ru">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sheet 3</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+</head>
+
+<body>
+  <!-- Navbar -->
+  <nav class="navbar">
+  </nav>
+
+  <form method="post">
+    <div class="container mt-3">
+      <!-- SheetHeader: Имя персонажа, Базовая характиристика заклинаний, Сложность спасброска, Бонус атаки  -->
+      <div class="container">
+
+        <div class="row row-cols-1 row-cols-md-2" id="sheetHeader">
+
+          <!-- Имя персонажа -->
+          <div class="col-md-3">
+            <div class="input-group">
+              <input type="text" id="characterName" name="characterName" class="border-0 border-bottom rounded-0"
+                placeholder="ИМЯ ПЕРСОНАЖА">
+              <label for="characterName" class="fw-bold">ИМЯ ПЕРСОНАЖА</label>
+            </div>
+          </div>
+
+          <!-- Отступ -->
+          <div class="col-md-1"></div>
+
+          <!-- Базовая характиристика заклинаний, Сложность спасброска, Бонус атаки -->
+          <div class="col-md-8">
+
+            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3">
+
+              <!-- Базовая характиристика заклинаний -->
+              <div class="col-4">
+                <div class="card border-0">
+                  <img src="assets/CharacterSpellcastingSpellcastingAbility.svg" class="card-img">
+                  <div class="card-img-overlay d-flex flex-column mt-2 mb-0 pt-3 pb-1">
+                    <select name="characterSpellcastingSpellcastingAbility"
+                      id="characterSpellcastingSpellcastingAbility" class="w-100 flex-grow-1">
+                      <option selected>Выберите</option>
+                      <option value="characterSpellcastingAbilityIntelligence">Интеллект</option>
+                      <option value="characterSpellcastingAbilityWisdom">Мудрость</option>
+                      <option value="characterSpellcastingAbilityCharisma">Харизма</option>
+                    </select>
+                    <div class="row text-center">
+                      <span class="fw-bold" style="font-size: 0.85rem;">БАЗОВАЯ ХАРАКТЕРИСТИКА ЗАКЛИНАНИЙ</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Сложность спасброска -->
+              <div class="col">
+                <div class="card border-0">
+                  <img src="assets/CharacterSpellcastingSpellcastingAbility.svg" class="card-img">
+                  <div class="card-img-overlay d-flex flex-column mt-2 mb-0 pt-3 pb-1">
+                    <input type="number" id="characterSpellcastingSpellSaveDC" name="characterSpellcastingSpellSaveDC"
+                      class="w-100 flex-grow-1">
+                    <div class="row text-center">
+                      <span class="fw-bold" style="font-size: 0.85rem;">СЛОЖНОСТЬ СПАСБРОСКА</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Бонус атаки -->
+              <div class="col">
+                <div class="card border-0">
+                  <img src="assets/CharacterSpellcastingSpellcastingAbility.svg" class="card-img">
+                  <div class="card-img-overlay d-flex flex-column mt-2 mb-0 pt-3 pb-1">
+                    <input type="number" id="characterSpellcastingAttackBonus" name="characterSpellcastingAttackBonus"
+                      class="w-100 flex-grow-1">
+                    <div class="row text-center">
+                      <span class="fw-bold">БОНУС АТАКИ</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- SheetBody -->
+    <!-- Заговоры, Заклинания -->
+    <div class="container mt-4">
+
+      <div class="row row-cols-3">
+
+        <!-- Заговоры, Заклинания 1, 2, 3 уровней -->
+        <div class="col-4">
+          <!-- Заговоры -->
+          <div class="row">
+            <div class="card border-0">
+              <img src="assets/CharacterSpellcastingCantrips.svg" class="card-img" alt="Заговоры">
+              <div class="card-img-overlay d-flex justify-content-center align-items-center">
+                <div class="row w-100">
+                  <div class="col-1">
+                  </div>
+                  <div class="col text-center">
+                    <span class="fw-bold">ЗАГОВОРЫ</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card mt-1">
+              <div class="row p-1">
+                <div class="col">
+                  <div class="card p-2">
+                    <p id="cantrip1Name" class="fs-5 fw-bold mb-0">
+                      Поджог
+                    </p>
+                    <p class="fw-lighter mb-0" style="font-size: 0.8rem;">
+                      Заговор: <span id="cantrip1School">Эвокация</span>
+                    </p>
+                    <p class="mb-0">
+                      <span class="fw-bold">Время каста: </span>
+                      <span id="cantrip1CastingTime">10 секунд</span>
+                    </p>
+                    <p class="mb-0">
+                      <span class="fw-bold">Максимальная дальность: </span>
+                      <span id="cantrip1Range">10 метров</span>
+                    </p>
+                    <p class="mb-0">
+                      <span class="fw-bold">Цель: </span>
+                      <span id="cantrip1Target">1 Сущность</span>
+                    </p>
+                    <p class="mb-0">
+                      <span class="fw-bold">Компоненты: </span>
+                      <span id="cantrip1VerbalComponent">В</span>,
+                      <span id="cantrip1SomaticComponent">С</span>,
+                      <span id="cantrip1MaterialComponent">М</span>
+                    </p>
+                    <p class="mb-0">
+                      <span class="fw-bold">Длительность: </span>
+                      <span id="cantrip1Duration">1 ход</span>
+                    </p>
+                    <p class="mb-0">
+                      <span class="fw-bold">Описание: </span>
+                      <span id="cantrip1Description">Поджигает на мгновение цель нанося 1d6 урона огнём</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Заклинания 1-го уровня -->
+          <div class="row mt-3">
+            <div class="row border-0">
+              <div class="col text-center">
+                <span class="fw-lighter">Всего ячеек</span>
+              </div>
+              <div class="col text-center">
+                <span class="fw-lighter">Доступно ячеек</span>
+              </div>
+            </div>
+            <div class="card border-0">
+              <img src="assets/CharacterSpellcastingLevel1.svg" class="card-img">
+              <div class="card-img-overlay d-flex justify-content-center align-items-center">
+                <div class="row">
+                  <div class="col-1 mx-1">
+                  </div>
+                  <div class="col-3 mx-1">
+                    <div class="card border-0 text-center">
+                      <input type="number" id="characterSpellcastingLevel1SlotsTotal"
+                        name="characterSpellcastingLevel1SlotsTotal">
+                    </div>
+                  </div>
+                  <div class="col-7 mx-1">
+                    <div class="card border-0">
+                      <input type="number" id="characterSpellcastingLevel1SlotsLeft"
+                        name="characterSpellcastingLevel1SlotsLeft">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card mt-1">
+              <div class="row p-1">
+                <div class="col">
+                  <div class="card p-2">
+                    <div class="row border-0 border-bottom">
+                      <div class="col">
+                        <input type="checkbox" id="firstLevelSpell1PrepareCheckbox">
+                        <span id="firstLevelSpell1Name">Огненный конус</span>
+                        ,
+                        <span id="firstLevelSpell1Cooldown">1/day</span>
+                      </div>
+                    </div>
+                    <p id="firstLevelSpell1Name" class="fs-5 fw-bold mb-0">
+                      Огненый конус
+                    </p>
+                    <p class="fw-lighter mb-0" style="font-size: 0.8rem;">
+                      <span id="firstLevelSpell1School">Эвокация</span> 1
+                    </p>
+                    <p class="mb-0">
+                      <span class="fw-bold">Время каста: </span>
+                      <span id="firstLevelSpell1Time">7 секунд</span>
+                    </p>
+                    <p class="mb-0">
+                      <span class="fw-bold">Максимальная дальность: </span>
+                      <span id="firstLevelSpell1Range">10 метров (конус)</span>
+                    </p>
+                    <p class="mb-0">
+                      <span class="fw-bold">Цель: </span>
+                      <span id="firstLevelSpell1Target">Множество сущностей в области конуса</span>
+                    </p>
+                    <p class="mb-0">
+                      <span class="fw-bold">Компоненты: </span>
+                      <span id="firstLevelSpell1VerbalComponent">В</span>,
+                      <span id="firstLevelSpell1SomaticComponent">С</span>,
+                      <span id="firstLevelSpell1MaterialComponent">М</span>
+                    </p>
+                    <p class="mb-0">
+                      <span class="fw-bold">Длительность: </span>
+                      <span id="firstLevelSpell1Duration">3 хода</span>
+                    </p>
+                    <p class="mb-0">
+                      <span class="fw-bold">Описание: </span>
+                      <span id="firstLevelSpell1Description">Поджигает в виде конуса землю нанося 1d6 урона огнём и
+                        накладывает
+                        поджог на 3 хода</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Заклинания 2-го уровня -->
+          <div class="row mt-3">
+            <div class="card border-0">
+              <img src="assets/CharacterSpellcastingLevel2.svg" class="card-img">
+              <div class="card-img-overlay d-flex justify-content-center align-items-center">
+                <div class="row">
+                  <div class="col-1 mx-1">
+                  </div>
+                  <div class="col-3 mx-1">
+                    <div class="card border-0 text-center">
+                      <input type="number" id="characterSpellcastingLevel2SlotsTotal"
+                        name="characterSpellcastingLevel2SlotsTotal">
+                    </div>
+                  </div>
+                  <div class="col-7 mx-1">
+                    <div class="card border-0">
+                      <input type="number" id="characterSpellcastingLevel1SlotsLeft"
+                        name="characterSpellcastingLevel2SlotsLeft">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card mt-1">
+              <div class="row p-1">
+                <div class="col">
+                  <div class="card p-2">
+
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Заклинания 3-го уровня -->
+          <div class="row mt-3">
+            <div class="card border-0">
+              <img src="assets/CharacterSpellcastingLevel3.svg" class="card-img">
+              <div class="card-img-overlay d-flex justify-content-center align-items-center">
+                <div class="row">
+                  <div class="col-1 mx-1">
+                  </div>
+                  <div class="col-3 mx-1">
+                    <div class="card border-0 text-center">
+                      <input type="number" id="characterSpellcastingLevel3SlotsTotal"
+                        name="characterSpellcastingLevel3SlotsTotal">
+                    </div>
+                  </div>
+                  <div class="col-7 mx-1">
+                    <div class="card border-0">
+                      <input type="number" id="characterSpellcastingLevel3SlotsLeft"
+                        name="characterSpellcastingLevel3SlotsLeft">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card mt-1">
+              <div class="row p-1">
+                <div class="col">
+                  <div class="card p-2">
+
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Заклинания 4, 5, 6 уровней -->
+        <div class="col-4">
+          <!-- Заклинания 4-го уровня -->
+          <div class="row">
+            <div class="card border-0">
+              <img src="assets/CharacterSpellcastingLevel4.svg" class="card-img">
+              <div class="card-img-overlay d-flex justify-content-center align-items-center">
+                <div class="row">
+                  <div class="col-1 mx-1">
+                  </div>
+                  <div class="col-3 mx-1">
+                    <div class="card border-0 text-center">
+                      <input type="number" id="characterSpellcastingLevel4SlotsTotal"
+                        name="characterSpellcastingLevel4SlotsTotal">
+                    </div>
+                  </div>
+                  <div class="col-7 mx-1">
+                    <div class="card border-0">
+                      <input type="number" id="characterSpellcastingLevel4SlotsLeft"
+                        name="characterSpellcastingLevel4SlotsLeft">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card mt-1">
+              <div class="row p-1">
+                <div class="col">
+                  <div class="card p-2">
+
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Заклинания 5-го уровня -->
+          <div class="row mt-3">
+            <div class="card border-0">
+              <img src="assets/CharacterSpellcastingLevel5.svg" class="card-img">
+              <div class="card-img-overlay d-flex justify-content-center align-items-center">
+                <div class="row">
+                  <div class="col-1 mx-1">
+                  </div>
+                  <div class="col-3 mx-1">
+                    <div class="card border-0 text-center">
+                      <input type="number" id="characterSpellcastingLevel5SlotsTotal"
+                        name="characterSpellcastingLevel5SlotsTotal">
+                    </div>
+                  </div>
+                  <div class="col-7 mx-1">
+                    <div class="card border-0">
+                      <input type="number" id="characterSpellcastingLevel5SlotsLeft"
+                        name="characterSpellcastingLevel5SlotsLeft">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card mt-1">
+              <div class="row p-1">
+                <div class="col">
+                  <div class="card p-2">
+
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Заклинания 6-го уровня -->
+          <div class="row mt-3">
+            <div class="card border-0">
+              <img src="assets/CharacterSpellcastingLevel6.svg" class="card-img">
+              <div class="card-img-overlay d-flex justify-content-center align-items-center">
+                <div class="row">
+                  <div class="col-1 mx-1">
+                  </div>
+                  <div class="col-3 mx-1">
+                    <div class="card border-0 text-center">
+                      <input type="number" id="characterSpellcastingLevel6SlotsTotal"
+                        name="characterSpellcastingLevel6SlotsTotal">
+                    </div>
+                  </div>
+                  <div class="col-7 mx-1">
+                    <div class="card border-0">
+                      <input type="number" id="characterSpellcastingLevel6SlotsLeft"
+                        name="characterSpellcastingLevel6SlotsLeft">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card mt-1">
+              <div class="row p-1">
+                <div class="col">
+                  <div class="card p-2">
+
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Заклинания 7, 8, 9 уровней -->
+        <div class="col-4">
+          <!-- Заклинания 7-го уровня -->
+          <div class="row">
+            <div class="card border-0">
+              <img src="assets/CharacterSpellcastingLevel7.svg" class="card-img">
+              <div class="card-img-overlay d-flex justify-content-center align-items-center">
+                <div class="row">
+                  <div class="col-1 mx-1">
+                  </div>
+                  <div class="col-3 mx-1">
+                    <div class="card border-0 text-center">
+                      <input type="number" id="characterSpellcastingLevel7SlotsTotal"
+                        name="characterSpellcastingLevel7SlotsTotal">
+                    </div>
+                  </div>
+                  <div class="col-7 mx-1">
+                    <div class="card border-0">
+                      <input type="number" id="characterSpellcastingLevel7SlotsLeft"
+                        name="characterSpellcastingLevel7SlotsLeft">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card mt-1">
+              <div class="row p-1">
+                <div class="col">
+                  <div class="card p-2">
+
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Заклинания 8-го уровня -->
+          <div class="row mt-3">
+            <div class="card border-0">
+              <img src="assets/CharacterSpellcastingLevel8.svg" class="card-img">
+              <div class="card-img-overlay d-flex justify-content-center align-items-center">
+                <div class="row">
+                  <div class="col-1 mx-1">
+                  </div>
+                  <div class="col-3 mx-1">
+                    <div class="card border-0 text-center">
+                      <input type="number" id="characterSpellcastingLevel8SlotsTotal"
+                        name="characterSpellcastingLevel8SlotsTotal">
+                    </div>
+                  </div>
+                  <div class="col-7 mx-1">
+                    <div class="card border-0">
+                      <input type="number" id="characterSpellcastingLevel8SlotsLeft"
+                        name="characterSpellcastingLevel8SlotsLeft">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card mt-1">
+              <div class="row p-1">
+                <div class="col">
+                  <div class="card p-2">
+
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Заклинания 9-го уровня -->
+          <div class="row mt-3">
+            <div class="card border-0">
+              <img src="assets/CharacterSpellcastingLevel9.svg" class="card-img">
+              <div class="card-img-overlay d-flex justify-content-center align-items-center">
+                <div class="row">
+                  <div class="col-1 mx-1">
+                  </div>
+                  <div class="col-3 mx-1">
+                    <div class="card border-0 text-center">
+                      <input type="number" id="characterSpellcastingLevel9SlotsTotal"
+                        name="characterSpellcastingLevel9SlotsTotal">
+                    </div>
+                  </div>
+                  <div class="col-7 mx-1">
+                    <div class="card border-0">
+                      <input type="number" id="characterSpellcastingLevel9SlotsLeft"
+                        name="characterSpellcastingLevel9SlotsLeft">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card mt-1">
+              <div class="row p-1">
+                <div class="col">
+                  <div class="card p-2">
+
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+    crossorigin="anonymous"></script>
+</body>
+
+</html>
