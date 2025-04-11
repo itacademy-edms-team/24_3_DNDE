@@ -1,0 +1,11 @@
+/* По умолчанию, для мобильных и маленьких экранов */
+.label-bonus {
+    font-size: 0.75rem;
+}
+
+/* Для экранов больше, чем lg (например, min-width: 992px) */
+@media (min-width: 992px) {
+    .label-bonus {
+        font-size: 0.85rem;
+    }
+}
