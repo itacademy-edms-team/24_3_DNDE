@@ -134,6 +134,30 @@ function Sheet1({
     }));
   };
 
+  const onOtherToolsChange = (changes) => { // otherTools array expect
+    setCharacter(prev => ({
+      ...prev,
+      sheet1: {
+        ...prev.sheet1,
+        otherTools: [
+          ...changes
+        ]
+      }
+    }));
+  };
+
+  const onOtherToolChange = (toolId, changes) => {
+    setCharacter(prev => ({
+      ...prev,
+      sheet1: {
+        ...prev.sheet1,
+        otherTools: prev.sheet1.otherTools.map(tool =>
+          tool.id === toolId ? { ...tool, ...changes } : tool
+        )
+      }
+    }));
+  };
+
   const onArmorClassChange = (changes) => {
     setCharacter(prev => ({
       ...prev,
@@ -366,6 +390,8 @@ function Sheet1({
           onSkillProficiencyChange={onSkillProficiencyChange}
           onToolsChange={onToolsChange}
           onToolChange={onToolChange}
+          onOtherToolsChange={onOtherToolsChange}
+          onOtherToolChange={onOtherToolChange}
           onArmorClassChange={onArmorClassChange}
           onCharacterInitiativeChange={onCharacterInitiativeChange}
           onCharacterSpeedChange={onCharacterSpeedChange}

@@ -12,6 +12,7 @@ import CharacteristicList from './CharacteristicList';
 import SkillList from './SkillList';
 import PassivePerceptionCard from './PassivePerceptionCard';
 import ToolProficienciesAndCustomSkillsCard from './ToolProficienciesAndCustomSkillsCard';
+import OtherProficienciesAndCustomSkillsCard from './OtherProficienciesAndCustomSkillsCard';
 import ArmorClassCard from './ArmorClassCard';
 import CharacterInitiativeCard from './CharacterInitiativeCard';
 import CharacterSpeedCard from './CharacterSpeedCard';
@@ -25,6 +26,7 @@ import CharacterBonds from './CharacterBonds';
 import CharacterFlaws from './CharacterFlaws';
 import ClassResource from './ClassResource';
 
+
 function Sheet1Body({
   character,
   onCharacteristicChange,
@@ -33,6 +35,8 @@ function Sheet1Body({
   onSkillProficiencyChange,
   onToolsChange,
   onToolChange,
+  onOtherToolsChange,
+  onOtherToolChange,
   onArmorClassChange,
   onCharacterInitiativeChange,
   onCharacterSpeedChange,
@@ -90,6 +94,11 @@ function Sheet1Body({
               character={character}
               onToolsChange={onToolsChange}
               onToolChange={onToolChange}
+            />
+            <OtherProficienciesAndCustomSkillsCard
+              character={character}
+              onToolsChange={onOtherToolsChange}
+              onToolChange={onOtherToolChange}
             />
           </Row>
         </Col>

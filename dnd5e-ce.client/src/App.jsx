@@ -92,6 +92,28 @@ function App() {
           mods: 0
         },
       ],
+      otherTools: [
+        {
+          id: 0,
+          name: "lang1",
+          type: "language", // language, weapon, armor, other
+        },
+        {
+          id: 1,
+          name: "weapon1",
+          type: "weapon", 
+        },
+        {
+          id: 2,
+          name: "armor1",
+          type: "armor", 
+        },
+        {
+          id: 3,
+          name: "other1",
+          type: "other", 
+        },
+      ],
       armorClass: 0,
       initiative: 0,
       speed: 0,
