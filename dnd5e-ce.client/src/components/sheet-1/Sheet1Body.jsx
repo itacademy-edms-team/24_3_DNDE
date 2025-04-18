@@ -13,6 +13,7 @@ import SkillList from './SkillList';
 import PassivePerceptionCard from './PassivePerceptionCard';
 import ToolProficienciesAndCustomSkillsCard from './ToolProficienciesAndCustomSkillsCard';
 import OtherProficienciesAndCustomSkillsCard from './OtherProficienciesAndCustomSkillsCard';
+import AttacksCard from './AttacksCard';
 import ArmorClassCard from './ArmorClassCard';
 import CharacterInitiativeCard from './CharacterInitiativeCard';
 import CharacterSpeedCard from './CharacterSpeedCard';
@@ -37,6 +38,8 @@ function Sheet1Body({
   onToolChange,
   onOtherToolsChange,
   onOtherToolChange,
+  onAttacksChange,
+  onAttackChange,
   onArmorClassChange,
   onCharacterInitiativeChange,
   onCharacterSpeedChange,
@@ -152,6 +155,13 @@ function Sheet1Body({
                 </Col>
               </Row>
             </Col>
+          </Row>
+          <Row>
+            <AttacksCard
+              character={character}
+              onAttacksChange={onAttacksChange}
+              onAttackChange={onAttackChange}
+            />
           </Row>
         </Col>
         <Col md={6} lg={4} className="d-flex flex-column gap-3">
