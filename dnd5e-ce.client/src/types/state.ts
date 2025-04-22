@@ -1,24 +1,27 @@
+import { ChangeEvent } from "react";
+
 // dnd5e-ce.client/src/types/state.ts
 export type ProficiencyType = "proficient" | "expertise" | "jackOfAllTrades";
 export type AbilityType = "strength" | "dexterity" | "constitution" | "intelligence" | "wisdom" | "charisma";
 export type SkillType =
   | "acrobatics"
-  | "investigation"
-  | "perception"
-  | "survival"
-  | "performance"
-  | "intimidation"
-  | "history"
-  | "sleightOfHand"
+  | "animalHandling"
   | "arcana"
-  | "medicine"
+  | "athletics"
   | "deception"
-  | "nature"
+  | "history"
   | "insight"
-  | "religion"
-  | "stealth"
+  | "intimidation"
+  | "investigation"
+  | "medicine"
+  | "nature"
+  | "perception"
+  | "performance"
   | "persuasion"
-  | "animalHandling";
+  | "religion"
+  | "sleightOfHand"
+  | "stealth"
+  | "survival";
 export type OtherToolType = "language" | "weapon" | "armor" | "other";
 export type HitDiceType = "d4" | "d6" | "d8" | "d10" | "d12";
 export type ResourceResetType = "longRest" | "shortRest" | "-";
@@ -37,7 +40,7 @@ export interface Skill {
 }
 
 export interface Tool {
-  id: number,
+  id: string,
   name: string,
   proficiencyType: ProficiencyType,
   bondAbility: AbilityType,
@@ -45,7 +48,7 @@ export interface Tool {
 }
 
 export interface OtherTool {
-  id: number,
+  id: string,
   name: string,
   type: OtherToolType
 }
@@ -122,6 +125,56 @@ export interface Sheet1HeaderState {
   experience: number;
 }
 
+export interface AbilityCardCardDataType {
+  bonusId: string,
+  baseId: string,
+  label: string,
+}
+
+export interface AbilityCardCardDataMapType extends Record<AbilityType, AbilityCardCardDataType> { }
+
+export interface AbilityCardPropsType {
+  skillState: number
+  skillHandler: (e: ChangeEvent<HTMLInputElement>) => void,
+  cardData: AbilityCardCardDataType
+}
+
+export interface AbilityCardCardDataType {
+  bonusId: string,
+  baseId: string,
+  label: string,
+}
+
+export interface SaveThrowCardCardDataType {
+  label: string
+}
+
+export interface SaveThrowsPropsType {
+  abilityName: AbilityType,
+  cardData: SaveThrowCardCardDataType
+}
+
+export interface SkillCardCardData {
+  label: string
+}
+
+export interface SkillListPropsType {
+  skillName: SkillType
+  cardData: SkillCardCardData
+}
+
+export interface ToolProficienciesAndCustomSkillsCardEditableRowPropsType {
+  tool: Tool,
+  isEditMode: boolean
+  onDelete: any,
+}
+
+export interface OtherProficienciesAndCustomSkillsCardEditableRowPropsType {
+  tool: OtherTool,
+  isEditMode: boolean
+  onDelete: any,
+}
+
 export interface Sheet1State {
   //header fields
   name: string;
@@ -134,7 +187,7 @@ export interface Sheet1State {
   experience: number,
   // body fields
   isInspired: boolean,
-  characteristics: Record<AbilityType, Characteristic>,
+  abilities: Record<AbilityType, Characteristic>,
   saveThrows: Record<AbilityType, SaveThrow>,
   skills: Record<SkillType, Skill>,
   tools: Tool[],

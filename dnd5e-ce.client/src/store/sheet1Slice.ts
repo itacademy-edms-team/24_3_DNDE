@@ -1,6 +1,8 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+Ôªøimport { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import {
-  Sheet1State
+    OtherTool,
+  Sheet1State,
+  Tool
 } from '../types/state';
 
 const initialState: Sheet1State = {
@@ -12,7 +14,7 @@ const initialState: Sheet1State = {
   worldview: "character worldview",
   playerName: "player name",
   experience: 0,
-  characteristics: {
+  abilities: {
     strength: {
       base: 15
     },
@@ -55,33 +57,34 @@ const initialState: Sheet1State = {
   },
   skills: {
     acrobatics: { isProficient: true, ability: "dexterity" },
-    investigation: { isProficient: true, ability: "intelligence" },
-    perception: { isProficient: false, ability: "wisdom" },
-    survival: { isProficient: false, ability: "wisdom" },
-    performance: { isProficient: false, ability: "charisma" },
-    intimidation: { isProficient: false, ability: "charisma" },
-    history: { isProficient: false, ability: "intelligence" },
-    sleightOfHand: { isProficient: false, ability: "dexterity" },
+    animalHandling: { isProficient: false, ability: "wisdom" },
     arcana: { isProficient: false, ability: "intelligence" },
-    medicine: { isProficient: false, ability: "wisdom" },
+    athletics: { isProficient: true, ability: "strength" },
     deception: { isProficient: false, ability: "charisma" },
-    nature: { isProficient: false, ability: "intelligence" },
+    history: { isProficient: false, ability: "intelligence" },
     insight: { isProficient: false, ability: "wisdom" },
-    religion: { isProficient: false, ability: "intelligence" },
-    stealth: { isProficient: false, ability: "dexterity" },
+    intimidation: { isProficient: false, ability: "charisma" },
+    investigation: { isProficient: true, ability: "intelligence" },
+    medicine: { isProficient: false, ability: "wisdom" },
+    nature: { isProficient: false, ability: "intelligence" },
+    perception: { isProficient: false, ability: "wisdom" },
+    performance: { isProficient: false, ability: "charisma" },
     persuasion: { isProficient: false, ability: "charisma" },
-    animalHandling: { isProficient: false, ability: "wisdom" }
+    religion: { isProficient: false, ability: "intelligence" },
+    sleightOfHand: { isProficient: false, ability: "dexterity" },
+    stealth: { isProficient: false, ability: "dexterity" },
+    survival: { isProficient: false, ability: "wisdom" }
   },
   tools: [
     {
-      id: 0,
-      name: "“ˇÊ∏Î˚Â ÏÂ˜Ë",
+      id: "123",
+      name: "–¢—è–∂—ë–ª—ã–µ –º–µ—á–∏",
       proficiencyType: "proficient", // proficient | expertise | jackOfAllTrades
       bondAbility: "strength",
       mods: 0
     },
     {
-      id: 1,
+      id: "321",
       name: "tool2",
       proficiencyType: "proficient", // proficient | expertise | jackOfAllTrades
       bondAbility: "intelligence",
@@ -90,22 +93,22 @@ const initialState: Sheet1State = {
   ],
   otherTools: [
     {
-      id: 0,
+      id: "asdasd-123",
       name: "lang1",
       type: "language", // language, weapon, armor, other
     },
     {
-      id: 1,
+      id: "gfasd-123-54dasd",
       name: "weapon1",
       type: "weapon",
     },
     {
-      id: 2,
+      id: "gfasd-123-54das2d",
       name: "armor1",
       type: "armor",
     },
     {
-      id: 3,
+      id: "gfasd-123-54dasd33",
       name: "other1",
       type: "other",
     },
@@ -193,11 +196,116 @@ const sheet1Slice = createSlice({
   name: 'sheet1',
   initialState,
   reducers: {
+    // Header
     updateName(state: Sheet1State, action: PayloadAction<string>) {
       state.name = action.payload;
+    },
+    updateClass(state: Sheet1State, action: PayloadAction<string>) {
+      state.class = action.payload;
+    },
+    updateLevel(state: Sheet1State, action: PayloadAction<number>) {
+      state.level = action.payload;
+    },
+    updateRace(state: Sheet1State, action: PayloadAction<string>) {
+      state.race = action.payload;
+    },
+    updateBackstory(state: Sheet1State, action: PayloadAction<string>) {
+      state.backstory = action.payload;
+    },
+    updateWorldview(state: Sheet1State, action: PayloadAction<string>) {
+      state.worldview = action.payload;
+    },
+    updatePlayerName(state: Sheet1State, action: PayloadAction<string>) {
+      state.playerName = action.payload;
+    },
+    updateExperience(state: Sheet1State, action: PayloadAction<number>) {
+      state.experience = action.payload;
+    },
+    // Body
+    // SkillCard
+    updateStrength(state: Sheet1State, action: PayloadAction<number>) {
+      state.abilities.strength.base = action.payload;
+    },
+    updateDexterity(state: Sheet1State, action: PayloadAction<number>) {
+      state.abilities.dexterity.base = action.payload;
+    },
+    updateConstitution(state: Sheet1State, action: PayloadAction<number>) {
+      state.abilities.constitution.base = action.payload;
+    },
+    updateIntelligence(state: Sheet1State, action: PayloadAction<number>) {
+      state.abilities.intelligence.base = action.payload;
+    },
+    updateWisdom(state: Sheet1State, action: PayloadAction<number>) {
+      state.abilities.wisdom.base = action.payload;
+    },
+    updateCharisma(state: Sheet1State, action: PayloadAction<number>) {
+      state.abilities.charisma.base = action.payload;
+    },
+    // InspirationCard
+    updateInspiration(state: Sheet1State, action: PayloadAction<boolean>) {
+      state.isInspired = action.payload;
+    },
+    // SaveThrows
+    updateSaveThrowProficiency(
+      state: Sheet1State,
+      action: PayloadAction<{ ability: keyof Sheet1State['saveThrows']; isProficient: boolean }>
+    ) {
+      const { ability, isProficient } = action.payload;
+      state.saveThrows[ability].isProficient = isProficient;
+    },
+    // SkillList
+    updateSkillProficiency(
+      state: Sheet1State,
+      action: PayloadAction<{ skill: keyof Sheet1State['skills']; isProficient: boolean }>
+    ) {
+      const { skill, isProficient } = action.payload;
+      state.skills[skill].isProficient = isProficient;
+    },
+    // ToolProficienciesAndCustomSkillsCard
+    addTool(
+      state: Sheet1State,
+      action: PayloadAction<Tool>
+    ) {
+      state.tools.push(action.payload);
+    },
+    updateTool(
+      state: Sheet1State,
+      action: PayloadAction<Tool>
+    ) {
+      const index = state.tools.findIndex((tool) => tool.id === action.payload.id);
+      if (index !== -1) {
+        state.tools[index] = action.payload;
+      }
+    },
+    deleteTool(
+      state: Sheet1State,
+      action: PayloadAction<string>
+    ) {
+      state.tools = state.tools.filter((tool) => tool.id !== action.payload);
+    },
+    addOtherTool(
+      state: Sheet1State,
+      action: PayloadAction<OtherTool>
+    ) {
+      state.otherTools.push(action.payload);
+    },
+    updateOtherTool(
+      state: Sheet1State,
+      action: PayloadAction<OtherTool>
+    ) {
+      const index = state.otherTools.findIndex((tool) => tool.id === action.payload.id);
+      if (index !== -1) {
+        state.otherTools[index] = action.payload;
+      }
+    },
+    deleteOtherTool(
+      state: Sheet1State,
+      action: PayloadAction<string>
+    ) {
+      state.otherTools = state.otherTools.filter((tool) => tool.id !== action.payload);
     }
   }
 });
 
-export const { updateName } = sheet1Slice.actions;
+export const { updateName, updateClass, updateLevel, updateRace, updateBackstory, updateWorldview, updatePlayerName, updateExperience, updateStrength, updateDexterity, updateConstitution, updateIntelligence, updateWisdom, updateCharisma, updateInspiration, updateSaveThrowProficiency, updateSkillProficiency, addTool, updateTool, deleteTool, addOtherTool, updateOtherTool, deleteOtherTool } = sheet1Slice.actions;
 export default sheet1Slice.reducer;
