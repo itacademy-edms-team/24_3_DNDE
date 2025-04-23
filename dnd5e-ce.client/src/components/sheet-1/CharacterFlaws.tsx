@@ -1,27 +1,17 @@
-﻿import Container from 'react-bootstrap/Container';
-import Row from 'react-bootstrap/Row';
-import Col from 'react-bootstrap/Col';
-import Card from 'react-bootstrap/Card';
+﻿import Card from 'react-bootstrap/Card';
 import Form from 'react-bootstrap/Form';
-
-import { useState } from 'react';
-
 import FlawsSVG from './assets/Flaws.svg';
+import { useAppDispatch, useAppSelector } from '../../hooks';
+import { updateCharacterFlaws } from '../../store/sheet1Slice';
 
-function CharacterFlaws({
-  character,
-  onCharacterFlawsChange
-}) {
+const CharacterFlaws: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const flaws = useAppSelector((state) => state.sheet1.flaws);
 
-  const [flaws, setFlaws] = useState(character.sheet1.flaws);
-
-  const handleChange = (event) => {
+  const handleChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = event.target.value;
-    setFlaws(newValue);
-    onCharacterFlawsChange({ flaws: newValue });
+    dispatch(updateCharacterFlaws(newValue));
   };
-
-  //console.log(character.sheet1.flaws);
 
   return (
     <Card className="border-0 p-0 m-0">
@@ -33,20 +23,18 @@ function CharacterFlaws({
         >
           <Form.Control
             as="textarea"
-            type="text"
             value={flaws}
             className="p-1 m-0 bg-transparent border-0 shadow-none flex-grow-1"
             onChange={handleChange}
+            aria-label="Слабости персонажа"
           />
-          <Form.Label
-            className="p-0 pt-0 pb-0 m-0 text-uppercase fw-bold"
-          >
+          <Form.Label className="p-0 pt-0 pb-0 m-0 text-uppercase fw-bold">
             Слабости
           </Form.Label>
         </Form.Group>
       </Card.ImgOverlay>
     </Card>
   );
-}
+};
 
 export default CharacterFlaws;

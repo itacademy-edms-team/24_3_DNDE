@@ -445,6 +445,18 @@ const sheet1Slice = createSlice({
     deleteInventoryItem(state, action: PayloadAction<string>) {
       state.inventory.items = state.inventory.items.filter((item) => item.id !== action.payload);
     },
+    updateCharacterPersonalityTraits(state, action: PayloadAction<string>) {
+      state.personalityTraits = action.payload;
+    },
+    updateCharacterIdeals(state, action: PayloadAction<string>) {
+      state.ideals = action.payload;
+    },
+    updateCharacterBonds(state, action: PayloadAction<string>) {
+      state.bonds = action.payload;
+    },
+    updateCharacterFlaws(state, action: PayloadAction<string>) {
+      state.flaws = action.payload;
+    },
   }
 });
 
@@ -456,6 +468,7 @@ export const { updateName, updateClass, updateLevel, updateRace, updateBackstory
   updateMaxHP, updateCurrentHP, updateTempHP, updateHitDiceTotal, updateHitDiceCurrent, updateHitDiceType,
   updateDeathSaveThrowsSuccesses, updateDeathSaveThrowsFailures, resetDeathSaveThrows,
   addAttack, updateAttack, deleteAttack, addGlobalDamageModifier, updateGlobalDamageModifier, deleteGlobalDamageModifier,
-  updateInventoryGold, addInventoryItem, updateInventoryItem, deleteInventoryItem
+  updateInventoryGold, addInventoryItem, updateInventoryItem, deleteInventoryItem,
+  updateCharacterPersonalityTraits, updateCharacterIdeals, updateCharacterBonds, updateCharacterFlaws
 } = sheet1Slice.actions;
 export default sheet1Slice.reducer;

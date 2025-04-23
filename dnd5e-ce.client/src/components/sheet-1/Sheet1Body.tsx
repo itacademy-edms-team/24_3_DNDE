@@ -26,10 +26,10 @@ import AttacksCard from './AttacksCard';
 import GlobalDamageModifiersCard from './GlobalDamageModifiersCard';
 import InventoryCard from './InventoryCard';
 
-//import PersonalityTraitsCard from './PersonalityTraitsCard';
-//import CharacterIdeals from './CharacterIdeals';
-//import CharacterBonds from './CharacterBonds';
-//import CharacterFlaws from './CharacterFlaws';
+import PersonalityTraitsCard from './PersonalityTraitsCard';
+import CharacterIdeals from './CharacterIdeals';
+import CharacterBonds from './CharacterBonds';
+import CharacterFlaws from './CharacterFlaws';
 //import ClassResource from './ClassResource';
 
 
@@ -89,51 +89,37 @@ const Sheet1Body: React.FC = () => {
             </Col>
           </Row>
         </Col>
-        {/*<Col md={6} lg={4} className="d-flex flex-column gap-3">*/}
-        {/*  <Row>*/}
-        {/*    <Col className="d-flex flex-column gap-3">*/}
-        {/*      <PersonalityTraitsCard*/}
-        {/*        character={character}*/}
-        {/*        onCharacterPersonalityTraitsChange={onCharacterPersonalityTraitsChange}*/}
-        {/*      />*/}
-        {/*      <CharacterIdeals*/}
-        {/*        character={character}*/}
-        {/*        onCharacterIdealsChange={onCharacterIdealsChange}*/}
-        {/*      />*/}
-        {/*      <CharacterBonds*/}
-        {/*        character={character}*/}
-        {/*        onCharacterBondsChange={onCharacterBondsChange}*/}
-        {/*      />*/}
-        {/*      <CharacterFlaws*/}
-        {/*        character={character}*/}
-        {/*        onCharacterFlawsChange={onCharacterFlawsChange}*/}
-        {/*      />*/}
-        {/*    </Col>*/}
-        {/*  </Row>*/}
-        {/*  <Row>*/}
-        {/*    <Col>*/}
-        {/*      <Button*/}
-        {/*        variant="primary"*/}
-        {/*        className="h-100"*/}
-        {/*      >*/}
-        {/*        Короткий отдых*/}
-        {/*      </Button>*/}
-        {/*    </Col>*/}
-        {/*    <Col>*/}
-        {/*      <Button*/}
-        {/*        variant="primary"*/}
-        {/*        className="h-100"*/}
-        {/*      >*/}
-        {/*        Длительный отдых*/}
-        {/*      </Button>*/}
-        {/*    </Col>*/}
-        {/*  </Row>*/}
-        {/*  <Row>*/}
-        {/*    */}{/*<CharacterResourceContainer*/}
-        {/*    */}{/*  character={character}*/}
-        {/*    */}{/*/>*/}
-        {/*  </Row>*/}
-        {/*</Col>*/}
+        <Col md={6} lg={4} className="d-flex flex-column gap-3">
+          <Row>
+            <Col className="d-flex flex-column gap-3">
+              <PersonalityTraitsCard />
+              <CharacterIdeals />
+              <CharacterBonds />
+              <CharacterFlaws />
+            </Col>
+          </Row>
+          <Row>
+            <Col>
+              <Button
+                variant="primary"
+                className="h-100"
+              >
+                Короткий отдых
+              </Button>
+            </Col>
+            <Col>
+              <Button
+                variant="primary"
+                className="h-100"
+              >
+                Длительный отдых
+              </Button>
+            </Col>
+          </Row>
+          <Row>
+            {/*<CharacterResourceContainer />*/}
+          </Row>
+        </Col>
       </Row>
     </Container>
   );
