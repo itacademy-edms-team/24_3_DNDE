@@ -4,22 +4,24 @@ import Col from 'react-bootstrap/Col';
 import Card from 'react-bootstrap/Card';
 import Form from 'react-bootstrap/Form';
 
-import { useState } from 'react';
-
 import InitiativeSVG from './assets/Initiative.svg';
 
-function CharacterInitiativeCard({
-  character,
-  onCharacterInitiativeChange
-}) {
+import { useState } from 'react';
 
-  const [initiative, setInitiative] = useState(character.sheet1.initiative);
+import { useAppDispatch, useAppSelector } from '../../hooks';
+import { updateInitiative } from '../../store/sheet1Slice';
+import { RootState } from '../../types/state';
 
-  const handleChange = (event) => {
-    const newValue = event.target.value;
-    setInitiative(newValue);
-    onCharacterInitiativeChange({ initiative: newValue });
-  };
+const CharacterInitiativeCard: React.FC = () => {
+  const dispatch = useAppDispatch();
+
+  const initiative = useAppSelector((state: RootState) => state.sheet1.initiative);
+  const handleInitiative = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newInitiative = parseInt(e.target.value, 10);
+    if (!isNaN(newInitiative)) {
+      dispatch(updateInitiative(newInitiative));
+    }
+  }
 
   return (
     <Col>
@@ -33,8 +35,8 @@ function CharacterInitiativeCard({
             <Form.Control
               type="number"
               value={initiative}
-              className="p-0 m-0 bg-transparent border-0 shadow-none text-center flex-grow-1"
-              onChange={handleChange}
+              className="flex-grow-1 p-0 m-0 bg-transparent border-0 shadow-none text-center"
+              onChange={handleInitiative}
             />
             <Form.Label
               className="p-0 pt-0 pb-0 m-0 text-uppercase fw-bold"

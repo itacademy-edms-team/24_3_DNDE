@@ -3,41 +3,39 @@ import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import Card from 'react-bootstrap/Card';
 import Form from 'react-bootstrap/Form';
-import { useState } from 'react';
 
 import HitDiceSVG from './assets/HitDice.svg';
 
+import { useState } from 'react';
+import { useAppDispatch, useAppSelector } from '../../hooks';
+import { updateHitDiceTotal, updateHitDiceCurrent, updateHitDiceType } from '../../store/sheet1Slice';
+import { RootState, HitDiceType } from '../../types/state';
 
-function HitDiceCard({
-  character,
-  onHitDiceTotalChange,
-  onHitDiceCurrentChange,
-  onHitDiceTypeChange
-}) {
+const HitDiceCard: React.FC = () => {
+  const dispatch = useAppDispatch();
 
-  const [diceTotal, setDiceTotal] = useState(character.sheet1.hitDice.total);
-  const [diceCurrent, setDiceCurrent] = useState(character.sheet1.hitDice.current);
-  const [diceType, setDiceType] = useState(character.sheet1.hitDice.type);
+  const diceTotal = useAppSelector((state: RootState) => state.sheet1.hitDice.total);
+  const diceCurrent = useAppSelector((state: RootState) => state.sheet1.hitDice.current);
+  const diceType = useAppSelector((state: RootState) => state.sheet1.hitDice.type);
 
-  const handleDiceTotal = (event) => {
-    const newValue = event.target.value;
-    setDiceTotal(newValue);
-    onHitDiceTotalChange({ total: newValue });
+  const handleDiceTotal = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = Number(e.target.value);
+    if (!isNaN(newValue)) {
+      dispatch(updateHitDiceTotal(newValue));
+    }
   };
 
-  const handleDiceCurrent = (event) => {
-    const newValue = event.target.value;
-    setDiceCurrent(newValue);
-    onHitDiceCurrentChange({ current: newValue });
+  const handleDiceCurrent = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = Number(e.target.value);
+    if (!isNaN(newValue)) {
+      dispatch(updateHitDiceCurrent(newValue));
+    }
   };
 
-  const handleDiceType = (event) => {
-    const newValue = event.target.value;
-    setDiceType(newValue);
-    onHitDiceTypeChange({ type: newValue });
+  const handleDiceType = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newValue = e.target.value as HitDiceType;  
+    dispatch(updateHitDiceType(newValue));
   };
-
-  //console.log(character.sheet1.hitDice.type);
 
   return (
     <Card className="border-0 p-0 m-0">
@@ -53,7 +51,7 @@ function HitDiceCard({
             Итого
           </Form.Label>
           <Form.Control
-            type="text"
+            type="number"
             value={diceTotal}
             className="p-2 pt-1 pb-0 m-0 bg-transparent border-0 border-bottom shadow-none text-center"
             onChange={handleDiceTotal}

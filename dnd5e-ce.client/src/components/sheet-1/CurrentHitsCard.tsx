@@ -5,39 +5,39 @@ import Card from 'react-bootstrap/Card';
 import Form from 'react-bootstrap/Form';
 import { useState } from 'react';
 
-
 import CurrentHitsSVG from './assets/CurrentHits.svg';
 
-function CurrentHitsCard({
-  character,
-  onCharacterMaxHPChange,
-  onCharacterCurrentHPChange
-}) {
+import { useAppDispatch, useAppSelector } from '../../hooks';
+import { updateMaxHP, updateCurrentHP } from '../../store/sheet1Slice';
+import { RootState } from '../../types/state';
 
-  const [maxHP, setMaxHP] = useState(character.sheet1.hp.max);
-  const [currentHP, setCurrentHP] = useState(character.sheet1.hp.current);
+const CurrentHitsCard: React.FC = () => {
+  const dispatch = useAppDispatch();
 
-  const handleMaxHPChange = (event) => {
-    const newValue = event.target.value;
-    setMaxHP(newValue);
-    onCharacterMaxHPChange({ max: newValue });
+  const maxHP = useAppSelector((state: RootState) => state.sheet1.hp.max);
+  const currentHP = useAppSelector((state: RootState) => state.sheet1.hp.current);
+
+  const handleMaxHPChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = Number(e.target.value);
+    if (!isNaN(newValue)) {
+      dispatch(updateMaxHP(newValue));
+    }
   };
 
-  const handleCurrentHPChange = (event) => {
-    const newValue = event.target.value;
-    setCurrentHP(newValue);
-    onCharacterCurrentHPChange({ current: newValue });
+  const handleCurrentHPChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = Number(e.target.value);
+    if (!isNaN(newValue)) {
+      dispatch(updateCurrentHP(newValue));
+    }
   };
-
-  //console.log(character);
 
   return (
     <Card className="border-0 p-0 m-0">
       <Card.Img src={CurrentHitsSVG} />
-      <Card.ImgOverlay className="p-0 m-0 d-flex flex-column justify-content-between text-center text-truncate h-100">
+      <Card.ImgOverlay className="p-1 m-0 d-flex flex-column justify-content-between text-center text-truncate h-100">
         <Form.Group
           controlId="characterMaxHP"
-          className="d-flex flex-row"
+          className="d-flex flex-row w-100"
         >
           <Form.Label
             className="p-2 pt-1 pb-0 m-0 text-uppercase fw-lighter"
@@ -45,7 +45,7 @@ function CurrentHitsCard({
             Максимум хитов
           </Form.Label>
           <Form.Control
-            type="text"
+            type="number"
             value={maxHP}
             className="p-2 pt-1 pb-0 m-0 bg-transparent border-0 border-bottom shadow-none text-center"
             onChange={handleMaxHPChange}

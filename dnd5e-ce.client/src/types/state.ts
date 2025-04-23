@@ -25,6 +25,9 @@ export type SkillType =
 export type OtherToolType = "language" | "weapon" | "armor" | "other";
 export type HitDiceType = "d4" | "d6" | "d8" | "d10" | "d12";
 export type ResourceResetType = "longRest" | "shortRest" | "-";
+export type AttackAbilityType = AbilityType | "spell" | "-";
+export type DamageAbilityType = AbilityType | "spell" | "-";
+export type DCAbilityType = AbilityType | "spell" | "flat";
 
 export interface Characteristic {
   base: number;
@@ -79,7 +82,7 @@ export interface AttackSavingThrow {
 }
 
 export interface Attack {
-  id: number,
+  id: string,
   name: string,
   atk: AttackInfo,
   damage1: AttackDamage,
@@ -87,6 +90,15 @@ export interface Attack {
   savingThrow: AttackSavingThrow;
   saveEffect: string;
   description: string;
+}
+
+export interface GlobalDamageModifier {
+  id: string,
+  name: string,
+  damageDice: string, // 1d6, 1d4, ...
+  criticalDamageDice: string, // 1d6, 1d4, ...
+  type: string,
+  isIncluded: boolean
 }
 
 export interface HP {
@@ -171,8 +183,20 @@ export interface ToolProficienciesAndCustomSkillsCardEditableRowPropsType {
 
 export interface OtherProficienciesAndCustomSkillsCardEditableRowPropsType {
   tool: OtherTool,
-  isEditMode: boolean
+  isEditMode: boolean,
   onDelete: any,
+}
+
+export interface AttacksCardAttackEditableRowPropsType {
+  attack: Attack,
+  isEditMode: boolean,
+  onDelete: any
+}
+
+export interface AttacksCardGlobalDamageModifierEditableRowPropsType {
+  globalDamageModifier: GlobalDamageModifier,
+  isEditMode: boolean,
+  onDelete: any
 }
 
 export interface Sheet1State {
@@ -193,6 +217,7 @@ export interface Sheet1State {
   tools: Tool[],
   otherTools: OtherTool[],
   attacks: Attack[],
+  globalDamageModifiers: GlobalDamageModifier[],
   armorClass: number,
   initiative: number,
   speed: number,

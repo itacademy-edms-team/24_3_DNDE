@@ -5,28 +5,28 @@ import Card from 'react-bootstrap/Card';
 import Form from 'react-bootstrap/Form';
 import { useState } from 'react';
 
-
 import TempHitsSVG from './assets/TemporaryHits.svg';
 
-function TempHitsCard({
-  character,
-  onCharacterTempHPChange
-}) {
+import { useAppDispatch, useAppSelector } from '../../hooks';
+import { updateTempHP } from '../../store/sheet1Slice';
+import { RootState } from '../../types/state';
 
-  const [tempHP, setTempHP] = useState(character.sheet1.hp.temp);
+const TempHitsCard: React.FC = () => {
+  const dispatch = useAppDispatch();
 
-  const handleTempHPChange = (event) => {
-    const newValue = event.target.value;
-    setTempHP(newValue);
-    onCharacterTempHPChange({ temp: newValue });
+  const tempHP = useAppSelector((state: RootState) => state.sheet1.hp.temp);
+  const handleTempHPChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = Number(e.target.value);
+    if (!isNaN(newValue)) {
+      dispatch(updateTempHP(newValue));
+    }
   };
-
-  //console.log(character);
+  
 
   return (
     <Card className="border-0 p-0 m-0">
       <Card.Img src={TempHitsSVG} />
-      <Card.ImgOverlay className="p-0 m-0 d-flex flex-column justify-content-between text-center text-truncate h-100">
+      <Card.ImgOverlay className="p-2 m-0 d-flex flex-column justify-content-between text-center text-truncate h-100">
         <Form.Group
           controlId="characterTemporaryHP"
           className="p-0 m-0 flex-grow-1 d-flex flex-column justify-content-between text-center text-truncate"

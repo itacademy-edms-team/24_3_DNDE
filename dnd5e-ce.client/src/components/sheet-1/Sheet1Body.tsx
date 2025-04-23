@@ -15,14 +15,16 @@ import PassivePerceptionCard from './PassivePerceptionCard';
 import ToolProficienciesAndCustomSkillsCard from './ToolProficienciesAndCustomSkillsCard';
 import OtherProficienciesAndCustomSkillsCard from './OtherProficienciesAndCustomSkillsCard';
 
-//import AttacksCard from './AttacksCard';
-//import ArmorClassCard from './ArmorClassCard';
-//import CharacterInitiativeCard from './CharacterInitiativeCard';
-//import CharacterSpeedCard from './CharacterSpeedCard';
-//import CurrentHitsCard from './CurrentHitsCard';
-//import TempHitsCard from './TempHitsCard';
-//import HitDiceCard from './HitDiceCard';
-//import DeathSaveThrowsCard from './DeathSaveThrowsCard';
+import ArmorClassCard from './ArmorClassCard';
+import CharacterInitiativeCard from './CharacterInitiativeCard';
+import CharacterSpeedCard from './CharacterSpeedCard';
+import CurrentHitsCard from './CurrentHitsCard';
+import TempHitsCard from './TempHitsCard';
+import HitDiceCard from './HitDiceCard';
+import DeathSaveThrowsCard from './DeathSaveThrowsCard';
+import AttacksCard from './AttacksCard';
+import GlobalDamageModifiersCard from './GlobalDamageModifiersCard';
+
 //import PersonalityTraitsCard from './PersonalityTraitsCard';
 //import CharacterIdeals from './CharacterIdeals';
 //import CharacterBonds from './CharacterBonds';
@@ -52,65 +54,39 @@ const Sheet1Body: React.FC = () => {
             <OtherProficienciesAndCustomSkillsCard/>
           </Row>
         </Col>
-        {/*<Col md={6} lg={4} className="d-flex flex-column gap-3">*/}
-        {/*  <Row>*/}
-        {/*    <Col md={4}>*/}
-        {/*      <ArmorClassCard*/}
-        {/*        character={character}*/}
-        {/*        onArmorClassChange={onArmorClassChange}*/}
-        {/*      />*/}
-        {/*    </Col>*/}
-        {/*    <Col md={4}>*/}
-        {/*      <CharacterInitiativeCard*/}
-        {/*        character={character}*/}
-        {/*        onCharacterInitiativeChange={onCharacterInitiativeChange}*/}
-        {/*      />*/}
-        {/*    </Col>*/}
-        {/*    <Col md={4}>*/}
-        {/*      <CharacterSpeedCard*/}
-        {/*        character={character}*/}
-        {/*        onCharacterSpeedChange={onCharacterSpeedChange}*/}
-        {/*      />*/}
-        {/*    </Col>*/}
-        {/*  </Row>*/}
-        {/*  <Row>*/}
-        {/*    <Col className="d-flex flex-column gap-3">*/}
-        {/*      <CurrentHitsCard*/}
-        {/*        character={character}*/}
-        {/*        onCharacterMaxHPChange={onCharacterMaxHPChange}*/}
-        {/*        onCharacterCurrentHPChange={onCharacterCurrentHPChange}*/}
-        {/*      />*/}
-        {/*      <TempHitsCard*/}
-        {/*        character={character}*/}
-        {/*        onCharacterTempHPChange={onCharacterTempHPChange}*/}
-        {/*      />*/}
-        {/*      <Row>*/}
-        {/*        <Col md={6}>*/}
-        {/*          <HitDiceCard*/}
-        {/*            character={character}*/}
-        {/*            onHitDiceTotalChange={onHitDiceTotalChange}*/}
-        {/*            onHitDiceCurrentChange={onHitDiceCurrentChange}*/}
-        {/*            onHitDiceTypeChange={onHitDiceTypeChange}*/}
-        {/*          />*/}
-        {/*        </Col>*/}
-        {/*        <Col md={6}>*/}
-        {/*          <DeathSaveThrowsCard*/}
-        {/*            character={character}*/}
-        {/*            onDeathSaveThrowSuccessesChange={onDeathSaveThrowSuccessesChange}*/}
-        {/*            onDeathSaveThrowFailuresChange={onDeathSaveThrowFailuresChange}*/}
-        {/*          />*/}
-        {/*        </Col>*/}
-        {/*      </Row>*/}
-        {/*    </Col>*/}
-        {/*  </Row>*/}
-        {/*  <Row>*/}
-        {/*    <AttacksCard*/}
-        {/*      character={character}*/}
-        {/*      onAttacksChange={onAttacksChange}*/}
-        {/*      onAttackChange={onAttackChange}*/}
-        {/*    />*/}
-        {/*  </Row>*/}
-        {/*</Col>*/}
+        <Col md={6} lg={4} className="d-flex flex-column gap-3">
+          <Row>
+            <Col md={4}>
+              <ArmorClassCard/>
+            </Col>
+            <Col md={4}>
+              <CharacterInitiativeCard/>
+            </Col>
+            <Col md={4}>
+              <CharacterSpeedCard/>
+            </Col>
+          </Row>
+          <Row>
+            <Col className="d-flex flex-column gap-3">
+              <CurrentHitsCard/>
+              <TempHitsCard/>
+              <Row>
+                <Col md={6}>
+                  <HitDiceCard/>
+                </Col>
+                <Col md={6}>
+                  <DeathSaveThrowsCard />
+                </Col>
+              </Row>
+            </Col>
+          </Row>
+          <Row>
+            <Col className="d-flex flex-column gap-3">
+              <AttacksCard />
+              <GlobalDamageModifiersCard />
+            </Col>
+          </Row>
+        </Col>
         {/*<Col md={6} lg={4} className="d-flex flex-column gap-3">*/}
         {/*  <Row>*/}
         {/*    <Col className="d-flex flex-column gap-3">*/}

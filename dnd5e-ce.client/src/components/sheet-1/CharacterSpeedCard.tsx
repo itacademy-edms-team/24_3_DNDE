@@ -4,21 +4,25 @@ import Col from 'react-bootstrap/Col';
 import Card from 'react-bootstrap/Card';
 import Form from 'react-bootstrap/Form';
 
-import { useState } from 'react';
-
 import InitiativeSVG from './assets/Initiative.svg';
 
-function CharacterSpeedCard({
-  character,
-  onCharacterSpeedChange
-}) {
+import { useState } from 'react';
 
-  const [speed, setSpeed] = useState(character.sheet1.speed);
+import { useAppDispatch, useAppSelector } from '../../hooks';
+import { updateSpeed } from '../../store/sheet1Slice';
+import { RootState } from '../../types/state';
 
-  const handleChange = (event) => {
-    const newValue = event.target.value;
-    setSpeed(newValue);
-    onCharacterSpeedChange({ speed: newValue });
+
+
+const CharacterSpeedCard: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const speed = useAppSelector((state: RootState) => state.sheet1.speed);
+
+  const handleSpeedChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = Number(e.target.value);
+    if (!isNaN(newValue)) {
+      dispatch(updateSpeed(newValue));
+    }
   };
 
   return (
@@ -33,7 +37,7 @@ function CharacterSpeedCard({
             type="number"
             value={speed}
             className="p-0 m-0 bg-transparent border-0 shadow-none text-center flex-grow-1"
-            onChange={handleChange}
+            onChange={handleSpeedChange}
           />
           <Form.Label
             className="p-0 pt-0 pb-0 m-0 text-uppercase fw-bold"

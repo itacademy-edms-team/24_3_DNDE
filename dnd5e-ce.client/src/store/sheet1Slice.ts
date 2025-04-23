@@ -1,5 +1,9 @@
 ﻿import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import {
+    Attack,
+    GlobalDamageModifier,
+    HitDice,
+    HitDiceType,
     OtherTool,
   Sheet1State,
   Tool
@@ -115,7 +119,7 @@ const initialState: Sheet1State = {
   ],
   attacks: [
     {
-      id: 0,
+      id: "unga-bunga-3000",
       name: "Attack0",
       atk: {
         isIncluded: false, // enable or disable participant in calculation
@@ -149,6 +153,16 @@ const initialState: Sheet1State = {
       },
       saveEffect: "",
       description: ""
+    }
+  ],
+  globalDamageModifiers: [
+    {
+      id: "tung-tung-sakhur-3000",
+      name: "Урон от Ярость",
+      damageDice: "1d6", // 1d6, 1d4, ...
+      criticalDamageDice: "1d6", // 1d6, 1d4, ...
+      type: "Ярость",
+      isIncluded: false
     }
   ],
   armorClass: 0,
@@ -303,9 +317,105 @@ const sheet1Slice = createSlice({
       action: PayloadAction<string>
     ) {
       state.otherTools = state.otherTools.filter((tool) => tool.id !== action.payload);
+    },
+    updateArmorClass(
+      state: Sheet1State,
+      action: PayloadAction<number>
+    ) {
+      state.armorClass = action.payload;
+    },
+    updateInitiative(
+      state: Sheet1State,
+      action: PayloadAction<number>
+    ) {
+      state.initiative = action.payload;
+    },
+    updateSpeed(
+      state: Sheet1State,
+      action: PayloadAction<number>
+    ) {
+      state.speed = action.payload;
+    },
+    updateMaxHP(
+      state: Sheet1State,
+      action: PayloadAction<number>
+    ) {
+      state.hp.max = action.payload;
+    },
+    updateCurrentHP(
+      state: Sheet1State,
+      action: PayloadAction<number>
+    ) {
+      state.hp.current = action.payload;
+    },
+    updateTempHP(
+      state: Sheet1State,
+      action: PayloadAction<number>
+    ) {
+      state.hp.temp = action.payload;
+    },
+    updateHitDiceTotal(
+      state: Sheet1State,
+      action: PayloadAction<number>
+    ) {
+      state.hitDice.total = action.payload;
+    },
+    updateHitDiceCurrent(
+      state: Sheet1State,
+      action: PayloadAction<number>
+    ) {
+      state.hitDice.current = action.payload;
+    },
+    updateHitDiceType(
+      state: Sheet1State,
+      action: PayloadAction<HitDiceType>
+    ) {
+      state.hitDice.type = action.payload;
+    },
+    updateDeathSaveThrowsSuccesses(state, action: PayloadAction<[boolean, boolean, boolean]>) {
+      state.deathSaveThrow.successes = action.payload;
+    },
+    updateDeathSaveThrowsFailures(state, action: PayloadAction<[boolean, boolean, boolean]>) {
+      state.deathSaveThrow.failures = action.payload;
+    },
+    resetDeathSaveThrows(state) {
+      state.deathSaveThrow.successes = [false, false, false];
+      state.deathSaveThrow.failures = [false, false, false];
+    },
+    addAttack(state, action: PayloadAction<Attack>) {
+      state.attacks.push(action.payload);
+    },
+    updateAttack(state, action: PayloadAction<Partial<Attack> & {id: string}>) {
+      const index = state.attacks.findIndex((attack) => attack.id === action.payload.id);
+      if (index !== -1) {
+        state.attacks[index] = { ...state.attacks[index], ...action.payload };
+      }
+    },
+    deleteAttack(state, action: PayloadAction<string>) {
+      state.attacks = state.attacks.filter((attack) => attack.id !== action.payload);
+    },
+    addGlobalDamageModifier(state, action: PayloadAction<GlobalDamageModifier>) {
+      state.globalDamageModifiers.push(action.payload);
+    },
+    updateGlobalDamageModifier(state, action: PayloadAction<Partial<GlobalDamageModifier> & { id: string }>) {
+      const index = state.globalDamageModifiers.findIndex((gam) => gam.id === action.payload.id);
+      if (index !== -1) {
+        state.globalDamageModifiers[index] = { ...state.globalDamageModifiers[index], ...action.payload };
+      }
+    },
+    deleteGlobalDamageModifier(state, action: PayloadAction<string>) {
+      state.globalDamageModifiers = state.globalDamageModifiers.filter((gam) => gam.id !== action.payload);
     }
   }
 });
 
-export const { updateName, updateClass, updateLevel, updateRace, updateBackstory, updateWorldview, updatePlayerName, updateExperience, updateStrength, updateDexterity, updateConstitution, updateIntelligence, updateWisdom, updateCharisma, updateInspiration, updateSaveThrowProficiency, updateSkillProficiency, addTool, updateTool, deleteTool, addOtherTool, updateOtherTool, deleteOtherTool } = sheet1Slice.actions;
+export const { updateName, updateClass, updateLevel, updateRace, updateBackstory,
+  updateWorldview, updatePlayerName, updateExperience, updateStrength, updateDexterity,
+  updateConstitution, updateIntelligence, updateWisdom, updateCharisma, updateInspiration,
+  updateSaveThrowProficiency, updateSkillProficiency, addTool, updateTool, deleteTool, addOtherTool,
+  updateOtherTool, deleteOtherTool, updateArmorClass, updateInitiative, updateSpeed,
+  updateMaxHP, updateCurrentHP, updateTempHP, updateHitDiceTotal, updateHitDiceCurrent, updateHitDiceType,
+  updateDeathSaveThrowsSuccesses, updateDeathSaveThrowsFailures, resetDeathSaveThrows,
+  addAttack, updateAttack, deleteAttack, addGlobalDamageModifier, updateGlobalDamageModifier, deleteGlobalDamageModifier
+} = sheet1Slice.actions;
 export default sheet1Slice.reducer;
