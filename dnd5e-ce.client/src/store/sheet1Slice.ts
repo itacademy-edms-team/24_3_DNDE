@@ -1,10 +1,12 @@
 ﻿import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import {
-    Attack,
-    GlobalDamageModifier,
-    HitDice,
-    HitDiceType,
-    OtherTool,
+  Attack,
+  GlobalDamageModifier,
+  HitDice,
+  HitDiceType,
+  InventoryGold,
+  InventoryItem,
+  OtherTool,
   Sheet1State,
   Tool
 } from '../types/state';
@@ -165,6 +167,28 @@ const initialState: Sheet1State = {
       isIncluded: false
     }
   ],
+  inventory: {
+    gold: {
+      cp: 0,
+      sp: 0,
+      ep: 0,
+      gp: 0,
+      pp: 0
+    },
+    items: [
+      {
+        id: "bombardilo-crocodilo-43",
+        amount: 1,
+        name: "Верёвка",
+        weight: 1,
+        isEquipped: true,
+        isUsedAsResource: false,
+        isHasAnAttack: false,
+        prop: "",
+        description: "Моток верёвки (5м)"
+      }
+    ]
+  },
   armorClass: 0,
   initiative: 0,
   speed: 0,
@@ -405,7 +429,22 @@ const sheet1Slice = createSlice({
     },
     deleteGlobalDamageModifier(state, action: PayloadAction<string>) {
       state.globalDamageModifiers = state.globalDamageModifiers.filter((gam) => gam.id !== action.payload);
-    }
+    },
+    updateInventoryGold(state, action: PayloadAction<Partial<InventoryGold>>) {
+      state.inventory.gold = { ...state.inventory.gold, ...action.payload };
+    },
+    addInventoryItem(state, action: PayloadAction<InventoryItem>) {
+      state.inventory.items.push(action.payload);
+    },
+    updateInventoryItem(state, action: PayloadAction<Partial<InventoryItem> & { id: string }>) {
+      const index = state.inventory.items.findIndex((item) => item.id === action.payload.id);
+      if (index !== -1) {
+        state.inventory.items[index] = { ...state.inventory.items[index], ...action.payload };
+      }
+    },
+    deleteInventoryItem(state, action: PayloadAction<string>) {
+      state.inventory.items = state.inventory.items.filter((item) => item.id !== action.payload);
+    },
   }
 });
 
@@ -416,6 +455,7 @@ export const { updateName, updateClass, updateLevel, updateRace, updateBackstory
   updateOtherTool, deleteOtherTool, updateArmorClass, updateInitiative, updateSpeed,
   updateMaxHP, updateCurrentHP, updateTempHP, updateHitDiceTotal, updateHitDiceCurrent, updateHitDiceType,
   updateDeathSaveThrowsSuccesses, updateDeathSaveThrowsFailures, resetDeathSaveThrows,
-  addAttack, updateAttack, deleteAttack, addGlobalDamageModifier, updateGlobalDamageModifier, deleteGlobalDamageModifier
+  addAttack, updateAttack, deleteAttack, addGlobalDamageModifier, updateGlobalDamageModifier, deleteGlobalDamageModifier,
+  updateInventoryGold, addInventoryItem, updateInventoryItem, deleteInventoryItem
 } = sheet1Slice.actions;
 export default sheet1Slice.reducer;

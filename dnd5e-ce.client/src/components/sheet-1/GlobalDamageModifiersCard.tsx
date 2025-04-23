@@ -99,7 +99,13 @@ const GlobalDamageModifierEditableRow: React.FC<AttacksCardGlobalDamageModifierE
       </Row>
       <Collapse in={isExpanded}>
         <Row className="p-3">
-          <Form.Group controlId={`globalDamageModifier-${globalDamageModifier.id}-editName`} className="mb-2">
+          <Col md={1}>
+            <Form.Check
+              checked={globalDamageModifier.isIncluded}
+              onChange={handleIsIncludedChange}
+            />
+          </Col>
+          <Col md={11}><Form.Group controlId={`globalDamageModifier-${globalDamageModifier.id}-editName`} className="mb-2">
             <Form.Label className="fw-bold">Название</Form.Label>
             <Form.Control
               type="text"
@@ -109,38 +115,38 @@ const GlobalDamageModifierEditableRow: React.FC<AttacksCardGlobalDamageModifierE
               aria-label="Название модификатора"
             />
           </Form.Group>
-          <Form.Group controlId={`globalDamageModifier-${globalDamageModifier.id}-editDamageDice`} className="mb-2">
-            <Form.Label className="fw-bold">Кубик урона</Form.Label>
-            <Form.Control
-              type="text"
-              value={globalDamageModifier.damageDice}
-              onChange={handleDamageDiceChange}
-              placeholder="Например, 1d6"
-              aria-label="Кубики урона модификатора"
-            />
-          </Form.Group>
-          <Form.Group controlId={`globalDamageModifier-${globalDamageModifier.id}-editCriticalDamageDice`} className="mb-2">
-            <Form.Label className="fw-bold">
-              Кубики критического урона
-            </Form.Label>
-            <Form.Control
-              type="text"
-              value={globalDamageModifier.criticalDamageDice}
-              onChange={handleCriticalDamageDiceChange}
-              placeholder="Например, 1d4"
-              aria-label="Кубики критического урона модификатора"
-            />
-          </Form.Group>
-          <Form.Group controlId={`globalDamageModifier-${globalDamageModifier.id}-editType`} className="mb-2">
-            <Form.Label className="fw-bold">Тип</Form.Label>
-            <Form.Control
-              type="text"
-              value={globalDamageModifier.type}
-              onChange={handleTypeChange}
-              placeholder="Например, Ярость"
-              aria-label="Тип модификатора"
-            />
-          </Form.Group>
+            <Form.Group controlId={`globalDamageModifier-${globalDamageModifier.id}-editDamageDice`} className="mb-2">
+              <Form.Label className="fw-bold">Кубик урона</Form.Label>
+              <Form.Control
+                type="text"
+                value={globalDamageModifier.damageDice}
+                onChange={handleDamageDiceChange}
+                placeholder="Например, 1d6"
+                aria-label="Кубики урона модификатора"
+              />
+            </Form.Group>
+            <Form.Group controlId={`globalDamageModifier-${globalDamageModifier.id}-editCriticalDamageDice`} className="mb-2">
+              <Form.Label className="fw-bold">
+                Кубик критического урона
+              </Form.Label>
+              <Form.Control
+                type="text"
+                value={globalDamageModifier.criticalDamageDice}
+                onChange={handleCriticalDamageDiceChange}
+                placeholder="Например, 1d4"
+                aria-label="Кубики критического урона модификатора"
+              />
+            </Form.Group>
+            <Form.Group controlId={`globalDamageModifier-${globalDamageModifier.id}-editType`} className="mb-2">
+              <Form.Label className="fw-bold">Тип</Form.Label>
+              <Form.Control
+                type="text"
+                value={globalDamageModifier.type}
+                onChange={handleTypeChange}
+                placeholder="Например, Ярость"
+                aria-label="Тип модификатора"
+              />
+            </Form.Group></Col>
         </Row>
       </Collapse>
     </Fragment>

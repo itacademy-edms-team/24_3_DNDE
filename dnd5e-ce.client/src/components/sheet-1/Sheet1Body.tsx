@@ -24,6 +24,7 @@ import HitDiceCard from './HitDiceCard';
 import DeathSaveThrowsCard from './DeathSaveThrowsCard';
 import AttacksCard from './AttacksCard';
 import GlobalDamageModifiersCard from './GlobalDamageModifiersCard';
+import InventoryCard from './InventoryCard';
 
 //import PersonalityTraitsCard from './PersonalityTraitsCard';
 //import CharacterIdeals from './CharacterIdeals';
@@ -84,6 +85,7 @@ const Sheet1Body: React.FC = () => {
             <Col className="d-flex flex-column gap-3">
               <AttacksCard />
               <GlobalDamageModifiersCard />
+              <InventoryCard />
             </Col>
           </Row>
         </Col>

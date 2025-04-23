@@ -112,18 +112,44 @@ export interface HitDice {
   current: number,
   type: HitDiceType
 }
-interface DeathSaveThrow {
+export interface DeathSaveThrow {
   successes: [boolean, boolean, boolean];
   failures: [boolean, boolean, boolean];
 }
 
-interface ClassResource {
+export interface ClassResource {
   id: number,
   total: number,
   current: number,
   name: string,
   usePb: boolean,
   resetOn: ResourceResetType
+}
+
+
+export interface InventoryGold {
+  cp: number,
+  sp: number,
+  ep: number,
+  gp: number,
+  pp: number
+}
+
+export interface InventoryItem {
+  id: string,
+  amount: number,
+  name: string,
+  weight: number,
+  isEquipped: boolean,
+  isUsedAsResource: boolean,
+  isHasAnAttack: boolean,
+  prop: string,
+  description: string
+}
+
+export interface Inventory {
+  gold: InventoryGold,
+  items: InventoryItem[]
 }
 
 export interface Sheet1HeaderState {
@@ -199,6 +225,12 @@ export interface AttacksCardGlobalDamageModifierEditableRowPropsType {
   onDelete: any
 }
 
+export interface InventoryItemEditableRowPropsType {
+  inventoryItem: InventoryItem,
+  isEditMode: boolean,
+  onDelete: any
+}
+
 export interface Sheet1State {
   //header fields
   name: string;
@@ -216,20 +248,21 @@ export interface Sheet1State {
   skills: Record<SkillType, Skill>,
   tools: Tool[],
   otherTools: OtherTool[],
-  attacks: Attack[],
-  globalDamageModifiers: GlobalDamageModifier[],
   armorClass: number,
   initiative: number,
   speed: number,
   hp: HP,
+  attacks: Attack[],
   hitDice: HitDice,
   deathSaveThrow: DeathSaveThrow,
+  globalDamageModifiers: GlobalDamageModifier[],
+  inventory: Inventory,
   personalityTraits: string,
   ideals: string,
   bonds: string,
   flaws: string,
   classResource: ClassResource,
-  otherResources: ClassResource[]
+  otherResources: ClassResource[],
 }
 
 export interface Sheet2State {
