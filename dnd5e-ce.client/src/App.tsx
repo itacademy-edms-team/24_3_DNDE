@@ -11,14 +11,8 @@ function App() {
   return (
     <Provider store={store}>
       <Container>
-        <Sheet1/>
-
-        {/*<Sheet2*/}
-        {/*  character={character}*/}
-        {/*  setCharacter={setCharacter}*/}
-        {/*  characterName={characterName}*/}
-        {/*  setCharacterName={setCharacterName}*/}
-        {/*/>*/}
+        <Sheet1 />
+        <Sheet2 />
       </Container>
     </Provider>
   );
