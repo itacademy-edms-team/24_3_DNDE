@@ -28,6 +28,15 @@ export type ResourceResetType = "longRest" | "shortRest" | "-";
 export type AttackAbilityType = AbilityType | "spell" | "-";
 export type DamageAbilityType = AbilityType | "spell" | "-";
 export type DCAbilityType = AbilityType | "spell" | "flat";
+export type SpellSchool =
+  | 'abjuration'
+  | 'conjuration'
+  | 'divination'
+  | 'enchantment'
+  | 'evocation'
+  | 'illusion'
+  | 'necromancy'
+  | 'transmutation';
 
 export interface Characteristic {
   base: number;
@@ -231,6 +240,87 @@ export interface InventoryItemEditableRowPropsType {
   onDelete: any
 }
 
+export interface SpellComponents {
+  v: {
+    isIncluded: boolean
+  },
+  s: {
+    isIncluded: boolean
+  },
+  m: {
+    isIncluded: boolean
+  }
+}
+
+export type SpellOutputType = "spellcard" | "attack";
+export type SpellAttackType = "ranged" | "mele";
+export type SpellDescriptionInAttackIncludeVariety = "off" | "partial" | "on";
+
+export interface SpellDamage {
+  dice: string,
+  type: string
+}
+
+export interface SpellAttack {
+  attackType: SpellAttackType,
+  damage1: SpellDamage,
+  damage2: SpellDamage
+}
+
+export type SpellAbilityType = "none" | AbilityType;
+
+export interface SpellSavingThrow {
+  ability: SpellAbilityType,
+  effect: string
+}
+
+export type SpellHighLevelCastDiceType = HitDiceType | "d20";
+
+export interface SpellHigherLevelCast {
+  diceAmount: number,
+  diceType: SpellHighLevelCastDiceType,
+  bonus: number
+}
+
+export interface SpellBase {
+  id: string,
+  name: string,
+  school: SpellSchool,
+  isRitual: boolean,
+  castingTime: string,
+  range: string,
+  target: string,
+  components: SpellComponents,
+  componentsDescription: string,
+  isConcentration: boolean,
+  duration: string,
+  spellCastingAbility: SpellAbilityType,
+  innate: string,
+  output: SpellOutputType,
+  attack: SpellAttack,
+  healingDice: string,
+  isAbilityModIncluded: boolean, // Add ability mod to attack or no
+  savingThrow: SpellSavingThrow,
+  higherLevelCast: SpellHigherLevelCast
+  includeSpellDescriptionInAttack: SpellDescriptionInAttackIncludeVariety,
+  description: string,
+  atHigherLevels: string,
+  class: string,
+  type: string
+}
+
+// cantripBeam - cantripBeam depends on level and adds additional beams to attack
+// cantripDice - adds additional damageDices to attack depending on level
+export type CantripProgressionType = "none" | "cantripBeam" | "cantripDice";
+
+export interface Cantrip extends SpellBase {
+  cantripProgression: CantripProgressionType
+}
+
+export interface Spell extends SpellBase {
+
+}
+
 export interface Sheet1State {
   //header fields
   name: string;
@@ -279,7 +369,24 @@ export interface Sheet2State {
   treasures: string
 }
 
+export interface Sheet3State {
+  spellBondAbility: SpellAbilityType,
+  spells: {
+    cantrips: Cantrip[],
+    level1: Spell[],
+    level2: Spell[],
+    level3: Spell[],
+    level4: Spell[],
+    level5: Spell[],
+    level6: Spell[],
+    level7: Spell[],
+    level8: Spell[],
+    level9: Spell[],
+  }
+}
+
 export interface RootState {
   sheet1: Sheet1State;
   sheet2: Sheet2State;
+  sheet3: Sheet3State;
 }
