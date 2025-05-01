@@ -43,7 +43,7 @@ const Sheet2Header: React.FC = () => {
     <Container className="mt-3">
       <Row>
         <Col md={3} className="d-flex flex-column align-items-center justify-content-center">
-          <Form.Group controlId="characterName" className="w-100 text-center">
+          <Form.Group controlId="characterName" className="w-100">
             <Form.Control
               type="text"
               value={name}
@@ -58,7 +58,7 @@ const Sheet2Header: React.FC = () => {
         <Col md={8}>
           <Row>
             <Col md={4}>
-              <Form.Group controlId="characterAge" className="text-center">
+              <Form.Group controlId="characterAge">
                 <Form.Control
                   type="text"
                   value={age}
@@ -70,7 +70,7 @@ const Sheet2Header: React.FC = () => {
               </Form.Group>
             </Col>
             <Col md={4}>
-              <Form.Group controlId="characterHeight" className="text-center">
+              <Form.Group controlId="characterHeight">
                 <Form.Control
                   type="text"
                   value={height}
@@ -82,7 +82,7 @@ const Sheet2Header: React.FC = () => {
               </Form.Group>
             </Col>
             <Col md={4}>
-              <Form.Group controlId="characterWeight" className="text-center">
+              <Form.Group controlId="characterWeight">
                 <Form.Control
                   type="text"
                   value={weight}
@@ -94,7 +94,7 @@ const Sheet2Header: React.FC = () => {
               </Form.Group>
             </Col>
             <Col md={4}>
-              <Form.Group controlId="characterEyes" className="text-center">
+              <Form.Group controlId="characterEyes">
                 <Form.Control
                   type="text"
                   value={eyes}
@@ -106,7 +106,7 @@ const Sheet2Header: React.FC = () => {
               </Form.Group>
             </Col>
             <Col md={4}>
-              <Form.Group controlId="characterSkin" className="text-center">
+              <Form.Group controlId="characterSkin">
                 <Form.Control
                   type="text"
                   value={skin}
@@ -118,7 +118,7 @@ const Sheet2Header: React.FC = () => {
               </Form.Group>
             </Col>
             <Col md={4}>
-              <Form.Group controlId="characterHair" className="text-center">
+              <Form.Group controlId="characterHair">
                 <Form.Control
                   type="text"
                   value={hair}

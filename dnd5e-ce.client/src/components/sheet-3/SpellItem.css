@@ -1,0 +1,24 @@
+.spell-header {
+    display: flex;
+    align-items: center;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.spell-icon {
+    font-size: 1.2rem;
+    color: #6c757d;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.spell-icon:hover {
+    color: #007bff;
+}
+
+.spell-header .form-control[style*="width: 4rem"] {
+    font-size: 0.85rem;
+    text-align: center;
+    background-color: #e9ecef;
+    border: none;
+}

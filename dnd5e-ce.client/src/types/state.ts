@@ -240,6 +240,8 @@ export interface InventoryItemEditableRowPropsType {
   onDelete: any
 }
 
+export type SpellLevel = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+
 export interface SpellComponents {
   v: {
     isIncluded: boolean
@@ -274,7 +276,7 @@ export interface SpellSavingThrow {
   effect: string
 }
 
-export type SpellHighLevelCastDiceType = HitDiceType | "d20";
+export type SpellHighLevelCastDiceType = "none" | HitDiceType | "d20";
 
 export interface SpellHigherLevelCast {
   diceAmount: number,
@@ -282,7 +284,7 @@ export interface SpellHigherLevelCast {
   bonus: number
 }
 
-export interface SpellBase {
+export interface Spell {
   id: string,
   name: string,
   school: SpellSchool,
@@ -301,25 +303,63 @@ export interface SpellBase {
   healingDice: string,
   isAbilityModIncluded: boolean, // Add ability mod to attack or no
   savingThrow: SpellSavingThrow,
-  higherLevelCast: SpellHigherLevelCast
+  higherLevelCast: SpellHigherLevelCast,
   includeSpellDescriptionInAttack: SpellDescriptionInAttackIncludeVariety,
   description: string,
   atHigherLevels: string,
   class: string,
-  type: string
+  type: string,
+  cantripProgression: CantripProgressionType,
+  isPrepared: boolean
 }
 
 // cantripBeam - cantripBeam depends on level and adds additional beams to attack
 // cantripDice - adds additional damageDices to attack depending on level
 export type CantripProgressionType = "none" | "cantripBeam" | "cantripDice";
 
-export interface Cantrip extends SpellBase {
-  cantripProgression: CantripProgressionType
+export interface SpellItemToggleType {
+  eventKey: {
+    info: string,
+    edit: string
+  };
+  isEditMode: boolean;
+  cantripName: string;
+  onDelete?: () => void;
 }
 
-export interface Spell extends SpellBase {
-
+export interface SpellCardPropsType {
+  spell: Spell,
+  isEditMode: boolean,
+  onDelete: any,
+  spellLevel: SpellLevel
 }
+
+export type CharacterClass =
+  | 'wizard'
+  | 'cleric'
+  | 'druid'
+  | 'sorcerer'
+  | 'bard'
+  | 'paladin'
+  | 'ranger'
+  | 'eldritch knight'
+  | 'arcane trickster'
+  | 'warlock';
+
+export interface ClassInfo {
+  class: CharacterClass | string;
+  level: number;
+}
+
+export interface SpellSlots {
+  [key: number]: number; // e.g., { 1: 4, 2: 3, 3: 2 } for 4 slots of level 1, 3 slots of level 2, etc.
+}
+
+export interface PactMagic {
+  slots: number; // Number of pact magic slots
+  level: number; // Level of pact magic slots
+}
+
 
 export interface Sheet1State {
   //header fields
@@ -369,10 +409,13 @@ export interface Sheet2State {
   treasures: string
 }
 
+export type SpellCategoryKey = 'cantrips' | 'level0' | 'level1' | 'level2' | 'level3' | 'level4' | 'level5' | 'level6' | 'level7' | 'level8' | 'level9';
+export type RemainingSpellSlots = 'level1' | 'level2' | 'level3' | 'level4' | 'level5' | 'level6' | 'level7' | 'level8' | 'level9';
+
 export interface Sheet3State {
   spellBondAbility: SpellAbilityType,
   spells: {
-    cantrips: Cantrip[],
+    cantrips: Spell[],
     level1: Spell[],
     level2: Spell[],
     level3: Spell[],
@@ -382,6 +425,17 @@ export interface Sheet3State {
     level7: Spell[],
     level8: Spell[],
     level9: Spell[],
+  },
+  remainingSpellSlots: {
+    level1: number,
+    level2: number,
+    level3: number,
+    level4: number,
+    level5: number,
+    level6: number,
+    level7: number,
+    level8: number,
+    level9: number,
   }
 }
 
