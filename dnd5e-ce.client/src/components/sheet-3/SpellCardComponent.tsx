@@ -553,213 +553,219 @@ const SpellItem: React.FC<SpellCardPropsType> = ({
                 <option value="attack">Атака</option>
               </Form.Select>
             </Form.Group>
-            <Form.Group
-              controlId={`spell-${spell.id}-attack-attackType-edit`}
-              className="d-flex flex-row gap-1 justify-content-center align-items-center"
-            >
-              <Form.Label className="m-0 fw-bold">Тип атаки</Form.Label>
-              <Form.Select
-                size="sm"
-                value={spell.attack.attackType}
-                onChange={handleAttackTypeChange}
-                aria-label={`Тип атаки ${spellLevel === 0 ? 'заговора' : 'заклинания'} ${spell.name}`}
-              >
-                <option value="ranged">Дальний</option>
-                <option value="melee">Ближний</option>
-              </Form.Select>
-            </Form.Group>
-            <Form.Group
-              controlId={`spell-${spell.id}-attack-damage1-dice-edit`}
-              className="d-flex flex-row gap-1 justify-content-center align-items-center"
-            >
-              <Form.Label className="m-0 fw-bold">Урон 1: Кости</Form.Label>
-              <Form.Control
-                size="sm"
-                value={spell.attack.damage1.dice}
-                onChange={handleAttackDamage1DiceChange}
-                aria-label={`Кости урона 1 ${spellLevel === 0 ? 'заговора' : 'заклинания'} ${spell.name}`}
-              />
-            </Form.Group>
-            <Form.Group
-              controlId={`spell-${spell.id}-attack-damage1-type-edit`}
-              className="d-flex flex-row gap-1 justify-content-center align-items-center"
-            >
-              <Form.Label className="m-0 fw-bold">Урон 1: Тип</Form.Label>
-              <Form.Control
-                size="sm"
-                value={spell.attack.damage1.type}
-                onChange={handleAttackDamage1TypeChange}
-                aria-label={`Тип урона 1 ${spellLevel === 0 ? 'заговора' : 'заклинания'} ${spell.name}`}
-              />
-            </Form.Group>
-            <Form.Group
-              controlId={`spell-${spell.id}-attack-damage2-dice-edit`}
-              className="d-flex flex-row gap-1 justify-content-center align-items-center"
-            >
-              <Form.Label className="m-0 fw-bold">Урон 2: Кости</Form.Label>
-              <Form.Control
-                size="sm"
-                value={spell.attack.damage2.dice}
-                onChange={handleAttackDamage2DiceChange}
-                aria-label={`Кости урона 2 ${spellLevel === 0 ? 'заговора' : 'заклинания'} ${spell.name}`}
-              />
-            </Form.Group>
-            <Form.Group
-              controlId={`spell-${spell.id}-attack-damage2-type-edit`}
-              className="d-flex flex-row gap-1 justify-content-center align-items-center"
-            >
-              <Form.Label className="m-0 fw-bold">Урон 2: Тип</Form.Label>
-              <Form.Control
-                size="sm"
-                value={spell.attack.damage2.type}
-                onChange={handleAttackDamage2TypeChange}
-                aria-label={`Тип урона 2 ${spellLevel === 0 ? 'заговора' : 'заклинания'} ${spell.name}`}
-              />
-            </Form.Group>
-            <Form.Group
-              controlId={`spell-${spell.id}-healingDice-edit`}
-              className="d-flex flex-row gap-1 justify-content-center align-items-center"
-            >
-              <Form.Label className="m-0 fw-bold">Лечащие кости</Form.Label>
-              <Form.Control
-                size="sm"
-                value={spell.healingDice}
-                onChange={handleHealingDiceChange}
-                aria-label={`Лечащие кости ${spellLevel === 0 ? 'заговора' : 'заклинания'} ${spell.name}`}
-              />
-            </Form.Group>
-            <Form.Group
-              controlId={`spell-${spell.id}-isAbilityModIncluded-edit`}
-              className="d-flex flex-row gap-1 justify-content-center align-items-center"
-            >
-              <Form.Label className="m-0 fw-bold text-wrap">
-                Учитывать модификатор способности
-              </Form.Label>
-              <Form.Check
-                type="checkbox"
-                checked={spell.isAbilityModIncluded}
-                onChange={handleAbilityModIncludedChange}
-                aria-label={`Модификатор способности ${spellLevel === 0 ? 'заговора' : 'заклинания'} ${spell.name}`}
-              />
-            </Form.Group>
-            <Form.Group
-              controlId={`spell-${spell.id}-cantripProgression-edit`}
-              className="d-flex flex-row gap-1 justify-content-center align-items-center"
-            >
-              <Form.Label className="m-0 fw-bold">Прогрессия</Form.Label>
-              <Form.Select
-                size="sm"
-                value={spell.cantripProgression}
-                onChange={handleCantripProgressionChange}
-                aria-label={`Прогрессия ${spellLevel === 0 ? 'заговора' : 'заклинания'} ${spell.name}`}
-              >
-                <option value="none">Нет</option>
-                <option value="cantripBeam">Луч</option>
-                <option value="cantripDice">Кости</option>
-              </Form.Select>
-            </Form.Group>
-            <Form.Group
-              controlId={`spell-${spell.id}-savingThrow-ability-edit`}
-              className="d-flex flex-row gap-1 justify-content-center align-items-center"
-            >
-              <Form.Label className="m-0 fw-bold">
-                Спасбросок: Способность
-              </Form.Label>
-              <Form.Select
-                size="sm"
-                value={spell.savingThrow.ability}
-                onChange={handleSavingThrowAbilityChange}
-                aria-label={`Способность спасброска ${spellLevel === 0 ? 'заговора' : 'заклинания'} ${spell.name}`}
-              >
-                <option value="none">Нет</option>
-                <option value="strength">Сила</option>
-                <option value="dexterity">Ловкость</option>
-                <option value="constitution">Телосложение</option>
-                <option value="intelligence">Интеллект</option>
-                <option value="wisdom">Мудрость</option>
-                <option value="charisma">Харизма</option>
-              </Form.Select>
-            </Form.Group>
-            <Form.Group
-              controlId={`spell-${spell.id}-savingThrow-effect-edit`}
-              className="d-flex flex-row gap-1 justify-content-center align-items-center"
-            >
-              <Form.Label className="m-0 fw-bold">Спасбросок: Эффект</Form.Label>
-              <Form.Control
-                size="sm"
-                value={spell.savingThrow.effect}
-                onChange={handleSavingThrowEffectChange}
-                aria-label={`Эффект спасброска ${spellLevel === 0 ? 'заговора' : 'заклинания'} ${spell.name}`}
-              />
-            </Form.Group>
-            <Form.Group
-              controlId={`spell-${spell.id}-higherLevelCast-diceAmount-edit`}
-              className="d-flex flex-row gap-1 justify-content-center align-items-center"
-            >
-              <Form.Label className="m-0 fw-bold text-wrap">
-                Каст на высоком уровне: Кол-во костей
-              </Form.Label>
-              <Form.Control
-                size="sm"
-                type="number"
-                value={spell.higherLevelCast.diceAmount}
-                onChange={handleHigherLevelCastDiceAmountChange}
-                aria-label={`Количество костей для каста на высоком уровне ${spellLevel === 0 ? 'заговора' : 'заклинания'} ${spell.name}`}
-              />
-            </Form.Group>
-            <Form.Group
-              controlId={`spell-${spell.id}-higherLevelCast-diceType-edit`}
-              className="d-flex flex-row gap-1 justify-content-center align-items-center"
-            >
-              <Form.Label className="m-0 fw-bold text-wrap">
-                Каст на высоком уровне: Тип костей
-              </Form.Label>
-              <Form.Select
-                size="sm"
-                value={spell.higherLevelCast.diceType}
-                onChange={handleHigherLevelCastDiceTypeChange}
-                aria-label={`Тип костей для каста на высоком уровне ${spellLevel === 0 ? 'заговора' : 'заклинания'} ${spell.name}`}
-              >
-                <option value="none">Нет</option>
-                <option value="d4">d4</option>
-                <option value="d6">d6</option>
-                <option value="d8">d8</option>
-                <option value="d10">d10</option>
-                <option value="d12">d12</option>
-                <option value="d20">d20</option>
-              </Form.Select>
-            </Form.Group>
-            <Form.Group
-              controlId={`spell-${spell.id}-higherLevelCast-bonus-edit`}
-              className="d-flex flex-row gap-1 justify-content-center align-items-center"
-            >
-              <Form.Label className="m-0 fw-bold">
-                Каст на высоком уровне: Бонус
-              </Form.Label>
-              <Form.Control
-                size="sm"
-                type="number"
-                value={spell.higherLevelCast.bonus}
-                onChange={handleHigherLevelCastBonusChange}
-                aria-label={`Бонус для каста на высоком уровне ${spellLevel === 0 ? 'заговора' : 'заклинания'} ${spell.name}`}
-              />
-            </Form.Group>
-            <Form.Group
-              controlId={`spell-${spell.id}-includeSpellDescriptionInAttack-edit`}
-              className="d-flex flex-row gap-1 justify-content-center align-items-center"
-            >
-              <Form.Label className="m-0 fw-bold">Описание в атаке</Form.Label>
-              <Form.Select
-                size="sm"
-                value={spell.includeSpellDescriptionInAttack}
-                onChange={handleIncludeSpellDescriptionInAttackChange}
-                aria-label={`Описание в атаке ${spellLevel === 0 ? 'заговора' : 'заклинания'} ${spell.name}`}
-              >
-                <option value="off">Выкл</option>
-                <option value="partial">Частично</option>
-                <option value="on">Вкл</option>
-              </Form.Select>
-            </Form.Group>
+            {spell.output === "attack" ? (
+              <>
+                <Form.Group
+                  controlId={`spell-${spell.id}-attack-attackType-edit`}
+                  className="d-flex flex-row gap-1 justify-content-center align-items-center"
+                >
+                  <Form.Label className="m-0 fw-bold">Тип атаки</Form.Label>
+                  <Form.Select
+                    size="sm"
+                    value={spell.attack.attackType}
+                    onChange={handleAttackTypeChange}
+                    aria-label={`Тип атаки ${spellLevel === 0 ? 'заговора' : 'заклинания'} ${spell.name}`}
+                  >
+                    <option value="ranged">Дальний</option>
+                    <option value="melee">Ближний</option>
+                  </Form.Select>
+                </Form.Group>
+                <Form.Group
+                  controlId={`spell-${spell.id}-attack-damage1-dice-edit`}
+                  className="d-flex flex-row gap-1 justify-content-center align-items-center"
+                >
+                  <Form.Label className="m-0 fw-bold">Урон 1: Кости</Form.Label>
+                  <Form.Control
+                    size="sm"
+                    value={spell.attack.damage1.dice}
+                    onChange={handleAttackDamage1DiceChange}
+                    aria-label={`Кости урона 1 ${spellLevel === 0 ? 'заговора' : 'заклинания'} ${spell.name}`}
+                  />
+                </Form.Group>
+                <Form.Group
+                  controlId={`spell-${spell.id}-attack-damage1-type-edit`}
+                  className="d-flex flex-row gap-1 justify-content-center align-items-center"
+                >
+                  <Form.Label className="m-0 fw-bold">Урон 1: Тип</Form.Label>
+                  <Form.Control
+                    size="sm"
+                    value={spell.attack.damage1.type}
+                    onChange={handleAttackDamage1TypeChange}
+                    aria-label={`Тип урона 1 ${spellLevel === 0 ? 'заговора' : 'заклинания'} ${spell.name}`}
+                  />
+                </Form.Group>
+                <Form.Group
+                  controlId={`spell-${spell.id}-attack-damage2-dice-edit`}
+                  className="d-flex flex-row gap-1 justify-content-center align-items-center"
+                >
+                  <Form.Label className="m-0 fw-bold">Урон 2: Кости</Form.Label>
+                  <Form.Control
+                    size="sm"
+                    value={spell.attack.damage2.dice}
+                    onChange={handleAttackDamage2DiceChange}
+                    aria-label={`Кости урона 2 ${spellLevel === 0 ? 'заговора' : 'заклинания'} ${spell.name}`}
+                  />
+                </Form.Group>
+                <Form.Group
+                  controlId={`spell-${spell.id}-attack-damage2-type-edit`}
+                  className="d-flex flex-row gap-1 justify-content-center align-items-center"
+                >
+                  <Form.Label className="m-0 fw-bold">Урон 2: Тип</Form.Label>
+                  <Form.Control
+                    size="sm"
+                    value={spell.attack.damage2.type}
+                    onChange={handleAttackDamage2TypeChange}
+                    aria-label={`Тип урона 2 ${spellLevel === 0 ? 'заговора' : 'заклинания'} ${spell.name}`}
+                  />
+                </Form.Group>
+                <Form.Group
+                  controlId={`spell-${spell.id}-healingDice-edit`}
+                  className="d-flex flex-row gap-1 justify-content-center align-items-center"
+                >
+                  <Form.Label className="m-0 fw-bold">Лечащие кости</Form.Label>
+                  <Form.Control
+                    size="sm"
+                    value={spell.healingDice}
+                    onChange={handleHealingDiceChange}
+                    aria-label={`Лечащие кости ${spellLevel === 0 ? 'заговора' : 'заклинания'} ${spell.name}`}
+                  />
+                </Form.Group>
+                <Form.Group
+                  controlId={`spell-${spell.id}-isAbilityModIncluded-edit`}
+                  className="d-flex flex-row gap-1 justify-content-center align-items-center"
+                >
+                  <Form.Label className="m-0 fw-bold text-wrap">
+                    Учитывать модификатор способности
+                  </Form.Label>
+                  <Form.Check
+                    type="checkbox"
+                    checked={spell.isAbilityModIncluded}
+                    onChange={handleAbilityModIncludedChange}
+                    aria-label={`Модификатор способности ${spellLevel === 0 ? 'заговора' : 'заклинания'} ${spell.name}`}
+                  />
+                </Form.Group>
+                <Form.Group
+                  controlId={`spell-${spell.id}-cantripProgression-edit`}
+                  className="d-flex flex-row gap-1 justify-content-center align-items-center"
+                >
+                  <Form.Label className="m-0 fw-bold">Прогрессия</Form.Label>
+                  <Form.Select
+                    size="sm"
+                    value={spell.cantripProgression}
+                    onChange={handleCantripProgressionChange}
+                    aria-label={`Прогрессия ${spellLevel === 0 ? 'заговора' : 'заклинания'} ${spell.name}`}
+                  >
+                    <option value="none">Нет</option>
+                    <option value="cantripBeam">Луч</option>
+                    <option value="cantripDice">Кости</option>
+                  </Form.Select>
+                </Form.Group>
+                <Form.Group
+                  controlId={`spell-${spell.id}-savingThrow-ability-edit`}
+                  className="d-flex flex-row gap-1 justify-content-center align-items-center"
+                >
+                  <Form.Label className="m-0 fw-bold">
+                    Спасбросок: Способность
+                  </Form.Label>
+                  <Form.Select
+                    size="sm"
+                    value={spell.savingThrow.ability}
+                    onChange={handleSavingThrowAbilityChange}
+                    aria-label={`Способность спасброска ${spellLevel === 0 ? 'заговора' : 'заклинания'} ${spell.name}`}
+                  >
+                    <option value="none">Нет</option>
+                    <option value="strength">Сила</option>
+                    <option value="dexterity">Ловкость</option>
+                    <option value="constitution">Телосложение</option>
+                    <option value="intelligence">Интеллект</option>
+                    <option value="wisdom">Мудрость</option>
+                    <option value="charisma">Харизма</option>
+                  </Form.Select>
+                </Form.Group>
+                <Form.Group
+                  controlId={`spell-${spell.id}-savingThrow-effect-edit`}
+                  className="d-flex flex-row gap-1 justify-content-center align-items-center"
+                >
+                  <Form.Label className="m-0 fw-bold">Спасбросок: Эффект</Form.Label>
+                  <Form.Control
+                    size="sm"
+                    value={spell.savingThrow.effect}
+                    onChange={handleSavingThrowEffectChange}
+                    aria-label={`Эффект спасброска ${spellLevel === 0 ? 'заговора' : 'заклинания'} ${spell.name}`}
+                  />
+                </Form.Group>
+                <Form.Group
+                  controlId={`spell-${spell.id}-higherLevelCast-diceAmount-edit`}
+                  className="d-flex flex-row gap-1 justify-content-center align-items-center"
+                >
+                  <Form.Label className="m-0 fw-bold text-wrap">
+                    Каст на высоком уровне: Кол-во костей
+                  </Form.Label>
+                  <Form.Control
+                    size="sm"
+                    type="number"
+                    value={spell.higherLevelCast.diceAmount}
+                    onChange={handleHigherLevelCastDiceAmountChange}
+                    aria-label={`Количество костей для каста на высоком уровне ${spellLevel === 0 ? 'заговора' : 'заклинания'} ${spell.name}`}
+                  />
+                </Form.Group>
+                <Form.Group
+                  controlId={`spell-${spell.id}-higherLevelCast-diceType-edit`}
+                  className="d-flex flex-row gap-1 justify-content-center align-items-center"
+                >
+                  <Form.Label className="m-0 fw-bold text-wrap">
+                    Каст на высоком уровне: Тип костей
+                  </Form.Label>
+                  <Form.Select
+                    size="sm"
+                    value={spell.higherLevelCast.diceType}
+                    onChange={handleHigherLevelCastDiceTypeChange}
+                    aria-label={`Тип костей для каста на высоком уровне ${spellLevel === 0 ? 'заговора' : 'заклинания'} ${spell.name}`}
+                  >
+                    <option value="none">Нет</option>
+                    <option value="d4">d4</option>
+                    <option value="d6">d6</option>
+                    <option value="d8">d8</option>
+                    <option value="d10">d10</option>
+                    <option value="d12">d12</option>
+                    <option value="d20">d20</option>
+                  </Form.Select>
+                </Form.Group>
+                <Form.Group
+                  controlId={`spell-${spell.id}-higherLevelCast-bonus-edit`}
+                  className="d-flex flex-row gap-1 justify-content-center align-items-center"
+                >
+                  <Form.Label className="m-0 fw-bold">
+                    Каст на высоком уровне: Бонус
+                  </Form.Label>
+                  <Form.Control
+                    size="sm"
+                    type="number"
+                    value={spell.higherLevelCast.bonus}
+                    onChange={handleHigherLevelCastBonusChange}
+                    aria-label={`Бонус для каста на высоком уровне ${spellLevel === 0 ? 'заговора' : 'заклинания'} ${spell.name}`}
+                  />
+                </Form.Group>
+                <Form.Group
+                  controlId={`spell-${spell.id}-includeSpellDescriptionInAttack-edit`}
+                  className="d-flex flex-row gap-1 justify-content-center align-items-center"
+                >
+                  <Form.Label className="m-0 fw-bold">Описание в атаке</Form.Label>
+                  <Form.Select
+                    size="sm"
+                    value={spell.includeSpellDescriptionInAttack}
+                    onChange={handleIncludeSpellDescriptionInAttackChange}
+                    aria-label={`Описание в атаке ${spellLevel === 0 ? 'заговора' : 'заклинания'} ${spell.name}`}
+                  >
+                    <option value="off">Выкл</option>
+                    <option value="partial">Частично</option>
+                    <option value="on">Вкл</option>
+                  </Form.Select>
+                </Form.Group>
+              </>
+            ) : (
+              null
+            )}
             <Form.Group
               controlId={`spell-${spell.id}-description-edit`}
               className="d-flex flex-column gap-1"
@@ -896,6 +902,15 @@ const SpellCardComponent: React.FC<SpellCardComponentProps> = ({
 
   return (
     <Container>
+      {spellLevel === 1 ? (
+        <div className="d-flex flex-row gap-3">
+          <div style={{ width: "1rem" }} />
+          <Form.Label className="fw-lighter">Всего слотов</Form.Label>
+          <Form.Label className="fw-lighter">Оставшиеся слоты</Form.Label>
+        </div>
+      ) : (
+        null
+      )}
       <Card className="border-0">
         <Card.Img src={svgImage} />
         <Card.ImgOverlay className="px-1 h-100 d-flex justify-content-center align-items-center">
@@ -904,10 +919,9 @@ const SpellCardComponent: React.FC<SpellCardComponentProps> = ({
               {title}
             </div>
           ) : (
-              <div className="d-flex flex-row gap-3">
-              <div style={{width: "1rem"}}></div>
+            <div className="d-flex flex-row gap-3">
+              <div style={{width: "1rem"}} />
               <Form.Group controlId={`spells-${spellLevel}-totalSlots`}>
-                {/*<Form.Label className="fw-bold">Всего слотов</Form.Label>*/}
                 <Form.Control
                   size="sm"
                   value={totalSlots}
@@ -918,7 +932,6 @@ const SpellCardComponent: React.FC<SpellCardComponentProps> = ({
                 />
               </Form.Group>
               <Form.Group controlId={`spells-${spellLevel}-remainingSlots`}>
-                {/*<Form.Label className="fw-bold">Оставшиеся слоты</Form.Label>*/}
                 <Form.Control
                   size="sm"
                   type="number"
