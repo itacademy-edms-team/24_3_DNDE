@@ -127,7 +127,7 @@ export interface DeathSaveThrow {
 }
 
 export interface ClassResource {
-  id: number,
+  id: string,
   total: number,
   current: number,
   name: string,
@@ -135,6 +135,17 @@ export interface ClassResource {
   resetOn: ResourceResetType
 }
 
+export interface OtherResource extends ClassResource { }
+export interface OtherResourcePropsType {
+  resource: OtherResource,
+  isEditMode: boolean,
+  onDelete: any
+}
+
+export interface ItemOtherResource {
+  itemId: string,
+  resourceId: string,
+}
 
 export interface InventoryGold {
   cp: number,
@@ -393,6 +404,7 @@ export interface Sheet1State {
   flaws: string,
   classResource: ClassResource,
   otherResources: ClassResource[],
+  itemOtherResources: ItemOtherResource[],
 }
 
 export interface Sheet2State {

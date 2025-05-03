@@ -1,8 +1,6 @@
 ﻿import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
-import Card from 'react-bootstrap/Card';
-import Form from 'react-bootstrap/Form';
 import Button from 'react-bootstrap/Button';
 
 import CharacteristicList from './CharacteristicList';
@@ -30,6 +28,7 @@ import PersonalityTraitsCard from './PersonalityTraitsCard';
 import CharacterIdeals from './CharacterIdeals';
 import CharacterBonds from './CharacterBonds';
 import CharacterFlaws from './CharacterFlaws';
+import CharacterResourceList from './CharacterResourceList';
 //import ClassResource from './ClassResource';
 
 
@@ -117,7 +116,7 @@ const Sheet1Body: React.FC = () => {
             </Col>
           </Row>
           <Row>
-            {/*<CharacterResourceContainer />*/}
+            <CharacterResourceList />
           </Row>
         </Col>
       </Row>

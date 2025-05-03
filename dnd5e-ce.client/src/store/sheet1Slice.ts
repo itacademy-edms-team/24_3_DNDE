@@ -6,7 +6,9 @@ import {
   HitDiceType,
   InventoryGold,
   InventoryItem,
+  OtherResourceCard,
   OtherTool,
+  ResourceResetType,
   Sheet1State,
   Tool
 } from '../types/state';
@@ -211,7 +213,7 @@ const initialState: Sheet1State = {
   bonds: "character bonds",
   flaws: "character flaws",
   classResource: {
-    id: 0,
+    id: "avada-kedavra-0",
     total: 2,
     current: 2,
     name: "Rage",
@@ -220,14 +222,15 @@ const initialState: Sheet1State = {
   },
   otherResources: [
     {
-      id: 1,
+      id: "avada-kedavra-3",
       total: 2,
       current: 2,
       name: "other",
       usePb: false,
       resetOn: "longRest"
     }
-  ]
+  ],
+  itemOtherResources: []
 };
 
 const sheet1Slice = createSlice({
@@ -457,6 +460,57 @@ const sheet1Slice = createSlice({
     updateCharacterFlaws(state, action: PayloadAction<string>) {
       state.flaws = action.payload;
     },
+    updateCharacterClassResourceTotal(state, action: PayloadAction<number>) {
+      state.classResource.total = action.payload;
+    },
+    updateCharacterClassResourceCurrent(state, action: PayloadAction<number>) {
+      state.classResource.current = action.payload;
+    },
+    updateCharacterClassResourceName(state, action: PayloadAction<string>) {
+      state.classResource.name = action.payload;
+    },
+    updateCharacterClassResourceUsePb(state, action: PayloadAction<boolean>) {
+      state.classResource.usePb = action.payload;
+    },
+    updateCharacterClassResourceResetOn(state, action: PayloadAction<ResourceResetType>) {
+      state.classResource.resetOn = action.payload;
+    },
+    addCharacterOtherResource(state, action: PayloadAction<OtherResourceCard>) {
+      state.otherResources.push(action.payload);
+    },
+    deleteCharacterOtherResource(state, action: PayloadAction<string>) {
+      state.otherResources = state.otherResources.filter((resource) => resource.id !== action.payload);
+    },
+    updateCharacterOtherResourceTotal(state, action: PayloadAction<{ id: string; total: number }>) {
+      const index = state.otherResources.findIndex((resource) => resource.id === action.payload.id);
+      if (index !== -1) {
+        state.otherResources[index].total = action.payload.total;
+      }
+    },
+    updateCharacterOtherResourceCurrent(state, action: PayloadAction<{ id: string; current: number }>) {
+      const index = state.otherResources.findIndex((resource) => resource.id === action.payload.id);
+      if (index !== -1) {
+        state.otherResources[index].current = action.payload.current;
+      }
+    },
+    updateCharacterOtherResourceName(state, action: PayloadAction<{ id: string; name: string }>) {
+      const index = state.otherResources.findIndex((resource) => resource.id === action.payload.id);
+      if (index !== -1) {
+        state.otherResources[index].name = action.payload.name;
+      }
+    },
+    updateCharacterOtherResourceUsePb(state, action: PayloadAction<{ id: string; usePb: boolean }>) {
+      const index = state.otherResources.findIndex((resource) => resource.id === action.payload.id);
+      if (index !== -1) {
+        state.otherResources[index].usePb = action.payload.usePb;
+      }
+    },
+    updateCharacterOtherResourceResetOn(state, action: PayloadAction<{ id: string; resetOn: ResourceResetType }>) {
+      const index = state.otherResources.findIndex((resource) => resource.id === action.payload.id);
+      if (index !== -1) {
+        state.otherResources[index].resetOn = action.payload.resetOn;
+      }
+    },
   }
 });
 
@@ -469,6 +523,11 @@ export const { updateName, updateClass, updateLevel, updateRace, updateBackstory
   updateDeathSaveThrowsSuccesses, updateDeathSaveThrowsFailures, resetDeathSaveThrows,
   addAttack, updateAttack, deleteAttack, addGlobalDamageModifier, updateGlobalDamageModifier, deleteGlobalDamageModifier,
   updateInventoryGold, addInventoryItem, updateInventoryItem, deleteInventoryItem,
-  updateCharacterPersonalityTraits, updateCharacterIdeals, updateCharacterBonds, updateCharacterFlaws
+  updateCharacterPersonalityTraits, updateCharacterIdeals, updateCharacterBonds, updateCharacterFlaws,
+  updateCharacterClassResourceTotal, updateCharacterClassResourceCurrent, updateCharacterClassResourceName,
+  updateCharacterClassResourceUsePb, updateCharacterClassResourceResetOn,
+  addCharacterOtherResource, deleteCharacterOtherResource,
+  updateCharacterOtherResourceCurrent, updateCharacterOtherResourceTotal, updateCharacterOtherResourceName,
+  updateCharacterOtherResourceResetOn, updateCharacterOtherResourceUsePb
 } = sheet1Slice.actions;
 export default sheet1Slice.reducer;

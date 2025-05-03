@@ -19,3 +19,6 @@ export const selectProficiencyBonus = createSelector(
   (level) => Math.floor((level - 1) / 4) + 2
 );
 // ... другие селекторы
+
+export const selectClassResource = (state: RootState) => state.sheet1.classResource;
+export const selectOtherResources = (state: RootState) => state.sheet1.otherResources;
