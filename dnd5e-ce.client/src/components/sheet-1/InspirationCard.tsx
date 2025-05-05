@@ -1,23 +1,18 @@
-﻿import Container from 'react-bootstrap/Container';
-import Row from 'react-bootstrap/Row';
-import Col from 'react-bootstrap/Col';
-import Card from 'react-bootstrap/Card';
+﻿import Card from 'react-bootstrap/Card';
+import Container from 'react-bootstrap/Container';
 import Form from 'react-bootstrap/Form';
-
 
 import InspirationSVG1 from './assets/InspirationSquare.png';
 import InspirationSVG2 from './assets/InspirationText.png';
 
-import { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../hooks';
-import { RootState } from '../../types/state';
-
+import { selectIsInspired } from '../../store/selectors/sheet1Selectors';
 import { updateInspiration } from '../../store/sheet1Slice';
 
 const InspirationCard: React.FC = () => {
   const dispatch = useAppDispatch();
 
-  const isInspired = useAppSelector((state: RootState) => state.sheet1.isInspired);
+  const isInspired = useAppSelector(selectIsInspired);
   const handleIsInspiredChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     dispatch(updateInspiration(e.target.checked));
   }

@@ -1,20 +1,18 @@
-﻿import Container from 'react-bootstrap/Container';
-import Row from 'react-bootstrap/Row';
-import Col from 'react-bootstrap/Col';
-import Card from 'react-bootstrap/Card';
-import Form from 'react-bootstrap/Form';
-import Table from 'react-bootstrap/Table';
+﻿import Col from 'react-bootstrap/Col';
 import Collapse from 'react-bootstrap/Collapse';
+import Container from 'react-bootstrap/Container';
+import Form from 'react-bootstrap/Form';
+import Row from 'react-bootstrap/Row';
 
-import { FaCog, FaTrash, FaLock, FaLockOpen, FaPlus } from 'react-icons/fa';
+import { FaCog, FaLock, FaLockOpen, FaPlus, FaTrash } from 'react-icons/fa';
 
 import { v4 as uuidv4 } from 'uuid';
-import { useState, Fragment, useEffect } from 'react';
+
+import { Fragment, useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../hooks';
-import {
-  addGlobalDamageModifier, updateGlobalDamageModifier, deleteGlobalDamageModifier
-} from '../../store/sheet1Slice';
-import { RootState, AttacksCardAttackEditableRowPropsType, Attack, AbilityType, AttackAbilityType, DCAbilityType, DamageAbilityType, AttacksCardGlobalDamageModifierEditableRowPropsType, GlobalDamageModifier } from '../../types/state';
+import { selectGlobalDamageModifiers } from '../../store/selectors/sheet1Selectors';
+import { addGlobalDamageModifier, deleteGlobalDamageModifier, updateGlobalDamageModifier } from '../../store/sheet1Slice';
+import { AttacksCardGlobalDamageModifierEditableRowPropsType, GlobalDamageModifier } from '../../types/state';
 
 const GlobalDamageModifierEditableRow: React.FC<AttacksCardGlobalDamageModifierEditableRowPropsType> = ({
   globalDamageModifier,
@@ -155,7 +153,7 @@ const GlobalDamageModifierEditableRow: React.FC<AttacksCardGlobalDamageModifierE
 
 const GlobalDamageModifiersCard: React.FC = () => {
   const dispatch = useAppDispatch();
-  const globalDamageModifiers = useAppSelector((state: RootState) => state.sheet1.globalDamageModifiers);
+  const globalDamageModifiers = useAppSelector(selectGlobalDamageModifiers);
 
   const [isEditMode, setEditMode] = useState(true); // false -> deletionMode
   const toggleEditMode = () => setEditMode(prev => !prev);
@@ -163,7 +161,7 @@ const GlobalDamageModifiersCard: React.FC = () => {
   const addNewModifier = () => {
     const newModifier: GlobalDamageModifier = {
       id: uuidv4(),
-      name: "Урон от Новый Модификатор",
+      name: "Новый Модификатор",
       damageDice: "", // 1d6, 1d4, ...
       criticalDamageDice: "", // 1d6, 1d4, ...
       type: "Новый Модификатор",

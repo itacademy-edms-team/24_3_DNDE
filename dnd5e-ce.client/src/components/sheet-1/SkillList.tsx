@@ -1,21 +1,28 @@
-﻿import Container from 'react-bootstrap/Container';
-import Row from 'react-bootstrap/Row';
+﻿import Card from 'react-bootstrap/Card';
 import Col from 'react-bootstrap/Col';
-import Card from 'react-bootstrap/Card';
+import Container from 'react-bootstrap/Container';
 import Form from 'react-bootstrap/Form';
 
-import SkillsSVG from './assets/SkillsFrame.svg'
+import SkillsSVG from './assets/SkillsFrame.svg';
 
-import { SkillType, RootState, SkillListPropsType } from '../../types/state';
 import { useAppDispatch, useAppSelector } from '../../hooks';
-import { useMemo } from 'react';
-
+import { selectSkillValues } from '../../store/selectors/sheet1Selectors';
 import { updateSkillProficiency } from '../../store/sheet1Slice';
+import { RootState, SkillListPropsType, SkillType } from '../../types/state';
 
 const SkillCard: React.FC<SkillListPropsType> = ({
   skillName,
   cardData
 }) => {
+  const dispatch = useAppDispatch();
+
+  const result = useAppSelector(selectSkillValues)[skillName];
+
+  const isProficient = useAppSelector((state: RootState) => state.sheet1.skills[skillName].isProficient);
+  const handleSkillIsProficientChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.checked;
+    dispatch(updateSkillProficiency({ skill: skillName, isProficient: newValue }));
+  };
 
   const getCheckIdBySkill = (skill: SkillType) => {
     const capitalizedAbility = skill.charAt(0).toUpperCase() + skill.slice(1);
@@ -26,38 +33,6 @@ const SkillCard: React.FC<SkillListPropsType> = ({
     const capitalizedAbility = skill.charAt(0).toUpperCase() + skill.slice(1);
     return `characterSkill${capitalizedAbility}Result`;
   }
-
-  const calculateAM = (abilityBase: number) => {
-    return Math.floor((abilityBase - 10) / 2);
-  }
-
-  const calculatePB = (level: number) => {
-    if (level >= 1 && level <= 4) return 2;
-    if (level >= 5 && level <= 8) return 3;
-    if (level >= 9 && level <= 12) return 4;
-    if (level >= 13 && level <= 16) return 5;
-    if (level >= 17 && level <= 20) return 6;
-    return 0;
-  };
-
-  const calculateResult = (abilityBase: number, chLevel: number, isProficient: boolean, other: number = 0) => {
-    const am = calculateAM(abilityBase);
-    const pb = isProficient ? calculatePB(chLevel) : 0;
-    return am + pb + other
-  }
-
-  const dispatch = useAppDispatch();
-
-  const abilityBase = useAppSelector((state: RootState) => state.sheet1.abilities[state.sheet1.skills[skillName].ability].base);
-  const chLevel = useAppSelector((state: RootState) => state.sheet1.level);
-
-  const isProficient = useAppSelector((state: RootState) => state.sheet1.skills[skillName].isProficient);
-  const handleSkillIsProficientChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.checked;
-    dispatch(updateSkillProficiency({ skill: skillName, isProficient: newValue }));
-  };
-
-  const calculatedResult = useMemo(() => calculateResult(abilityBase, chLevel, isProficient), [abilityBase, chLevel, isProficient]);
   
   return (
     <Col className="d-flex flex-row align-items-center border-0">
@@ -73,7 +48,7 @@ const SkillCard: React.FC<SkillListPropsType> = ({
       <Col md={3} className="p-0 m-0">
         <Form.Group controlId={getResultIdBySkill(skillName)}>
           <Form.Control
-            value={calculatedResult}
+            value={result}
             readOnly
             className="p-0 m-0 border-0 bg-transparent shadow-none text-center" />
         </Form.Group>

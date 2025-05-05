@@ -1,25 +1,21 @@
-﻿import Container from 'react-bootstrap/Container';
-import Row from 'react-bootstrap/Row';
+﻿import Card from 'react-bootstrap/Card';
 import Col from 'react-bootstrap/Col';
-import Card from 'react-bootstrap/Card';
 import Form from 'react-bootstrap/Form';
-import Button from 'react-bootstrap/Button';
 
 import HitDiceSVG from './assets/HitDice.svg';
 
-import { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../hooks';
-import { updateDeathSaveThrowsSuccesses, updateDeathSaveThrowsFailures, resetDeathSaveThrows } from '../../store/sheet1Slice';
-import { RootState } from '../../types/state';
+import { selectDeathSaveThrowsFailures, selectDeathSaveThrowsSuccesses } from '../../store/selectors/sheet1Selectors';
+import { updateDeathSaveThrowsFailures, updateDeathSaveThrowsSuccesses } from '../../store/sheet1Slice';
 
 const DeathSaveThrowsCard: React.FC = () => {
   const dispatch = useAppDispatch();
 
-  const successes = useAppSelector((state: RootState) => state.sheet1.deathSaveThrow.successes);
-  const failures = useAppSelector((state: RootState) => state.sheet1.deathSaveThrow.failures);
+  const successes = useAppSelector(selectDeathSaveThrowsSuccesses);
+  const failures = useAppSelector(selectDeathSaveThrowsFailures);
 
   const handleSuccessChange = (index: number, checked: boolean) => {
-    const newSuccesses = [...successes];
+    const newSuccesses = [...successes] as [boolean, boolean, boolean];
     // Устанавливаем значения до указанного индекса включительно
     for (let i = 0; i <= index; i++) {
       newSuccesses[i] = checked;
@@ -32,7 +28,7 @@ const DeathSaveThrowsCard: React.FC = () => {
   };
 
   const handleFailureChange = (index: number, checked: boolean) => {
-    const newFailures = [...failures];
+    const newFailures = [...failures] as [boolean, boolean, boolean];
     for (let i = 0; i <= index; i++) {
       newFailures[i] = checked;
     }
@@ -40,10 +36,6 @@ const DeathSaveThrowsCard: React.FC = () => {
       newFailures[i] = false;
     }
     dispatch(updateDeathSaveThrowsFailures(newFailures));
-  };
-
-  const handleReset = () => {
-    dispatch(resetDeathSaveThrows());
   };
 
   const renderCheckboxGroup = (

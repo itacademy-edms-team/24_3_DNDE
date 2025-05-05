@@ -1,13 +1,8 @@
-﻿import Container from 'react-bootstrap/Container';
+﻿import Col from 'react-bootstrap/Col';
+import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
-import Col from 'react-bootstrap/Col';
-import Form from 'react-bootstrap/Form';
-import Card from 'react-bootstrap/Card';
-import Accordion from 'react-bootstrap/Accordion'
-import InputGroup from 'react-bootstrap/InputGroup';
 
 import SpellCardComponent from './SpellCardComponent';
-
 
 import CharacterSpellcastingCantripsSVG from './assets/CharacterSpellcastingCantrips.svg';
 import CharacterSpellcastingLevel1SVG from './assets/CharacterSpellcastingLevel1.svg';

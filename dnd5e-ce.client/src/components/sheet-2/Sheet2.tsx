@@ -1,8 +1,8 @@
-﻿import Sheet2Header from './Sheet2Header'
-import Sheet2Body from './Sheet2Body';
-
+﻿import Container from 'react-bootstrap/Container';
 import Form from 'react-bootstrap/Form';
-import Container  from 'react-bootstrap/Container';
+
+import Sheet2Body from './Sheet2Body';
+import Sheet2Header from './Sheet2Header';
 
 const Sheet2: React.FC = () => {
   return (

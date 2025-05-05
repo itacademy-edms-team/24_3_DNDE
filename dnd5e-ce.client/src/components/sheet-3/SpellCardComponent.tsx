@@ -1,55 +1,57 @@
-﻿import React, { ChangeEvent, useState } from 'react';
-import { useAppDispatch, useAppSelector } from '../../hooks';
-import { v4 as uuidv4 } from 'uuid';
-import Form from 'react-bootstrap/Form';
-import Card from 'react-bootstrap/Card';
-import Container from 'react-bootstrap/Container';
+﻿import Card from 'react-bootstrap/Card';
 import Collapse from 'react-bootstrap/Collapse';
-import { FaCog, FaTrash, FaLock, FaLockOpen, FaPlus, FaInfoCircle } from 'react-icons/fa';
+import Container from 'react-bootstrap/Container';
+import Form from 'react-bootstrap/Form';
+
+import { FaCog, FaInfoCircle, FaLock, FaLockOpen, FaPlus, FaTrash } from 'react-icons/fa';
+
+import { v4 as uuidv4 } from 'uuid';
+
+import React, { ChangeEvent, useState } from 'react';
+import { useAppDispatch, useAppSelector } from '../../hooks';
+import { selectPactMagic, selectRemainingSpellSlots, selectSpellCastingAbility, selectSpellsByLevel, selectSpellSlots } from '../../store/selectors/sheet3Selectors';
 import {
-  addSpell,
-  deleteSpell,
-  updateSpellName,
-  updateSpellSchool,
-  updateSpellCantripProgression,
-  updateSpellIsRitual,
-  updateSpellCastingTime,
-  updateSpellRange,
-  updateSpellTarget,
-  updateSpellComponentsV,
-  updateSpellComponentsS,
-  updateSpellComponentsM,
-  updateSpellComponentsDescription,
-  updateSpellIsConcentration,
-  updateSpellDuration,
-  updateSpellCastingAbility,
-  updateSpellInnate,
-  updateSpellOutput,
-  updateSpellAttackType,
-  updateSpellAttackDamage1Dice,
-  updateSpellAttackDamage1Type,
-  updateSpellAttackDamage2Dice,
-  updateSpellAttackDamage2Type,
-  updateSpellHealingDice,
-  updateSpellIsAbilityModIncluded,
-  updateSpellSavingThrowAbility,
-  updateSpellSavingThrowEffect,
-  updateSpellHigherLevelCastDiceAmount,
-  updateSpellHigherLevelCastDiceType,
-  updateSpellHigherLevelCastBonus,
-  updateSpellIncludeSpellDescriptionInAttack,
-  updateSpellDescription,
-  updateSpellAtHigherLevels,
-  updateSpellClass,
-  updateSpellType,
-  updateSpellIsPrepared,
-  updateCharacterSpellCastingAbility,
-  updateRemainingSpellSlots,
+    addSpell,
+    deleteSpell,
+    updateCharacterSpellCastingAbility,
+    updateRemainingSpellSlots,
+    updateSpellAtHigherLevels,
+    updateSpellAttackDamage1Dice,
+    updateSpellAttackDamage1Type,
+    updateSpellAttackDamage2Dice,
+    updateSpellAttackDamage2Type,
+    updateSpellAttackType,
+    updateSpellCantripProgression,
+    updateSpellCastingAbility,
+    updateSpellCastingTime,
+    updateSpellClass,
+    updateSpellComponentsDescription,
+    updateSpellComponentsM,
+    updateSpellComponentsS,
+    updateSpellComponentsV,
+    updateSpellDescription,
+    updateSpellDuration,
+    updateSpellHealingDice,
+    updateSpellHigherLevelCastBonus,
+    updateSpellHigherLevelCastDiceAmount,
+    updateSpellHigherLevelCastDiceType,
+    updateSpellIncludeSpellDescriptionInAttack,
+    updateSpellInnate,
+    updateSpellIsAbilityModIncluded,
+    updateSpellIsConcentration,
+    updateSpellIsPrepared,
+    updateSpellIsRitual,
+    updateSpellName,
+    updateSpellOutput,
+    updateSpellRange,
+    updateSpellSavingThrowAbility,
+    updateSpellSavingThrowEffect,
+    updateSpellSchool,
+    updateSpellTarget,
+    updateSpellType,
 } from '../../store/sheet3Slice';
-import { selectRemainingSpellSlots, selectSpellsByLevel, selectSpellSlots } from '../../store/selectors/sheet3Selectors';
+import { CantripProgressionType, Spell, SpellAbilityType, SpellAttackType, SpellCardPropsType, SpellDescriptionInAttackIncludeVariety, SpellHighLevelCastDiceType, SpellLevel, SpellOutputType, SpellSchool } from '../../types/state';
 import './SpellItem.css';
-import { Spell, SpellCardPropsType, SpellSchool, SpellLevel, SpellAbilityType, SpellOutputType, SpellAttackType, CantripProgressionType, SpellHighLevelCastDiceType, SpellDescriptionInAttackIncludeVariety } from '../../types/state';
-import { selectPactMagic } from '../../store/selectors/sheet3Selectors';
 
 const SpellItem: React.FC<SpellCardPropsType> = ({
   spell,
@@ -58,7 +60,7 @@ const SpellItem: React.FC<SpellCardPropsType> = ({
   spellLevel,
 }) => {
   const dispatch = useAppDispatch();
-  const spellBondAbility = useAppSelector((state) => state.sheet3.spellBondAbility);
+  const spellBondAbility = useAppSelector(selectSpellCastingAbility);
 
   const [isInfoExpanded, setInfoExpanded] = useState(false);
   const [isEditExpanded, setEditExpanded] = useState(false);
@@ -901,7 +903,7 @@ const SpellCardComponent: React.FC<SpellCardComponentProps> = ({
     : spellSlots[spellLevel] || 0;
 
   return (
-    <Container>
+    <Container className="p-2 border rounded">
       {spellLevel === 1 ? (
         <div className="d-flex flex-row gap-3">
           <div style={{ width: "1rem" }} />

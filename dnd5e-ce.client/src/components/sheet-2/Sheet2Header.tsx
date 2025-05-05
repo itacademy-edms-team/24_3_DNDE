@@ -2,14 +2,29 @@
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import Form from 'react-bootstrap/Form';
+
 import { useAppDispatch, useAppSelector } from '../../hooks';
+import { selectCharacterName } from '../../store/selectors/sheet1Selectors';
+import {
+  selectAge,
+  selectHeight,
+  selectWeight,
+  selectEyes,
+  selectSkin,
+  selectHair,
+} from '../../store/selectors/sheet2Selectors';
 import { updateName } from '../../store/sheet1Slice';
 import { updateAge, updateHeight, updateWeight, updateEyes, updateSkin, updateHair } from '../../store/sheet2Slice';
 
 const Sheet2Header: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { name } = useAppSelector((state) => state.sheet1);
-  const { age, height, weight, eyes, skin, hair } = useAppSelector((state) => state.sheet2);
+  const name = useAppSelector(selectCharacterName);
+  const age = useAppSelector(selectAge);
+  const height = useAppSelector(selectHeight);
+  const weight = useAppSelector(selectWeight);
+  const eyes = useAppSelector(selectEyes);
+  const skin = useAppSelector(selectSkin);
+  const hair = useAppSelector(selectHair);
 
   const handleNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     dispatch(updateName(event.target.value));

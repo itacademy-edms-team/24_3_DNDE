@@ -44,7 +44,7 @@ const CharacterResourceComponent: React.FC = () => {
   );
 
   return (
-    <Container>
+    <Container className="border rounded p-2">
       <Row className="d-flex flex-row">
         <Col md={6}>
           <ClassResource />

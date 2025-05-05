@@ -1,23 +1,28 @@
-﻿import Container from 'react-bootstrap/Container';
-import Row from 'react-bootstrap/Row';
+﻿import Card from 'react-bootstrap/Card';
 import Col from 'react-bootstrap/Col';
-import Card from 'react-bootstrap/Card';
-import Form from 'react-bootstrap/Form';
-import Table from 'react-bootstrap/Table';
 import Collapse from 'react-bootstrap/Collapse';
+import Container from 'react-bootstrap/Container';
+import Form from 'react-bootstrap/Form';
+import Row from 'react-bootstrap/Row';
 
-import { FaCog, FaTrash, FaLock, FaLockOpen, FaPlus } from 'react-icons/fa';
+import { FaCog, FaLock, FaLockOpen, FaPlus, FaTrash } from 'react-icons/fa';
 
-import { useState, Fragment, useMemo, useEffect } from 'react';
-import { ToolProficienciesAndCustomSkillsCardEditableRowPropsType, AbilityType, ProficiencyType, RootState, Tool } from '../../types/state';
-import { useAppDispatch, useAppSelector } from '../../hooks';
-import { addTool, deleteTool, updateTool } from '../../store/sheet1Slice';
+import { calcPbMultiplier } from '../../utils/calc';
 
 import { v4 as uuidv4 } from 'uuid';
+import { Fragment, useEffect, useMemo, useState } from 'react';
+import { useAppDispatch, useAppSelector } from '../../hooks';
+import { addTool, deleteTool, updateTool } from '../../store/sheet1Slice';
+import { selectCharacterLevel, selectProficiencyBonus, selectTools } from '../../store/selectors/sheet1Selectors';
+import { AbilityType, ProficiencyType, RootState, Tool, ToolProficienciesAndCustomSkillsCardEditableRowPropsType } from '../../types/state';
 
-const EditableRow: React.FC<ToolProficienciesAndCustomSkillsCardEditableRowPropsType> = ({ tool, isEditMode, onDelete }) => {
+const EditableRow: React.FC<ToolProficienciesAndCustomSkillsCardEditableRowPropsType> = ({
+  tool,
+  isEditMode,
+  onDelete
+}) => {
   const dispatch = useAppDispatch();
-  const level = useAppSelector((state: RootState) => state.sheet1.level);
+  const pb = useAppSelector(selectProficiencyBonus);
   const abilityBase = useAppSelector((state: RootState) => state.sheet1.abilities[tool.bondAbility]?.base ?? 10);
 
   const [isExpanded, setExpanded] = useState(false);
@@ -36,40 +41,21 @@ const EditableRow: React.FC<ToolProficienciesAndCustomSkillsCardEditableRowProps
 
   const toggleExpand = () => setExpanded((prev) => !prev);
 
-  // Расчёт бонуса мастерства (Proficiency Bonus, PB)
-  const calculatePB = (chLevel: number) => {
-    if (chLevel >= 1 && chLevel <= 4) return 2;
-    if (chLevel >= 5 && chLevel <= 8) return 3;
-    if (chLevel >= 9 && chLevel <= 12) return 4;
-    if (chLevel >= 13 && chLevel <= 16) return 5;
-    if (chLevel >= 17 && chLevel <= 20) return 6;
-    return 0;
-  };
-
   // Модификатор характеристики
   const calculateAM = (abilityBase: number) => {
     return Math.floor((abilityBase - 10) / 2);
   };
 
-  // Множитель для типа владения
-  const calcPbMultiplier = (pType: ProficiencyType) => {
-    if (pType === 'proficient') return 1;
-    if (pType === 'expertise') return 2;
-    if (pType === 'jackOfAllTrades') return 0.5;
-    return 0;
-  };
-
   // Расчёт итогового бонуса владения
-  const calculateProficiency = (level: number, proficiencyType: ProficiencyType, abilityBase: number, mods: number) => {
-    const pb = calculatePB(level);
+  const calculateProficiency = (pb: number, proficiencyType: ProficiencyType, abilityBase: number, mods: number) => {
     const multiplier = calcPbMultiplier(proficiencyType);
     const am = calculateAM(abilityBase);
     return am + Math.floor(pb * multiplier) + mods;
   };
 
   const calculatedProficiency = useMemo(
-    () => calculateProficiency(level, proficiencyType, abilityBase, mods),
-    [level, proficiencyType, abilityBase, mods]
+    () => calculateProficiency(pb, proficiencyType, abilityBase, mods),
+    [pb, proficiencyType, abilityBase, mods]
   );
 
   const handleNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -192,7 +178,7 @@ const EditableRow: React.FC<ToolProficienciesAndCustomSkillsCardEditableRowProps
 
 const ToolProficienciesAndCustomSkillsCard: React.FC = () => {
   const dispatch = useAppDispatch();
-  const tools = useAppSelector((state: RootState) => state.sheet1.tools);
+  const tools = useAppSelector(selectTools);
 
   const [isEditMode, setEditMode] = useState(true); // true -> edit mode, false -> deletion mode
 

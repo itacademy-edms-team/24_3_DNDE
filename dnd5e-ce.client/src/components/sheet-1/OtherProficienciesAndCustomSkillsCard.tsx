@@ -1,15 +1,18 @@
-﻿import Container from 'react-bootstrap/Container';
-import Row from 'react-bootstrap/Row';
+﻿import Card from 'react-bootstrap/Card';
 import Col from 'react-bootstrap/Col';
-import Card from 'react-bootstrap/Card';
-import Form from 'react-bootstrap/Form';
 import Collapse from 'react-bootstrap/Collapse';
-import { FaCog, FaTrash, FaLock, FaLockOpen, FaPlus } from 'react-icons/fa';
-import { useState, Fragment, useEffect } from 'react';
+import Container from 'react-bootstrap/Container';
+import Form from 'react-bootstrap/Form';
+import Row from 'react-bootstrap/Row';
+
+import { FaCog, FaLock, FaLockOpen, FaPlus, FaTrash } from 'react-icons/fa';
+
+import { Fragment, useEffect, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useAppDispatch, useAppSelector } from '../../hooks';
+import { selectOtherTools } from '../../store/selectors/sheet1Selectors';
 import { addOtherTool, deleteOtherTool, updateOtherTool } from '../../store/sheet1Slice';
-import { OtherProficienciesAndCustomSkillsCardEditableRowPropsType, OtherTool, OtherToolType, RootState } from '../../types/state';
+import { OtherProficienciesAndCustomSkillsCardEditableRowPropsType, OtherTool, OtherToolType } from '../../types/state';
 
 
 
@@ -112,10 +115,9 @@ const EditableRow: React.FC<OtherProficienciesAndCustomSkillsCardEditableRowProp
 
 const OtherProficienciesAndCustomSkillsCard: React.FC = () => {
   const dispatch = useAppDispatch();
-  const otherTools = useAppSelector((state: RootState) => state.sheet1.otherTools);
+  const otherTools = useAppSelector(selectOtherTools);
 
   const [isEditMode, setEditMode] = useState(true); // true -> edit mode, false -> deletion mode
-
   const toggleEditMode = () => setEditMode((prev) => !prev);
 
   const addNewTool = () => {

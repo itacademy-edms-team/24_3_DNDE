@@ -1,12 +1,14 @@
 ﻿import Card from 'react-bootstrap/Card';
 import Form from 'react-bootstrap/Form';
 import PersonalityTraitsSVG from './assets/PersonalityTraits.svg';
+
 import { useAppDispatch, useAppSelector } from '../../hooks';
+import { selectCharacterPersonalityTraits } from '../../store/selectors/sheet1Selectors';
 import { updateCharacterPersonalityTraits } from '../../store/sheet1Slice';
 
 const PersonalityTraitsCard: React.FC = () => {
   const dispatch = useAppDispatch();
-  const personalityTraits = useAppSelector((state) => state.sheet1.personalityTraits);
+  const personalityTraits = useAppSelector(selectCharacterPersonalityTraits);
 
   const handleChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = event.target.value;

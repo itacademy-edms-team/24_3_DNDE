@@ -142,7 +142,7 @@ export interface OtherResourcePropsType {
   onDelete: any
 }
 
-export interface ItemOtherResource {
+export interface ItemOtherResourceBond {
   itemId: string,
   resourceId: string,
 }
@@ -404,7 +404,7 @@ export interface Sheet1State {
   flaws: string,
   classResource: ClassResource,
   otherResources: ClassResource[],
-  itemOtherResources: ItemOtherResource[],
+  itemOtherResourceBonds: ItemOtherResourceBond[],
 }
 
 export interface Sheet2State {

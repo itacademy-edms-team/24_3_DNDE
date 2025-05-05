@@ -1,27 +1,24 @@
-﻿import Container from 'react-bootstrap/Container';
-import Row from 'react-bootstrap/Row';
-import Col from 'react-bootstrap/Col';
-import Card from 'react-bootstrap/Card';
-import Form from 'react-bootstrap/Form';
-import Table from 'react-bootstrap/Table';
+﻿import Col from 'react-bootstrap/Col';
 import Collapse from 'react-bootstrap/Collapse';
+import Container from 'react-bootstrap/Container';
+import Form from 'react-bootstrap/Form';
+import Row from 'react-bootstrap/Row';
 
-import { FaCog, FaTrash, FaLock, FaLockOpen, FaPlus } from 'react-icons/fa';
+import { FaCog, FaLock, FaLockOpen, FaPlus, FaTrash } from 'react-icons/fa';
 
 import { v4 as uuidv4 } from 'uuid';
-import { useState, Fragment, useEffect } from 'react';
+
+import { Fragment, useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../hooks';
-import { addAttack, updateAttack, deleteAttack } from '../../store/sheet1Slice';
-import { RootState, AttacksCardAttackEditableRowPropsType, Attack, AbilityType, AttackAbilityType, DCAbilityType, DamageAbilityType, AttacksCardGlobalDamageModifierEditableRowPropsType, GlobalDamageModifier } from '../../types/state';
+import { selectAttacks } from '../../store/selectors/sheet1Selectors';
+import { addAttack, deleteAttack, updateAttack } from '../../store/sheet1Slice';
+import { AbilityType, Attack, AttacksCardAttackEditableRowPropsType, DCAbilityType, DamageAbilityType, RootState } from '../../types/state';
 
 const AttackEditableRow: React.FC<AttacksCardAttackEditableRowPropsType> = ({
   attack,
   isEditMode,
   onDelete
 }) => {
-
-  // TODO: Update when add other components
-
   const dispatch = useAppDispatch();
   const abilities = useAppSelector((state: RootState) => state.sheet1.abilities);
   const level = useAppSelector((state: RootState) => state.sheet1.level);
@@ -546,7 +543,7 @@ const AttackEditableRow: React.FC<AttacksCardAttackEditableRowPropsType> = ({
 
 const AttacksCard: React.FC = () => {
   const dispatch = useAppDispatch();
-  const attacks = useAppSelector((state: RootState) => state.sheet1.attacks);
+  const attacks = useAppSelector(selectAttacks);
 
   const [isEditMode, setEditMode] = useState(true); // false -> deletionMode
   const toggleEditMode = () => setEditMode(prev => !prev);

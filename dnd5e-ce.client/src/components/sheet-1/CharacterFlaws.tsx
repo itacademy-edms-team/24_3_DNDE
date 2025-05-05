@@ -1,12 +1,15 @@
 ﻿import Card from 'react-bootstrap/Card';
 import Form from 'react-bootstrap/Form';
+
 import FlawsSVG from './assets/Flaws.svg';
+
 import { useAppDispatch, useAppSelector } from '../../hooks';
+import { selectCharacterFlaws } from '../../store/selectors/sheet1Selectors';
 import { updateCharacterFlaws } from '../../store/sheet1Slice';
 
 const CharacterFlaws: React.FC = () => {
   const dispatch = useAppDispatch();
-  const flaws = useAppSelector((state) => state.sheet1.flaws);
+  const flaws = useAppSelector(selectCharacterFlaws);
 
   const handleChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = event.target.value;

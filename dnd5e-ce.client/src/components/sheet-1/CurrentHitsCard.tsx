@@ -1,21 +1,17 @@
-﻿import Container from 'react-bootstrap/Container';
-import Row from 'react-bootstrap/Row';
-import Col from 'react-bootstrap/Col';
-import Card from 'react-bootstrap/Card';
+﻿import Card from 'react-bootstrap/Card';
 import Form from 'react-bootstrap/Form';
-import { useState } from 'react';
 
 import CurrentHitsSVG from './assets/CurrentHits.svg';
 
 import { useAppDispatch, useAppSelector } from '../../hooks';
-import { updateMaxHP, updateCurrentHP } from '../../store/sheet1Slice';
-import { RootState } from '../../types/state';
+import { selectCurrentHP, selectMaxHP } from '../../store/selectors/sheet1Selectors';
+import { updateCurrentHP, updateMaxHP } from '../../store/sheet1Slice';
 
 const CurrentHitsCard: React.FC = () => {
   const dispatch = useAppDispatch();
 
-  const maxHP = useAppSelector((state: RootState) => state.sheet1.hp.max);
-  const currentHP = useAppSelector((state: RootState) => state.sheet1.hp.current);
+  const maxHP = useAppSelector(selectMaxHP);
+  const currentHP = useAppSelector(selectCurrentHP);
 
   const handleMaxHPChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = Number(e.target.value);

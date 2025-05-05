@@ -1,12 +1,15 @@
 ﻿import Card from 'react-bootstrap/Card';
 import Form from 'react-bootstrap/Form';
+
 import IdealsSVG from './assets/Ideals.svg';
+
 import { useAppDispatch, useAppSelector } from '../../hooks';
+import { selectCharacterBonds } from '../../store/selectors/sheet1Selectors';
 import { updateCharacterBonds } from '../../store/sheet1Slice';
 
 const CharacterBonds: React.FC = () => {
   const dispatch = useAppDispatch();
-  const bonds = useAppSelector((state) => state.sheet1.bonds);
+  const bonds = useAppSelector(selectCharacterBonds);
 
   const handleChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = event.target.value;

@@ -1,20 +1,16 @@
-﻿import Container from 'react-bootstrap/Container';
-import Row from 'react-bootstrap/Row';
-import Col from 'react-bootstrap/Col';
-import Card from 'react-bootstrap/Card';
+﻿import Card from 'react-bootstrap/Card';
 import Form from 'react-bootstrap/Form';
-import { useState } from 'react';
 
 import TempHitsSVG from './assets/TemporaryHits.svg';
 
 import { useAppDispatch, useAppSelector } from '../../hooks';
+import { selectTempHP } from '../../store/selectors/sheet1Selectors';
 import { updateTempHP } from '../../store/sheet1Slice';
-import { RootState } from '../../types/state';
 
 const TempHitsCard: React.FC = () => {
   const dispatch = useAppDispatch();
 
-  const tempHP = useAppSelector((state: RootState) => state.sheet1.hp.temp);
+  const tempHP = useAppSelector(selectTempHP);
   const handleTempHPChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = Number(e.target.value);
     if (!isNaN(newValue)) {

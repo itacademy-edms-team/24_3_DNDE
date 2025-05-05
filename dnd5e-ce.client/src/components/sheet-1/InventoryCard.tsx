@@ -1,24 +1,24 @@
-﻿import Container from 'react-bootstrap/Container';
-import Row from 'react-bootstrap/Row';
-import Col from 'react-bootstrap/Col';
-import Card from 'react-bootstrap/Card';
-import Form from 'react-bootstrap/Form';
-import Table from 'react-bootstrap/Table';
+﻿import Col from 'react-bootstrap/Col';
 import Collapse from 'react-bootstrap/Collapse';
+import Container from 'react-bootstrap/Container';
+import Form from 'react-bootstrap/Form';
+import Row from 'react-bootstrap/Row';
 
-import { FaCog, FaTrash, FaLock, FaLockOpen, FaPlus } from 'react-icons/fa';
+import { FaCog, FaLock, FaLockOpen, FaPlus, FaTrash } from 'react-icons/fa';
 
 import { v4 as uuidv4 } from 'uuid';
-import { useState, Fragment, useEffect } from 'react';
+
+import { Fragment, useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../hooks';
-import { updateInventoryGold, addInventoryItem, updateInventoryItem, deleteInventoryItem } from '../../store/sheet1Slice';
-import { RootState, AttacksCardAttackEditableRowPropsType, Attack, AbilityType, AttackAbilityType, DCAbilityType, DamageAbilityType, AttacksCardGlobalDamageModifierEditableRowPropsType, GlobalDamageModifier, InventoryGold, InventoryItemEditableRowPropsType, InventoryItem } from '../../types/state';
+import { selectInventoryGold, selectInventoryItems } from '../../store/selectors/sheet1Selectors';
+import { addCharacterOtherResource, addInventoryItem, addInventoryItemOtherResourceBond, deleteCharacterOtherResource, deleteInventoryItem, deleteInventoryItemOtherResourceBond, updateInventoryGold, updateInventoryItem } from '../../store/sheet1Slice';
+import { InventoryGold, InventoryItem, InventoryItemEditableRowPropsType, ItemOtherResourceBond, OtherResource, RootState } from '../../types/state';
 
 
 const GoldCard: React.FC = () => {
   const dispatch = useAppDispatch();
 
-  const gold = useAppSelector((state: RootState) => state.sheet1.inventory.gold);
+  const gold = useAppSelector(selectInventoryGold);
 
   const handleGoldChange = (updates: Partial<InventoryGold>) => {
     dispatch(updateInventoryGold({ ...updates }));
@@ -126,6 +126,7 @@ const InventoryItemEditableRow: React.FC<InventoryItemEditableRowPropsType> = ({
 }) => {
 
   const dispatch = useAppDispatch();
+  const itemOtherResources = useAppSelector((state: RootState) => state.sheet1.itemOtherResourceBonds);
 
   const [isExpanded, setExpanded] = useState(false);
 
@@ -149,7 +150,38 @@ const InventoryItemEditableRow: React.FC<InventoryItemEditableRowPropsType> = ({
   };
 
   const handleIsUsedAsResourceChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    updateItemField({ isUsedAsResource: event.target.checked });
+    const isUsedAsResource = event.target.checked;
+    updateItemField({ isUsedAsResource: isUsedAsResource });
+    if (isUsedAsResource) {
+      // if field checked
+      // add new resource
+      const newResource: OtherResource = {
+        id: uuidv4(),
+        name: inventoryItem.name,
+        total: inventoryItem.amount,
+        current: inventoryItem.amount,
+        usePb: false,
+        resetOn: 'longRest'
+      }
+      dispatch(addCharacterOtherResource(newResource));
+      // add bond between item and resource
+      const newBond: ItemOtherResourceBond = {
+        itemId: inventoryItem.id,
+        resourceId: newResource.id
+      }
+      dispatch(addInventoryItemOtherResourceBond(newBond));
+    } else {
+      // if field unchecked
+      // find bond
+      const index = itemOtherResources.findIndex((ior) => ior.itemId === inventoryItem.id);
+      if (index !== -1) {
+        // delte resource if bond exists
+        const resourceId = itemOtherResources[index].resourceId;
+        dispatch(deleteCharacterOtherResource(resourceId));
+        // delete bond
+        dispatch(deleteInventoryItemOtherResourceBond({itemId: inventoryItem.id}));
+      }
+    }
   };
 
   const handleIsHasAnAttackChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -304,7 +336,7 @@ const InventoryItemEditableRow: React.FC<InventoryItemEditableRowPropsType> = ({
 const InventoryItemsCard: React.FC = () => {
   const dispatch = useAppDispatch();
 
-  const items = useAppSelector((state: RootState) => state.sheet1.inventory.items);
+  const items = useAppSelector(selectInventoryItems);
 
   const [isEditMode, setEditMode] = useState(true); // false -> deletionMode
   const toggleEditMode = () => setEditMode(prev => !prev);

@@ -1,21 +1,16 @@
-﻿import Container from 'react-bootstrap/Container';
-import Row from 'react-bootstrap/Row';
-import Col from 'react-bootstrap/Col';
-import Card from 'react-bootstrap/Card';
+﻿import Card from 'react-bootstrap/Card';
 import Form from 'react-bootstrap/Form';
 
 import ArmorClassSVG from './assets/ArmorClass.svg';
 
-import { useState } from 'react';
-
 import { useAppDispatch, useAppSelector } from '../../hooks';
+import { selectArmorClass } from '../../store/selectors/sheet1Selectors';
 import { updateArmorClass } from '../../store/sheet1Slice';
-import { RootState } from '../../types/state';
 
 
 const ArmorClassCard: React.FC = () => {
   const dispatch = useAppDispatch();
-  const ac = useAppSelector((state: RootState) => state.sheet1.armorClass);
+  const ac = useAppSelector(selectArmorClass);
 
   const handleACChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = Number(e.target.value);

@@ -1,21 +1,17 @@
-﻿import Container from 'react-bootstrap/Container';
-import Row from 'react-bootstrap/Row';
+﻿import Card from 'react-bootstrap/Card';
 import Col from 'react-bootstrap/Col';
-import Card from 'react-bootstrap/Card';
 import Form from 'react-bootstrap/Form';
 
 import InitiativeSVG from './assets/Initiative.svg';
 
-import { useState } from 'react';
-
 import { useAppDispatch, useAppSelector } from '../../hooks';
+import { selectInitiative } from '../../store/selectors/sheet1Selectors';
 import { updateInitiative } from '../../store/sheet1Slice';
-import { RootState } from '../../types/state';
 
 const CharacterInitiativeCard: React.FC = () => {
   const dispatch = useAppDispatch();
 
-  const initiative = useAppSelector((state: RootState) => state.sheet1.initiative);
+  const initiative = useAppSelector(selectInitiative);
   const handleInitiative = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newInitiative = parseInt(e.target.value, 10);
     if (!isNaN(newInitiative)) {

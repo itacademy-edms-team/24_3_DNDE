@@ -1,22 +1,19 @@
-﻿import Container from 'react-bootstrap/Container';
-import Row from 'react-bootstrap/Row';
-import Col from 'react-bootstrap/Col';
-import Card from 'react-bootstrap/Card';
+﻿import Card from 'react-bootstrap/Card';
 import Form from 'react-bootstrap/Form';
 
 import HitDiceSVG from './assets/HitDice.svg';
 
-import { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../hooks';
-import { updateHitDiceTotal, updateHitDiceCurrent, updateHitDiceType } from '../../store/sheet1Slice';
-import { RootState, HitDiceType } from '../../types/state';
+import { selectHitDiceCurrent, selectHitDiceTotal, selectHitDiceType } from '../../store/selectors/sheet1Selectors';
+import { updateHitDiceCurrent, updateHitDiceTotal, updateHitDiceType } from '../../store/sheet1Slice';
+import { HitDiceType } from '../../types/state';
 
 const HitDiceCard: React.FC = () => {
   const dispatch = useAppDispatch();
 
-  const diceTotal = useAppSelector((state: RootState) => state.sheet1.hitDice.total);
-  const diceCurrent = useAppSelector((state: RootState) => state.sheet1.hitDice.current);
-  const diceType = useAppSelector((state: RootState) => state.sheet1.hitDice.type);
+  const diceTotal = useAppSelector(selectHitDiceTotal);
+  const diceCurrent = useAppSelector(selectHitDiceCurrent);
+  const diceType = useAppSelector(selectHitDiceType);
 
   const handleDiceTotal = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = Number(e.target.value);

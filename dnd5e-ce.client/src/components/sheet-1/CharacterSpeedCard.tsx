@@ -1,22 +1,17 @@
-﻿import Container from 'react-bootstrap/Container';
-import Row from 'react-bootstrap/Row';
-import Col from 'react-bootstrap/Col';
-import Card from 'react-bootstrap/Card';
+﻿import Card from 'react-bootstrap/Card';
 import Form from 'react-bootstrap/Form';
 
 import InitiativeSVG from './assets/Initiative.svg';
 
-import { useState } from 'react';
-
 import { useAppDispatch, useAppSelector } from '../../hooks';
+import { selectCharacterSpeed } from '../../store/selectors/sheet1Selectors';
 import { updateSpeed } from '../../store/sheet1Slice';
-import { RootState } from '../../types/state';
 
 
 
 const CharacterSpeedCard: React.FC = () => {
   const dispatch = useAppDispatch();
-  const speed = useAppSelector((state: RootState) => state.sheet1.speed);
+  const speed = useAppSelector(selectCharacterSpeed);
 
   const handleSpeedChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = Number(e.target.value);

@@ -6,7 +6,8 @@ import {
   HitDiceType,
   InventoryGold,
   InventoryItem,
-  OtherResourceCard,
+  ItemOtherResourceBond,
+  OtherResource,
   OtherTool,
   ResourceResetType,
   Sheet1State,
@@ -230,7 +231,7 @@ const initialState: Sheet1State = {
       resetOn: "longRest"
     }
   ],
-  itemOtherResources: []
+  itemOtherResourceBonds: []
 };
 
 const sheet1Slice = createSlice({
@@ -439,14 +440,27 @@ const sheet1Slice = createSlice({
     addInventoryItem(state, action: PayloadAction<InventoryItem>) {
       state.inventory.items.push(action.payload);
     },
+    deleteInventoryItem(state, action: PayloadAction<string>) {
+      state.inventory.items = state.inventory.items.filter((item) => item.id !== action.payload);
+    },
     updateInventoryItem(state, action: PayloadAction<Partial<InventoryItem> & { id: string }>) {
       const index = state.inventory.items.findIndex((item) => item.id === action.payload.id);
       if (index !== -1) {
         state.inventory.items[index] = { ...state.inventory.items[index], ...action.payload };
       }
     },
-    deleteInventoryItem(state, action: PayloadAction<string>) {
-      state.inventory.items = state.inventory.items.filter((item) => item.id !== action.payload);
+    updateInventoryItemIsUsedAsResource(state, action: PayloadAction<{ id: string, newValue: boolean }>) {
+      const index = state.inventory.items.findIndex((item) => item.id === action.payload.id);
+      if (index !== -1) {
+        // change state
+        state.inventory.items[index].isUsedAsResource = action.payload.newValue;
+      }
+    },
+    addInventoryItemOtherResourceBond(state, action: PayloadAction<ItemOtherResourceBond>) {
+      state.itemOtherResourceBonds.push(action.payload);
+    },
+    deleteInventoryItemOtherResourceBond(state, action: PayloadAction<{ itemId: string }>) {
+      state.itemOtherResourceBonds = state.itemOtherResourceBonds.filter((bond) => bond.itemId !== action.payload.itemId);
     },
     updateCharacterPersonalityTraits(state, action: PayloadAction<string>) {
       state.personalityTraits = action.payload;
@@ -475,7 +489,7 @@ const sheet1Slice = createSlice({
     updateCharacterClassResourceResetOn(state, action: PayloadAction<ResourceResetType>) {
       state.classResource.resetOn = action.payload;
     },
-    addCharacterOtherResource(state, action: PayloadAction<OtherResourceCard>) {
+    addCharacterOtherResource(state, action: PayloadAction<OtherResource>) {
       state.otherResources.push(action.payload);
     },
     deleteCharacterOtherResource(state, action: PayloadAction<string>) {
@@ -523,6 +537,7 @@ export const { updateName, updateClass, updateLevel, updateRace, updateBackstory
   updateDeathSaveThrowsSuccesses, updateDeathSaveThrowsFailures, resetDeathSaveThrows,
   addAttack, updateAttack, deleteAttack, addGlobalDamageModifier, updateGlobalDamageModifier, deleteGlobalDamageModifier,
   updateInventoryGold, addInventoryItem, updateInventoryItem, deleteInventoryItem,
+  addInventoryItemOtherResourceBond, deleteInventoryItemOtherResourceBond,
   updateCharacterPersonalityTraits, updateCharacterIdeals, updateCharacterBonds, updateCharacterFlaws,
   updateCharacterClassResourceTotal, updateCharacterClassResourceCurrent, updateCharacterClassResourceName,
   updateCharacterClassResourceUsePb, updateCharacterClassResourceResetOn,

@@ -1,30 +1,37 @@
-﻿import Container from 'react-bootstrap/Container';
-import Row from 'react-bootstrap/Row';
+﻿import Card from 'react-bootstrap/Card';
 import Col from 'react-bootstrap/Col';
-import Card from 'react-bootstrap/Card';
+import Container from 'react-bootstrap/Container';
 import Form from 'react-bootstrap/Form';
-import { useAppDispatch, useAppSelector } from '../../hooks';
-import {
-  updateAppearance,
-  updateBackstory,
-  updateAlliesAndOrganizations,
-  updateAdditionalFeaturesAndTraits,
-  updateTreasures,
-} from '../../store/sheet2Slice';
+import Row from 'react-bootstrap/Row';
+
+import CharacterBioAdditionalFeaturesAndTraitsSVG from './assets/CharacterBioAdditionalFeaturesAndTraits.svg';
+import CharacterBioAlliesAndOrganizationsSVG from './assets/CharacterBioAlliesAndOrganizations.svg';
 import CharacterBioAppearanceSVG from './assets/CharacterBioAppearance.svg';
 import CharacterBioBackstorySVG from './assets/CharacterBioBackstory.svg';
-import CharacterBioAlliesAndOrganizationsSVG from './assets/CharacterBioAlliesAndOrganizations.svg';
-import CharacterBioAdditionalFeaturesAndTraitsSVG from './assets/CharacterBioAdditionalFeaturesAndTraits.svg';
+
+import { useAppDispatch, useAppSelector } from '../../hooks';
+import {
+  selectAppearance,
+  selectBackstory,
+  selectAlliesAndOrganizations,
+  selectAdditionalFeaturesAndTraits,
+  selectTreasures,
+} from '../../store/selectors/sheet2Selectors';
+import {
+    updateAdditionalFeaturesAndTraits,
+    updateAlliesAndOrganizations,
+    updateAppearance,
+    updateBackstory,
+    updateTreasures,
+} from '../../store/sheet2Slice';
 
 const Sheet2Body: React.FC = () => {
   const dispatch = useAppDispatch();
-  const {
-    appearance,
-    backstory,
-    alliesAndOrganizations,
-    additionalFeaturesAndTraits,
-    treasures,
-  } = useAppSelector((state) => state.sheet2);
+  const appearance = useAppSelector(selectAppearance);
+  const backstory = useAppSelector(selectBackstory);
+  const alliesAndOrganizations = useAppSelector(selectAlliesAndOrganizations);
+  const additionalFeaturesAndTraits = useAppSelector(selectAdditionalFeaturesAndTraits);
+  const treasures = useAppSelector(selectTreasures);
 
   const handleAppearanceChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     dispatch(updateAppearance(event.target.value));
@@ -50,7 +57,7 @@ const Sheet2Body: React.FC = () => {
     <Container className="mt-4">
       <Row>
         <Col md={4} className="d-flex flex-column gap-3">
-          <Card className="p-0 m-0">
+          <Card className="p-0 m-0 border-0">
             <Card.Img src={CharacterBioAppearanceSVG} />
             <Card.ImgOverlay className="p-0 m-0">
               <Form.Group controlId="characterAppearance" className="d-flex flex-column h-100">
@@ -70,7 +77,7 @@ const Sheet2Body: React.FC = () => {
             </Card.ImgOverlay>
           </Card>
 
-          <Card className="p-0 m-0">
+          <Card className="p-0 m-0 border-0">
             <Card.Img src={CharacterBioBackstorySVG} />
             <Card.ImgOverlay className="p-0 m-0">
               <Form.Group controlId="characterBackstory" className="d-flex flex-column h-100">
@@ -91,7 +98,7 @@ const Sheet2Body: React.FC = () => {
           </Card>
         </Col>
         <Col md={8} className="d-flex flex-column gap-3">
-          <Card className="p-0 m-0">
+          <Card className="p-0 m-0 border-0">
             <Card.Img src={CharacterBioAlliesAndOrganizationsSVG} />
             <Card.ImgOverlay className="p-0 m-0">
               <Form.Group controlId="characterAlliesAndOrganizations" className="d-flex flex-column h-100">
@@ -110,7 +117,7 @@ const Sheet2Body: React.FC = () => {
               </Form.Group>
             </Card.ImgOverlay>
           </Card>
-          <Card className="p-0 m-0">
+          <Card className="p-0 m-0 border-0">
             <Card.Img src={CharacterBioAdditionalFeaturesAndTraitsSVG} />
             <Card.ImgOverlay className="p-0 m-0">
               <Form.Group controlId="characterAdditionalFeaturesAndTraits" className="d-flex flex-column h-100">
@@ -129,7 +136,7 @@ const Sheet2Body: React.FC = () => {
               </Form.Group>
             </Card.ImgOverlay>
           </Card>
-          <Card className="p-0 m-0">
+          <Card className="p-0 m-0 border-0">
             <Card.Img src={CharacterBioAlliesAndOrganizationsSVG} />
             <Card.ImgOverlay className="p-0 m-0">
               <Form.Group controlId="characterTreasures" className="d-flex flex-column h-100">
