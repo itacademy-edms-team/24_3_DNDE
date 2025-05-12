@@ -451,7 +451,13 @@ export interface Sheet3State {
   }
 }
 
+export interface AuthState {
+  accessToken: string | null;
+  refreshToken: string | null;
+}
+
 export interface RootState {
+  auth: AuthState;
   sheet1: Sheet1State;
   sheet2: Sheet2State;
   sheet3: Sheet3State;

@@ -20,7 +20,7 @@ export const selectProficiencyBonus = createSelector(
   [selectCharacterLevel],
   (level) => Math.floor((level - 1) / 4) + 2
 );
-// ... другие селекторы
+// ... пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
 export const selectAbilityScoreModifiers = createSelector(
   [selectAbilities],
