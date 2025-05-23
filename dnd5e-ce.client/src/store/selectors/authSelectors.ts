@@ -1,5 +1,5 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { RootState } from "../../types/state";
 
-export const selectAccessToken = (state: RootState) => state.auth.accessToken;
+export const selectIsUserAuthenticated = (state: RootState) => state.auth.isAuthenticated;
 

@@ -1,20 +1,24 @@
-﻿import React from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router';
 import { Navbar, Nav, Container, Button } from 'react-bootstrap';
-import { useNavigate } from 'react-router';
+
 import { useAppSelector, useAppDispatch } from './hooks/index';
-import { selectAccessToken } from './store/selectors/authSelectors';
+import { selectIsUserAuthenticated } from './store/selectors/authSelectors';
+import { login, logout } from './store/slices/authSlice';
+import api from './api/index';
+
 import Register from './components/auth/Register';
 import Login from './components/auth/Login';
 import SheetSelect from './components/sheet-selection/SheetSelect';
 import Dashboard from './components/Dashboard';
 import AuthRequired from './components/auth/AuthRequired';
 import LogoutButton from './components/auth/LogoutButton';
+import axios from 'axios';
+import Home from './components/Home';
+
 
 const App: React.FC = () => {
-  const dispatch = useAppDispatch();
-
-  const token = useAppSelector(selectAccessToken);
+  const isSignedIn = useAppSelector(selectIsUserAuthenticated);
 
   return (
     <Router>
@@ -25,7 +29,7 @@ const App: React.FC = () => {
           <Navbar.Collapse id="basic-navbar-nav">
             <Nav className="me-auto">
               <Nav.Link as={NavLink} to="/" end>Главная</Nav.Link>
-              {!token ? (
+              {!isSignedIn ? (
                 <>
                   <Nav.Link as={NavLink} to="/register">Регистрация</Nav.Link>
                   <Nav.Link as={NavLink} to="/login">Вход</Nav.Link>
@@ -37,7 +41,7 @@ const App: React.FC = () => {
                 </>
               )}
             </Nav>
-            {token && (
+            {isSignedIn && (
               <Nav className="ms-auto">
                 <LogoutButton />
               </Nav>
@@ -46,7 +50,7 @@ const App: React.FC = () => {
         </Container>
       </Navbar>
       <Routes>
-        <Route path="/" element={<Container className="mt-5"><h1>Добро пожаловать в Редактор персонажа</h1></Container>} />
+        <Route path="/" element={<Home />} />
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />
         <Route path="/sheet-selection" element={<AuthRequired> <SheetSelect /> </AuthRequired>} />

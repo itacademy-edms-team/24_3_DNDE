@@ -9,13 +9,11 @@ const LogoutButton: React.FC = () => {
 
   const handleLogout = () => {
     dispatch(logout());
+    navigate("/login");
   }
 
   return (
-    <Button variant="danger" onClick={() => {
-      dispatch(logout());
-      navigate('/login');
-    }}>
+    <Button variant="danger" onClick={handleLogout}>
       Выйти из аккаунта
     </Button>
   );

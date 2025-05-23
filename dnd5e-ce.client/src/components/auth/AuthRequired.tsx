@@ -1,30 +1,72 @@
 import React, { Fragment, useEffect, useState } from 'react';
 import { Alert } from 'react-bootstrap';
-import { useAppSelector } from '../../hooks/index';
-import { selectAccessToken } from '../../store/selectors/authSelectors';
+import { useAppDispatch, useAppSelector } from '../../hooks/index';
+import { selectIsUserAuthenticated } from '../../store/selectors/authSelectors';
 
 import api from '../../api/index';
+import { loading, login, logout } from '../../store/slices/authSlice';
+import { useNavigate } from 'react-router';
+import axios from 'axios';
 
 interface AuthRequiredProps {
   children: React.ReactNode;
 }
 
-const AuthRequired: React.FC<AuthRequiredProps> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+const AuthRequired: React.FC<AuthRequiredProps> = ({ children }) =>
+{
+  const dispatch = useAppDispatch();
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        await api.get('/auth/me'); // Запрос к эндпоинту для проверки авторизации
-        setIsAuthenticated(true);
-      } catch (error) {
-        console.error('Auth check failed:', error);
-        setIsAuthenticated(false);
+  const navigate = useNavigate();
+
+  useEffect(() => 
+  {
+    const checkAuth = async () => 
+    {
+      try 
+      {
+        dispatch(loading());
+        console.log("Checking authorization...");
+        await api.get("/auth/check-auth");
+        dispatch(login());
+        console.log("Authorization is active");
+      }
+      catch (error) 
+      {
+        if (axios.isAxiosError(error) && error.response?.status === 401) 
+        {
+          console.log("Unauthorized access - 401.");
+          try
+          {
+            console.log("Trying refresh tokens...");
+            await api.post("/auth/refresh-token");
+            dispatch(login());
+            console.log("Tokens refreshed");
+          }
+          catch (error) 
+          {
+            if (axios.isAxiosError(error) && error.response?.status === 401)
+            {
+              console.log("Tokens expired. Need relogin");
+              dispatch(logout());
+              navigate("/login");
+            }
+            else
+            {
+              console.log(`Unexpected error: ${error}`);
+            }
+          }
+        }
+        else
+        {
+          console.log(`Unexpected error: ${error}`);
+        }
       }
     };
 
     checkAuth();
   }, []);
+
+  const isAuthenticated = useAppSelector(selectIsUserAuthenticated);
 
   // Пока проверка не завершена, показываем индикатор загрузки
   if (isAuthenticated === null) {
