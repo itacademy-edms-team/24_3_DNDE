@@ -59,7 +59,6 @@ namespace DND5E_CE.Server
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey!)),
                 ClockSkew = TimeSpan.FromMinutes(5)
             };
-
             builder.Services.AddSingleton(tokenValidationParameters);
 
             builder.Services.AddAuthentication(options =>

@@ -453,6 +453,8 @@ export interface Sheet3State {
 
 export interface AuthState {
   isAuthenticated: boolean | null;
+  hasChecked: boolean;
+  redirectUrl: string | null;
 }
 
 export interface RootState {

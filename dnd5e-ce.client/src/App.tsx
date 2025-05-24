@@ -15,6 +15,7 @@ import AuthRequired from './components/auth/AuthRequired';
 import LogoutButton from './components/auth/LogoutButton';
 import axios from 'axios';
 import Home from './components/Home';
+import { ToastContainer } from 'react-toastify';
 
 
 const App: React.FC = () => {
@@ -56,6 +57,7 @@ const App: React.FC = () => {
         <Route path="/sheet-selection" element={<AuthRequired> <SheetSelect /> </AuthRequired>} />
         <Route path="/dashboard" element={<AuthRequired> <Dashboard /> </AuthRequired>} />
       </Routes>
+      <ToastContainer />
     </Router>
   );
 }

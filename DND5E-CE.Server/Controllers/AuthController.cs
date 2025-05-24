@@ -208,7 +208,7 @@ namespace DND5E_CE.Server.Controllers
             if (storedRefreshToken == null)
             {
                 _logger.LogWarning("Refresh token not found in database");
-                return BadRequest(new AuthResponse
+                return Unauthorized(new AuthResponse
                 {
                     Success = false,
                     Errors = new[] { "Недействительный refresh token" }
@@ -222,7 +222,11 @@ namespace DND5E_CE.Server.Controllers
             if (!result.Success)
             {
                 _logger.LogWarning("Token verification failed for user: {UserId}", userId);
-                return BadRequest(result);
+                return Unauthorized(new AuthResponse
+                {
+                    Success = false,
+                    Errors = new[] { "Ошибка валидации токена" }
+                });
             }
 
             // Generate new csrf-token
@@ -277,33 +281,16 @@ namespace DND5E_CE.Server.Controllers
             return Ok(new RevokeTokenResponse { Success = true });
         }
 
-        [HttpGet("me")]
+        [HttpGet("check-auth")]
         [Authorize]
         public IActionResult CheckAuth()
         {
             _logger.LogInformation("Claims: {Claims}", string.Join(", ", User.Claims.Select(c => $"{c.Type}: {c.Value}")));
 
-            // get data from claims
-            // .NET renames standard claim names using JwtSecurityTokenHandler default behavior
-            var userId = User.FindFirst("id")?.Value;
-            var username = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var email = User.FindFirst(ClaimTypes.Email)?.Value;
-            var roles = User.FindAll(ClaimTypes.Role).Select(r => r.Value).ToList();
-
-            if (string.IsNullOrEmpty(userId))
+            return Ok(new AuthResponse
             {
-                return Unauthorized(new { Error = "Пользователь не аутентифицирован" });
-            }
-
-            var userProfile = new
-            {
-                UserId = userId,
-                Username = username,
-                Email = email,
-                Roles = roles
-            };
-
-            return Ok(userProfile);
+                Success = true
+            });
         }
     }
 }
