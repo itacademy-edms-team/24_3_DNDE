@@ -1,6 +1,7 @@
 ﻿// store/sheet2Slice.js
 import { PayloadAction, createSlice } from '@reduxjs/toolkit';
 import { Sheet2State } from '../types/state';
+import { Sheet2Dto } from '../types/api';
 
 const initialState = {
   age: "20 лет",
@@ -20,6 +21,25 @@ const sheet2Slice = createSlice({
   name: 'sheet2',
   initialState,
   reducers: {
+    loadSheet2(state, action: PayloadAction<Sheet2Dto>)
+    {
+      const newSheet = action.payload;
+
+      // header
+      state.age = newSheet.age;
+      state.height = newSheet.height;
+      state.weight = newSheet.weight;
+      state.eyes = newSheet.eyes;
+      state.skin = newSheet.skin;
+      state.hair = newSheet.hair;
+      // body
+      state.appearance = newSheet.appearance;
+      state.backstory = newSheet.backstory;
+      state.alliesAndOrganizations = newSheet.alliesAndOrganizations;
+      state.additionalFeaturesAndTraits = newSheet.additionalFeaturesAndTraits;
+      state.treasures = newSheet.treasures;
+    },
+    // Header
     updateAge(state, action: PayloadAction<string>) {
       state.age = action.payload;
     },
@@ -38,6 +58,7 @@ const sheet2Slice = createSlice({
     updateHair(state, action: PayloadAction<string>) {
       state.hair = action.payload;
     },
+    // Body
     updateAppearance(state, action: PayloadAction<string>) {
       state.appearance = action.payload;
     },
@@ -57,6 +78,7 @@ const sheet2Slice = createSlice({
 });
 
 export const {
+  loadSheet2,
   updateAge, updateHeight, updateWeight, updateEyes, updateSkin, updateHair,
   updateAppearance, updateBackstory, updateAlliesAndOrganizations, updateAdditionalFeaturesAndTraits, updateTreasures
 } = sheet2Slice.actions;

@@ -13,4 +13,3 @@ export const selectBackstory = (state: RootState): string => state.sheet2.backst
 export const selectAlliesAndOrganizations = (state: RootState): string => state.sheet2.alliesAndOrganizations;
 export const selectAdditionalFeaturesAndTraits = (state: RootState): string => state.sheet2.additionalFeaturesAndTraits;
 export const selectTreasures = (state: RootState): string => state.sheet2.treasures;
-// ... другие селекторы

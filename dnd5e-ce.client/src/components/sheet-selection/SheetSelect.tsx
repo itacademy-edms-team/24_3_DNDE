@@ -11,6 +11,9 @@ import axios, { AxiosResponse } from 'axios';
 import { logout } from '../../store/slices/authSlice';
 import SheetCard from './SheetCard';
 import { toast } from 'react-toastify';
+import { loadSheet1 } from '../../store/sheet1Slice';
+import { loadSheet2 } from '../../store/sheet2Slice';
+import { loadSheet3 } from '../../store/sheet3Slice';
 
 const SheetSelect: React.FC = () =>
 {
@@ -159,8 +162,14 @@ const SheetSelect: React.FC = () =>
   {
     try
     {
-      console.log("Fetching character info...");
+      console.log("Fetching character data...");
       const response: AxiosResponse<CharacterDto> = await api.get(`/character/characters/${cId}`);
+      console.log("Exporting data to redux...");
+      const data = response.data;
+      dispatch(loadSheet1(data.sheet1));
+      dispatch(loadSheet2(data.sheet2));
+      dispatch(loadSheet3(data.sheet3));
+      navigate("/dashboard");
     }
     catch (error)
     {
@@ -184,6 +193,7 @@ const SheetSelect: React.FC = () =>
       }
       else
       {
+        console.log(`Unexpected error: ${error}`);
         toast.error("An unexpected error occurred.");
       }
     }
@@ -197,7 +207,7 @@ const SheetSelect: React.FC = () =>
   return (
     <Container className="mt-5">
       <h2>Выбор персонажа</h2>
-      <Row className="row-cols-md-8 d-flex flex-row justify-content-center">
+      <Row className="mt-3 d-flex flex-row gap-2 justify-content-center">
         {characters === null ? (
           <Spinner animation="border" role="status">
             <span className="visually-hidden">Loading...</span>

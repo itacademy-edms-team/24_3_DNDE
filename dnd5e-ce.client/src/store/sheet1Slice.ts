@@ -13,6 +13,7 @@ import {
   Sheet1State,
   Tool
 } from '../types/state';
+import { Sheet1Dto } from '../types/api';
 
 const initialState: Sheet1State = {
   name: "character name",
@@ -238,6 +239,22 @@ const sheet1Slice = createSlice({
   name: 'sheet1',
   initialState,
   reducers: {
+    // For fetch
+    loadSheet1(state: Sheet1State, action: PayloadAction<Sheet1Dto>)
+    {
+      const newSheet = action.payload;
+      // Header
+      state.name = newSheet.name;
+      state.class = newSheet.class;
+      state.level = newSheet.level;
+      state.race = newSheet.race;
+      state.backstory = newSheet.backstory;
+      state.worldview = newSheet.worldview;
+      state.playerName = newSheet.playerName;
+      state.experience = newSheet.experience;
+      // Body
+
+    },
     // Header
     updateName(state: Sheet1State, action: PayloadAction<string>) {
       state.name = action.payload;
@@ -528,7 +545,7 @@ const sheet1Slice = createSlice({
   }
 });
 
-export const { updateName, updateClass, updateLevel, updateRace, updateBackstory,
+export const { loadSheet1, updateName, updateClass, updateLevel, updateRace, updateBackstory,
   updateWorldview, updatePlayerName, updateExperience, updateStrength, updateDexterity,
   updateConstitution, updateIntelligence, updateWisdom, updateCharisma, updateInspiration,
   updateSaveThrowProficiency, updateSkillProficiency, addTool, updateTool, deleteTool, addOtherTool,

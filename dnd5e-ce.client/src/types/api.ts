@@ -1,3 +1,5 @@
+import { SpellAbilityType } from "./state";
+
 // Интерфейс для ошибок валидации от сервера export interface IValidationError {   code: string;   description: string; }  export interface IContainsAccessToken {   accessToken: string; }  export interface IContainsRefreshToken {   refreshToken: string; }  export interface IContainsTokens extends IContainsAccessToken, IContainsRefreshToken { }  export type LoginData = {   email: string;   password: string; };  export interface IRegisterFormData {   username: string;   email: string;   password: string;   passwordConfirm: string; }  export interface ILoginFormData {   email: string;   password: string; }  export interface AuthResponse {   success: boolean;   errors: string[]; }  export interface Sheet1Dto
 {
   //header fields
@@ -10,19 +12,22 @@
   playerName: string,
   experience: number,
   // body fields  }  export interface Sheet2Dto
-{   age: string,
+{   // header   age: string,
   height: string,
   weight: string,
   eyes: string,
   skin: string,
   hair: string,
+  // body
   appearance: string,
   backstory: string,
   alliesAndOrganizations: string,
   additionalFeaturesAndTraits: string,
   treasures: string }  export interface Sheet3Dto
 {
-  spellBondAbility: string;
+  // header
+  spellBondAbility: SpellAbilityType;
+  // body
   remainingSpellSlotsLevel1: number;
   remainingSpellSlotsLevel2: number;
   remainingSpellSlotsLevel3: number;

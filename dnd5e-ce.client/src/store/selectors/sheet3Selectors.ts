@@ -12,7 +12,7 @@ export const selectSpellCastingAbilityModifier = createSelector(
     if (spellCastingAbility === 'none') {
       return 0;
     }
-    const abilityValue = abilities[spellCastingAbility].base || 10;
+    const abilityValue = abilities[spellCastingAbility]?.base || 10;
     return Math.floor((abilityValue - 10) / 2);
   }
 );

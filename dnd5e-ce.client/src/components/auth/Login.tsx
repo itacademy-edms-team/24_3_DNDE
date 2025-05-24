@@ -1,18 +1,22 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router';
-import { useAppDispatch } from '../../hooks/index';
+import { useAppDispatch, useAppSelector } from '../../hooks/index';
 import { SubmitHandler, useForm } from "react-hook-form";
-import { login } from '../../store/slices/authSlice';
+import { clearRedirectUrl, login } from '../../store/slices/authSlice';
 
 import api from '../../api/index';
-import { IValidationError, IContainsAccessToken, IContainsTokens, ILoginFormData } from '../../types/api';
+import { IValidationError, IContainsAccessToken, IContainsTokens, ILoginFormData, AuthResponse } from '../../types/api';
 
-import { Form, Button, Alert, Container, Row, Col } from 'react-bootstrap';
+import { Form, Button, Alert, Container, Row, Col, Spinner } from 'react-bootstrap';
+import { toast } from 'react-toastify';
+import { selectRedirectUrl } from '../../store/selectors/authSelectors';
 
 const Login: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+
+  const redirectUrl = useAppSelector(selectRedirectUrl);
 
   const {
     register,
@@ -27,24 +31,36 @@ const Login: React.FC = () => {
   });
 
   const onSubmit: SubmitHandler<ILoginFormData> = async (data) => {
-    try {
-      const response = await api.post<IContainsTokens>('/auth/login', {
+    try 
+    {
+      const response = await api.post<AuthResponse>('/auth/login', {
         email: data.email,
         password: data.password,
       });
-      navigate('/sheet-selection');
-    } catch (error: any) {
-      console.log(error);
-      const errorData = error.response?.data || [];
-      errorData.forEach((err: IValidationError) => {
-        if (err.code.includes('Email')) {
-          setError('email', { type: 'server', message: err.description });
-        } else if (err.code.includes('Password')) {
-          setError('password', { type: 'server', message: err.description });
-        }
-      });
-      if (!errorData.length) {
-        setError('root', { type: 'server', message: errorData });
+      if (response.data.success)
+      {
+        dispatch(login());
+        toast.success("Logged in successfully!");
+        navigate(redirectUrl || "/sheet-selection");
+        dispatch(clearRedirectUrl());
+      }
+      else
+      {
+        throw new Error(response.data.errors?.join(", ") || "Login failed.");
+      }
+    }
+    catch (error: any)
+    {
+      if (axios.isAxiosError(error))
+      {
+        const errorData: AuthResponse = error.response?.data || {};
+        const message = errorData.errors?.join(", ") || "Login failed. Please check your credentials.";
+        toast.error(message);
+      }
+      else
+      {
+        console.error("Unexpected error:", error);
+        toast.error("An unexpected error occurred.");
       }
     }
   }
@@ -100,7 +116,11 @@ const Login: React.FC = () => {
               type="submit"
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Входим...' : 'Войти'}
+              {isSubmitting ? (
+                <Spinner animation="border" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </Spinner>
+              ) : ('Войти')}
             </Button>
           </Form>
         </Col>

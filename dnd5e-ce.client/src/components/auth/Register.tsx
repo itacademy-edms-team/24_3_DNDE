@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosResponse } from 'axios';
 import React, { useState } from 'react';
 import { useAppDispatch } from '../../hooks/index';
 import { login } from '../../store/slices/authSlice';
@@ -7,9 +7,10 @@ import { SubmitHandler, useForm } from 'react-hook-form';
 
 import api from '../../api/index';
 
-import { Form, Button, Alert, Container, Row, Col } from 'react-bootstrap';
+import { Form, Button, Alert, Container, Row, Col, Spinner } from 'react-bootstrap';
 
-import { IRegisterFormData, IValidationError } from '../../types/api';
+import { AuthResponse, IRegisterFormData, IValidationError } from '../../types/api';
+import { toast } from 'react-toastify';
 
 const Register: React.FC = () => {
   const navigate = useNavigate();
@@ -28,27 +29,27 @@ const Register: React.FC = () => {
   });
 
   const onSubmit: SubmitHandler<IRegisterFormData> = async (data) => {
-    try {
-      const response = await api.post('/auth/register', {
+    try
+    {
+      const response: AxiosResponse<AuthResponse> = await api.post('/auth/register', {
         username: data.username,
         email: data.email,
         password: data.password,
       });
       navigate('/login');
-    } catch (error: any) {
-      console.log(error);
-      const errorData = error.response?.data || [];
-      errorData.forEach((err: IValidationError) => {
-        if (err.code.includes('UserName')) {
-          setError('username', { type: 'server', message: err.description });
-        } else if (err.code.includes('Email')) {
-          setError('email', { type: 'server', message: err.description });
-        } else if (err.code.includes('Password')) {
-          setError('password', { type: 'server', message: err.description });
-        }
-      });
-      if (!errorData.length) {
-        setError('root', { type: 'server', message: errorData });
+    }
+    catch (error: any)
+    {
+      if (axios.isAxiosError(error))
+      {
+        const errorData: AuthResponse = error.response?.data || {};
+        const message = errorData.errors?.join(", ") || "Register failed. Please check your credentials.";
+        toast.error(message);
+      }
+      else
+      {
+        console.error("Unexpected error:", error);
+        toast.error("An unexpected error occurred.");
       }
     }
   };
@@ -157,7 +158,11 @@ const Register: React.FC = () => {
               type="submit"
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Регистрируемся...' : 'Регистрация'}
+              {isSubmitting ? (
+                <Spinner animation="border" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </Spinner>
+              ): ('Регистрация')}
             </Button>
           </Form>
         </Col>

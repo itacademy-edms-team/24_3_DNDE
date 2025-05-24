@@ -108,24 +108,7 @@ namespace DND5E_CE.Server.Controllers
         {
             // TODO: Limit login attempts
 
-            var csrfTokenFromHeader = Request.Headers["X-CSRF-Token"].FirstOrDefault();
-            var csrfTokenFromCookie = Request.Cookies["csrf_token"];
             var existingUser = await _userManager.FindByEmailAsync(model.Email);
-
-            // (optional) Check CSRF token if provided
-            if (!string.IsNullOrEmpty(csrfTokenFromHeader) && 
-                !string.IsNullOrEmpty(csrfTokenFromCookie) &&
-                existingUser != null &&
-                !await _csrfTokenService.ValidateCsrfTokenAsync(csrfTokenFromCookie, existingUser.Id))
-            {
-                _logger.LogWarning("Invalid CSRF token for user: {Email}",
-                    model.Email);
-                return BadRequest(new AuthResponse
-                {
-                    Success = false,
-                    Errors = new[] { "Недействительный CSRF токен" }
-                });
-            }
 
             // Check model validity
             if (!ModelState.IsValid)

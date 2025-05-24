@@ -5,7 +5,7 @@ import { selectCharacterName } from '../../store/selectors/sheet1Selectors';
 import { selectSpellCastingAbility, selectSpellSaveDC, selectSpellAttackBonus } from '../../store/selectors/sheet3Selectors';
 
 import { updateName } from '../../store/sheet1Slice';
-import { updateSpellCastingAbility } from '../../store/sheet3Slice';
+import { updateCharacterSpellCastingAbility, updateSpellCastingAbility } from '../../store/sheet3Slice';
 
 import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
@@ -15,7 +15,7 @@ import Card from 'react-bootstrap/Card';
 
 import CharacterSpellcastingSpellcastingAbilitySVG from './assets/CharacterSpellcastingSpellcastingAbility.svg';
 
-import { RootState, SpellAbilityType } from '../../types/state';
+import { SpellAbilityType } from '../../types/state';
 
 const Sheet3Header: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -30,7 +30,7 @@ const Sheet3Header: React.FC = () => {
   };
 
   const handleSpellCastingAbilityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    dispatch(updateSpellCastingAbility(e.target.value as SpellAbilityType));
+    dispatch(updateCharacterSpellCastingAbility(e.target.value as SpellAbilityType));
   };
 
   return (

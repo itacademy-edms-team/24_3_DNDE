@@ -35,6 +35,7 @@ const SheetCard: React.FC<SheetCardProps> =
         >
           <Card.Title>{character.name}</Card.Title>
           <Card.Title>Уровень: {character.level}</Card.Title>
+          <Card.Title>Класс: {character.class}</Card.Title>
         </div>
         <FaTrash
           style={{ minWidth: "2rem", minHeight: "2rem", color: "red", cursor: "pointer" }}

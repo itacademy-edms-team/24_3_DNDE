@@ -1,6 +1,7 @@
 
 import { PayloadAction, createSlice } from '@reduxjs/toolkit';
 import { Spell, CantripProgressionType, Sheet3State, SpellCategoryKey, SpellAbilityType, SpellAttackType, SpellDescriptionInAttackIncludeVariety, SpellHighLevelCastDiceType, SpellOutputType, SpellSchool, SpellLevel, RemainingSpellSlots } from '../types/state';
+import { Sheet3Dto } from '../types/api';
 
 const initialState: Sheet3State = {
   spellBondAbility: "none",
@@ -33,6 +34,22 @@ const sheet3Slice = createSlice({
   name: 'sheet3',
   initialState,
   reducers: {
+    loadSheet3(state, action: PayloadAction<Sheet3Dto>): void
+    {
+      const newSheet = action.payload;
+      // header
+      state.spellBondAbility = newSheet.spellBondAbility;
+      // body
+      state.remainingSpellSlots.level1 = newSheet.remainingSpellSlotsLevel1;
+      state.remainingSpellSlots.level2 = newSheet.remainingSpellSlotsLevel2;
+      state.remainingSpellSlots.level3 = newSheet.remainingSpellSlotsLevel3;
+      state.remainingSpellSlots.level4 = newSheet.remainingSpellSlotsLevel4;
+      state.remainingSpellSlots.level5 = newSheet.remainingSpellSlotsLevel5;
+      state.remainingSpellSlots.level6 = newSheet.remainingSpellSlotsLevel6;
+      state.remainingSpellSlots.level7 = newSheet.remainingSpellSlotsLevel7;
+      state.remainingSpellSlots.level8 = newSheet.remainingSpellSlotsLevel8;
+      state.remainingSpellSlots.level9 = newSheet.remainingSpellSlotsLevel9;
+    },
     updateCharacterSpellCastingAbility(state, action: PayloadAction<SpellAbilityType>): void {
       state.spellBondAbility = action.payload;
     },
@@ -502,6 +519,7 @@ const sheet3Slice = createSlice({
 });
 
 export const {
+  loadSheet3,
   updateCharacterSpellCastingAbility,
   addSpell,
   deleteSpell,
