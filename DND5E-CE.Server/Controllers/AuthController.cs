@@ -123,7 +123,6 @@ namespace DND5E_CE.Server.Controllers
             }
 
             // Check if user exists
-            var existingUser = await _userManager.FindByEmailAsync(model.Email);
             if (existingUser == null)
             {
                 _logger.LogWarning("User {Email} not found",

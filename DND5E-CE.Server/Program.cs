@@ -1,4 +1,5 @@
 using DND5E_CE.Server.Data;
+using DND5E_CE.Server.Mapping;
 using DND5E_CE.Server.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -129,6 +130,12 @@ namespace DND5E_CE.Server
                            .AllowAnyMethod()
                            .AllowCredentials(); // For cookie usage
                 });
+            });
+
+            // AutoMapper configuration
+            builder.Services.AddAutoMapper(cfg =>
+            {
+                cfg.AddProfile<AutoMapperProfile>();
             });
 
             // Add services to the container.

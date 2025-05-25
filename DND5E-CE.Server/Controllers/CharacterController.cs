@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using DND5E_CE.Server.Data;
 using DND5E_CE.Server.DTO.App;
 using DND5E_CE.Server.Models.App;
+using AutoMapper;
 
 namespace DND5E_CE.Server.Controllers
 {
@@ -21,6 +22,7 @@ namespace DND5E_CE.Server.Controllers
     public class CharacterController : ControllerBase
     {
         private readonly DND5EContext _context;
+        private readonly IMapper _mapper;
         private readonly UserManager<IdentityUser> _userManager;
         ICsrfTokenService _csrfTokenService;
         private readonly IConfiguration _configuration;
@@ -28,6 +30,7 @@ namespace DND5E_CE.Server.Controllers
 
         public CharacterController(
             DND5EContext context,
+            IMapper mapper,
             UserManager<IdentityUser> userManager,
             SignInManager<IdentityUser> signInManager,
             ICsrfTokenService csrfTokenService,
@@ -35,6 +38,7 @@ namespace DND5E_CE.Server.Controllers
             ILogger<CharacterController> logger)
         {
             _context = context;
+            _mapper = mapper;
             _userManager = userManager;
             _csrfTokenService = csrfTokenService;
             _configuration = configuration;
@@ -48,7 +52,7 @@ namespace DND5E_CE.Server.Controllers
 
             if (uId == null)
             {
-                _logger.LogWarning("'sub' in access_token are null");
+                _logger.LogWarning("'id' in access_token are null");
                 return Unauthorized("User ID not found.");
             }
 
@@ -148,14 +152,7 @@ namespace DND5E_CE.Server.Controllers
             _logger.LogDebug("Character with Id '{cId}' created",
                 character.Id);
 
-            var response = new CharacterListDto
-            {
-                Id = character.Id,
-                Name = sheet1.Name,
-                Level = sheet1.Level,
-                Class = sheet1.Class
-            };
-
+            var response = _mapper.Map<CharacterListDto>(character);
             return CreatedAtAction(nameof(GetCharacter), new { cId = character.Id }, response);
         }
 
@@ -166,7 +163,7 @@ namespace DND5E_CE.Server.Controllers
 
             if (uId == null)
             {
-                _logger.LogWarning("'sub' in access_token are null");
+                _logger.LogWarning("'id' in access_token are null");
                 return Unauthorized("User ID not found.");
             }
 
@@ -182,14 +179,9 @@ namespace DND5E_CE.Server.Controllers
             }
 
             var characters = await _context.Character
+                .Include(c => c.Sheet1)
                 .Where(c => c.UserId == uId)
-                .Select(c => new CharacterListDto
-                {
-                    Id = c.Id,
-                    Name = c.Sheet1.Name,
-                    Class = c.Sheet1.Class,
-                    Level = c.Sheet1.Level
-                }).ToListAsync();
+                .ToListAsync();
 
             if (!characters.Any())
             {
@@ -197,7 +189,8 @@ namespace DND5E_CE.Server.Controllers
                 return NotFound("Characters not found.");
             }
 
-            return Ok(characters);
+            var characterListDto = _mapper.Map<List<CharacterListDto>>(characters);
+            return Ok(characterListDto);
         }
 
         [HttpGet("characters/{cId}")]
@@ -236,49 +229,7 @@ namespace DND5E_CE.Server.Controllers
                 return NotFound("Character not found.");
             }
 
-            var sheet1Dto = new Sheet1Dto
-            {
-                Name = character.Sheet1.Name,
-                Level = character.Sheet1.Level,
-                Class = character.Sheet1.Class
-            };
-
-            var sheet2Dto = new Sheet2Dto
-            {
-                Age = character.Sheet2.Age,
-                Height = character.Sheet2.Height,
-                Weight = character.Sheet2.Weight,
-                Eyes = character.Sheet2.Eyes,
-                Skin = character.Sheet2.Skin,
-                Hair = character.Sheet2.Hair,
-                Appearance = character.Sheet2.Appearance,
-                Backstory = character.Sheet2.Backstory,
-                AlliesAndOrganizations = character.Sheet2.AlliesAndOrganizations,
-                AdditionalFeaturesAndTraits = character.Sheet2.AdditionalFeaturesAndTraits,
-                Treasures = character.Sheet2.Treasures
-            };
-
-            var sheet3Dto = new Sheet3Dto
-            {
-                SpellBondAbility = character.Sheet3.SpellBondAbility,
-                RemainingSpellSlotsLevel1 = character.Sheet3.RemainingSpellSlotsLevel1,
-                RemainingSpellSlotsLevel2 = character.Sheet3.RemainingSpellSlotsLevel2,
-                RemainingSpellSlotsLevel3 = character.Sheet3.RemainingSpellSlotsLevel3,
-                RemainingSpellSlotsLevel4 = character.Sheet3.RemainingSpellSlotsLevel4,
-                RemainingSpellSlotsLevel5 = character.Sheet3.RemainingSpellSlotsLevel5,
-                RemainingSpellSlotsLevel6 = character.Sheet3.RemainingSpellSlotsLevel6,
-                RemainingSpellSlotsLevel7 = character.Sheet3.RemainingSpellSlotsLevel7,
-                RemainingSpellSlotsLevel8 = character.Sheet3.RemainingSpellSlotsLevel8,
-                RemainingSpellSlotsLevel9 = character.Sheet3.RemainingSpellSlotsLevel9
-            };
-
-            var characterDto = new CharacterDto
-            {
-                Sheet1 = sheet1Dto,
-                Sheet2 = sheet2Dto,
-                Sheet3 = sheet3Dto
-            };
-
+            var characterDto = _mapper.Map<CharacterDto>(character);
             return Ok(characterDto);
         }
 
