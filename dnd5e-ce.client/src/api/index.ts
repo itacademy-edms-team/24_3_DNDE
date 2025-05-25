@@ -23,8 +23,8 @@ api.interceptors.request.use(
       if (csrfToken) {
         config.headers['X-CSRF-Token'] = csrfToken;
       }
-    }
-    return config;
+  }
+  return config;
   },
   (error) => Promise.reject(error)
 );

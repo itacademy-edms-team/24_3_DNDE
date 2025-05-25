@@ -45,7 +45,7 @@ const Register: React.FC = () => {
         const errorData: AuthResponse = error.response?.data || {};
         const message = errorData.errors?.join(", ") || "Register failed. Please check your credentials.";
         toast.error(message);
-      }
+        }
       else
       {
         console.error("Unexpected error:", error);

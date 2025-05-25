@@ -3,6 +3,7 @@ using System;
 using DND5E_CE.Server.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace DND5E_CE.Server.Migrations
 {
     [DbContext(typeof(DND5EContext))]
-    partial class DND5EContextModelSnapshot : ModelSnapshot
+    [Migration("20250513120026_Update AuthModels. Add RefreshToken Support")]
+    partial class UpdateAuthModelsAddRefreshTokenSupport
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,235 +24,6 @@ namespace DND5E_CE.Server.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("DND5E_CE.Server.Models.App.CharacterModel", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("Sheet1Id")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Sheet2Id")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Sheet3Id")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Sheet1Id");
-
-                    b.HasIndex("Sheet2Id");
-
-                    b.HasIndex("Sheet3Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("CharacterModels", "app");
-                });
-
-            modelBuilder.Entity("DND5E_CE.Server.Models.App.Sheet1Model", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Backstory")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Class")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("Experience")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Level")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("PlayerName")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Race")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Worldview")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("Sheet1Models", "app");
-                });
-
-            modelBuilder.Entity("DND5E_CE.Server.Models.App.Sheet2Model", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AdditionalFeaturesAndTraits")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<string>("Age")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("AlliesAndOrganizations")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<string>("Appearance")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<string>("Backstory")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<string>("Eyes")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Hair")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Height")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Skin")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Treasures")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Weight")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("Sheet2Models", "app");
-                });
-
-            modelBuilder.Entity("DND5E_CE.Server.Models.App.Sheet3Model", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    b.Property<int>("AccessFailedCount")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("RemainingSpellSlotsLevel1")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("RemainingSpellSlotsLevel2")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("RemainingSpellSlotsLevel3")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("RemainingSpellSlotsLevel4")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("RemainingSpellSlotsLevel5")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("RemainingSpellSlotsLevel6")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("RemainingSpellSlotsLevel7")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("RemainingSpellSlotsLevel8")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("RemainingSpellSlotsLevel9")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("SpellBondAbility")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("Sheet3Models", "app");
-                });
-
-            modelBuilder.Entity("DND5E_CE.Server.Models.CsrfTokenModel", b =>
-                {
-                    b.Property<string>("Token")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
-
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("IssuedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasMaxLength(450)
-                        .HasColumnType("character varying(450)");
-
-                    b.HasKey("Token");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("Token", "UserId")
-                        .IsUnique();
-
-                    b.ToTable("CsrfTokens", "tokens");
-                });
 
             modelBuilder.Entity("DND5E_CE.Server.Models.RefreshTokenModel", b =>
                 {
@@ -290,7 +64,7 @@ namespace DND5E_CE.Server.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("RefreshTokens", "tokens");
+                    b.ToTable("RefreshTokens", "jwt");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -487,85 +261,6 @@ namespace DND5E_CE.Server.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("UserTokens", "identity");
-                });
-
-            modelBuilder.Entity("DND5E_CE.Server.Models.App.CharacterModel", b =>
-                {
-                    b.HasOne("DND5E_CE.Server.Models.App.Sheet1Model", "Sheet1")
-                        .WithMany()
-                        .HasForeignKey("Sheet1Id")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("DND5E_CE.Server.Models.App.Sheet2Model", "Sheet2")
-                        .WithMany()
-                        .HasForeignKey("Sheet2Id")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("DND5E_CE.Server.Models.App.Sheet3Model", "Sheet3")
-                        .WithMany()
-                        .HasForeignKey("Sheet3Id")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Sheet1");
-
-                    b.Navigation("Sheet2");
-
-                    b.Navigation("Sheet3");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("DND5E_CE.Server.Models.App.Sheet1Model", b =>
-                {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("DND5E_CE.Server.Models.App.Sheet2Model", b =>
-                {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("DND5E_CE.Server.Models.App.Sheet3Model", b =>
-                {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("DND5E_CE.Server.Models.CsrfTokenModel", b =>
-                {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("DND5E_CE.Server.Models.RefreshTokenModel", b =>

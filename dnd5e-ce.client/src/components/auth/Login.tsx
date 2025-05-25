@@ -12,6 +12,11 @@ import { Form, Button, Alert, Container, Row, Col, Spinner } from 'react-bootstr
 import { toast } from 'react-toastify';
 import { selectRedirectUrl } from '../../store/selectors/authSelectors';
 
+interface ILoginFormData {
+  email: string;
+  password: string;
+}
+
 const Login: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -56,7 +61,7 @@ const Login: React.FC = () => {
         const errorData: AuthResponse = error.response?.data || {};
         const message = errorData.errors?.join(", ") || "Login failed. Please check your credentials.";
         toast.error(message);
-      }
+        }
       else
       {
         console.error("Unexpected error:", error);

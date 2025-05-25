@@ -31,7 +31,7 @@ const authSlice = createSlice({
     setRedirectUrl(state, action: { payload: string })
     {
       state.redirectUrl = action.payload;
-    },
+  },
     clearRedirectUrl(state)
     {
       state.redirectUrl = null;

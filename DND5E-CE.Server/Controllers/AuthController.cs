@@ -93,8 +93,8 @@ namespace DND5E_CE.Server.Controllers
             {
                 _logger.LogWarning("User {Email} registration failed: {Errors}",
                     model.Email, string.Join(", ", result.Errors.Select(e => e.Description)));
-                return BadRequest(result.Errors);
-            }
+            return BadRequest(result.Errors);
+        }
 
             // TODO: Add email confirmation logic here
 
@@ -123,6 +123,7 @@ namespace DND5E_CE.Server.Controllers
             }
 
             // Check if user exists
+            var existingUser = await _userManager.FindByEmailAsync(model.Email);
             if (existingUser == null)
             {
                 _logger.LogWarning("User {Email} not found",
@@ -169,7 +170,7 @@ namespace DND5E_CE.Server.Controllers
             {
                 _logger.LogWarning("Access token is not provided.");
                 return BadRequest(new AuthResponse
-                {
+        {
                     Success = false,
                     Errors = new[] { "Токен доступа не предоставлен" }
                 });

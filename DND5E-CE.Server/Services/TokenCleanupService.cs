@@ -56,7 +56,7 @@ namespace DND5E_CE.Server.Services
                     .ToList();
                 if (oldUsedTokens.Any())
                 {
-                    dbContext.RefreshTokens.RemoveRange(oldUsedTokens);
+                dbContext.RefreshTokens.RemoveRange(oldUsedTokens);
                     _logger.LogInformation("Removed {Count} old used refresh tokens", oldUsedTokens.Count);
                 }
 
@@ -66,7 +66,7 @@ namespace DND5E_CE.Server.Services
                     .ToList();
                 if (oldRevokedTokens.Any())
                 {
-                    dbContext.RefreshTokens.RemoveRange(oldRevokedTokens);
+                dbContext.RefreshTokens.RemoveRange(oldRevokedTokens);
                     _logger.LogInformation("Removed {Count} old revoked refresh tokens", oldRevokedTokens.Count);
                 }
 
@@ -90,5 +90,6 @@ namespace DND5E_CE.Server.Services
         {
             _timer?.Dispose();
         }
+
     }
 }

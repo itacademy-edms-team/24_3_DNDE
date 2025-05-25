@@ -47,7 +47,7 @@ namespace DND5E_CE.Server.Data
                 action.ToTable("RefreshTokens", "tokens");
 
                 action.HasOne(rt => rt.User)
-                    .WithMany()
+                .WithMany()
                     .HasForeignKey(rt => rt.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
 
@@ -65,7 +65,7 @@ namespace DND5E_CE.Server.Data
                     .OnDelete(DeleteBehavior.Cascade);
 
                 action.HasIndex(t => new { t.Token, t.UserId })
-                    .IsUnique();
+                .IsUnique();
             });
 
             // Configure app schema models here.

@@ -173,12 +173,14 @@ namespace DND5E_CE.Server.Services
                 return false;
             }
 
+            // If token already used or revoked, return false
             if (token.IsUsed || token.IsRevoked)
             {
                 _logger.LogWarning("Refresh token already used or revoked: {Token}", refreshToken);
                 return false;
             }
 
+            // else, revoke token
             token.IsRevoked = true;
             _context.RefreshTokens.Update(token);
             await _context.SaveChangesAsync();
@@ -186,7 +188,7 @@ namespace DND5E_CE.Server.Services
             _logger.LogInformation("Refresh token revoked: {Token}", refreshToken);
             return true;
         }
-
+        
         private async Task<string> GenerateJwtToken(IdentityUser user)
         {
             var jwtTokenHandler = new JwtSecurityTokenHandler();
@@ -201,9 +203,11 @@ namespace DND5E_CE.Server.Services
                 new Claim(JwtRegisteredClaimNames.Sub, user.UserName),
                 new Claim(JwtRegisteredClaimNames.Email, user.Email),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim(JwtRegisteredClaimNames.Email, user.Email),
                 new Claim("id", user.Id)
             };
 
+            // Add roles to claims
             foreach (var role in roles)
             {
                 claims.Add(new Claim(ClaimTypes.Role, role));
@@ -258,6 +262,7 @@ namespace DND5E_CE.Server.Services
 
         private string RandomStringGenerator(int length)
         {
+            var random = new Random();
             const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
             return string.Create(length, Random.Shared, (span, random) =>
             {
