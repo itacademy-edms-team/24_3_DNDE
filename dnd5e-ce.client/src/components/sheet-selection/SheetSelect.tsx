@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useAppSelector, useAppDispatch } from '../../hooks/index';
-import { selectAccessToken } from '../../store/selectors/authSelectors';
 
 import { Container, Row, Col, Button, Card, Spinner } from 'react-bootstrap';
 import { FaTrash, FaPlus, FaRedo } from 'react-icons/fa';
@@ -53,8 +52,8 @@ const SheetSelect: React.FC = () =>
         else if (error.response?.status === 404)
         {
           console.log("No characters found.");
-          setCharacters([]);
           toast.info("No characters found.");
+          setCharacters([]);
         }
         else if (error.response?.status === 500)
         {
@@ -112,6 +111,12 @@ const SheetSelect: React.FC = () =>
           navigate("/login");
           toast.error("Session expired. Please log in.");
         }
+        else if (error.response?.status === 404)
+        {
+          dispatch(logout());
+          navigate("/login");
+          toast.error("User may not exist");
+        }
         else
         {
           toast.error(error.response?.data.errors.join(", ") || "Failed to add character.");
@@ -124,7 +129,7 @@ const SheetSelect: React.FC = () =>
     }
   };
 
-  const onCharacterDelete = async (cId: number) =>
+  const onCharacterDelete = async (cId: string) =>
   {
     try
     {
@@ -159,7 +164,7 @@ const SheetSelect: React.FC = () =>
     }
   };
 
-  const onCharacterClick = async (cId: number) =>
+  const onCharacterClick = async (cId: string) =>
   {
     try
     {
@@ -174,6 +179,7 @@ const SheetSelect: React.FC = () =>
     }
     catch (error)
     {
+      console.error(error);
       if (axios.isAxiosError(error))
       {
         if (error.response?.status === 401)
@@ -194,7 +200,7 @@ const SheetSelect: React.FC = () =>
       }
       else
       {
-        console.log(`Unexpected error: ${error}`);
+        console.error(`Unexpected error: ${error}`);
         toast.error("An unexpected error occurred.");
       }
     }

@@ -13,7 +13,8 @@ import {
   Sheet1State,
   Tool
 } from '../types/state';
-import { Sheet1Dto } from '../types/api';
+import { AbilitySaveThrowDto, Sheet1Dto } from '../types/api';
+import { mapAbilityDtoToAbilities, mapAbilitySaveThrowDtoToSaveThrows, mapAttackDtoToAttacks, mapClassResourceDtoToClassResource, mapGlobalDamageModifierDtoToGlobalDamageModifier, mapInventoryDtosToInventory, mapInventoryItemDtoToInventoryItem, mapOtherResourceDtosToClassResources, mapOtherToolDtoToOtherTools, mapSkillDtoToSkills, mapToolDtoToTools } from '../utils/map';
 
 const initialState: Sheet1State = {
   name: "character name",
@@ -243,6 +244,7 @@ const sheet1Slice = createSlice({
     loadSheet1(state: Sheet1State, action: PayloadAction<Sheet1Dto>)
     {
       const newSheet = action.payload;
+
       // Header
       state.name = newSheet.name;
       state.class = newSheet.class;
@@ -252,8 +254,27 @@ const sheet1Slice = createSlice({
       state.worldview = newSheet.worldview;
       state.playerName = newSheet.playerName;
       state.experience = newSheet.experience;
-      // Body
 
+      // Body
+      state.abilities = mapAbilityDtoToAbilities(newSheet.ability);
+      state.saveThrows = mapAbilitySaveThrowDtoToSaveThrows(newSheet.abilitySaveThrow);
+      state.skills = mapSkillDtoToSkills(newSheet.skill);
+      state.tools = mapToolDtoToTools(newSheet.tool);
+      state.otherTools = mapOtherToolDtoToOtherTools(newSheet.otherTool);
+
+      state.armorClass = newSheet.armorClass;
+      state.initiative = newSheet.initiative;
+      state.speed = newSheet.speed;
+      state.attacks = mapAttackDtoToAttacks(newSheet.attack);
+      state.globalDamageModifiers = mapGlobalDamageModifierDtoToGlobalDamageModifier(newSheet.globalDamageModifier);
+      state.inventory = mapInventoryDtosToInventory(newSheet.inventoryGold, newSheet.inventoryItem);
+
+      state.personalityTraits = newSheet.personalityTraits;
+      state.ideals = newSheet.ideals;
+      state.bonds = newSheet.bonds;
+      state.flaws = newSheet.flaws;
+      state.classResource = mapClassResourceDtoToClassResource(newSheet.classResource);
+      state.otherResources = mapOtherResourceDtosToClassResources(newSheet.otherResource);
     },
     // Header
     updateName(state: Sheet1State, action: PayloadAction<string>) {

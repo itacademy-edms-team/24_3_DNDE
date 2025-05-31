@@ -144,6 +144,7 @@ namespace DND5E_CE.Server
             builder.Services.AddOpenApi();
             builder.Services.AddScoped<ITokenService, TokenService>();
             builder.Services.AddScoped<ICsrfTokenService, CsrfTokenService>();
+            builder.Services.AddScoped<ICharacterService,  CharacterService>();
             builder.Services.AddHostedService<TokenCleanupService>();
             builder.Services.AddLogging(logging =>
             {

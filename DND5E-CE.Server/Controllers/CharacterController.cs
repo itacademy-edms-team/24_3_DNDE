@@ -24,7 +24,8 @@ namespace DND5E_CE.Server.Controllers
         private readonly DND5EContext _context;
         private readonly IMapper _mapper;
         private readonly UserManager<IdentityUser> _userManager;
-        ICsrfTokenService _csrfTokenService;
+        private readonly ICsrfTokenService _csrfTokenService;
+        private readonly ICharacterService _characterService;
         private readonly IConfiguration _configuration;
         private readonly ILogger<CharacterController> _logger;
 
@@ -34,6 +35,7 @@ namespace DND5E_CE.Server.Controllers
             UserManager<IdentityUser> userManager,
             SignInManager<IdentityUser> signInManager,
             ICsrfTokenService csrfTokenService,
+            ICharacterService characterService,
             IConfiguration configuration,
             ILogger<CharacterController> logger)
         {
@@ -41,6 +43,7 @@ namespace DND5E_CE.Server.Controllers
             _mapper = mapper;
             _userManager = userManager;
             _csrfTokenService = csrfTokenService;
+            _characterService = characterService;
             _configuration = configuration;
             _logger = logger;
         }
@@ -48,227 +51,141 @@ namespace DND5E_CE.Server.Controllers
         [HttpPost("characters")]
         public async Task<IActionResult> CreateCharacter([FromBody] CharacterCreateDto dto)
         {
-            var uId = User.FindFirst("id")?.Value;
+            if (!ModelState.IsValid)
+            {
+                _logger.LogWarning("Invalid model state for CharacterCreateDto");
+                return BadRequest(ModelState);
+            }
 
-            if (uId == null)
+            var userId = User.FindFirst("id")?.Value;
+            if (userId == null)
             {
                 _logger.LogWarning("'id' in access_token are null");
                 return Unauthorized("User ID not found.");
             }
 
-            var userData = await _context.Users
-                .Where(u => u.Id == uId)
-                .Select(u => new { u.UserName, u.Email })
-                .FirstOrDefaultAsync();
-
-            if (userData == null)
+            try
             {
-                _logger.LogWarning("User with Id '{Id}' not found", uId);
-                return NotFound("User not found.");
+                var character = await _characterService.CreateCharacterAsync(dto, userId);
+                var response = _mapper.Map<CharacterDto>(character);
+                return CreatedAtAction(
+                    nameof(GetCharacter),
+                    new { cId = character.Id },
+                    response
+                );
             }
-
-            var sheet1 = new Sheet1Model
+            catch (KeyNotFoundException ex)
             {
-                UserId = uId,
-                Name = dto.Sheet1.Name,
-                Level = dto.Sheet1.Level,
-                Class = dto.Sheet1.Class
-            };
-            _context.Sheet1.Add(sheet1);
-
-            Sheet2Model sheet2 = null;
-            if (dto.Sheet2 != null)
-            {
-                sheet2 = new Sheet2Model
-                {
-                    UserId = uId,
-                    Age = dto.Sheet2.Age,
-                    Height = dto.Sheet2.Height,
-                    Weight = dto.Sheet2.Weight,
-                    Eyes = dto.Sheet2.Eyes,
-                    Skin = dto.Sheet2.Skin,
-                    Hair = dto.Sheet2.Hair,
-                    Appearance = dto.Sheet2.Appearance,
-                    Backstory = dto.Sheet2.Backstory,
-                    AlliesAndOrganizations = dto.Sheet2.AlliesAndOrganizations,
-                    AdditionalFeaturesAndTraits = dto.Sheet2.AdditionalFeaturesAndTraits,
-                    Treasures = dto.Sheet2.Treasures
-                };
-                _context.Sheet2.Add(sheet2);
+                _logger.LogWarning("Not found: {Message}", ex.Message);
+                return NotFound(ex.Message);
             }
-            else
+            catch (InvalidOperationException ex)
             {
-                sheet2 = new Sheet2Model
-                {
-                    UserId = uId,
-                };
+                _logger.LogError(ex, "Operation failed");
+                return StatusCode(500, ex.Message);
             }
-
-            Sheet3Model sheet3 = null;
-            if (dto.Sheet3 != null)
+            catch (Exception ex)
             {
-                sheet3 = new Sheet3Model
-                {
-                    UserId = uId,
-                    SpellBondAbility = dto.Sheet3.SpellBondAbility,
-                    RemainingSpellSlotsLevel1 = dto.Sheet3.RemainingSpellSlotsLevel1,
-                    RemainingSpellSlotsLevel2 = dto.Sheet3.RemainingSpellSlotsLevel2,
-                    RemainingSpellSlotsLevel3 = dto.Sheet3.RemainingSpellSlotsLevel3,
-                    RemainingSpellSlotsLevel4 = dto.Sheet3.RemainingSpellSlotsLevel4,
-                    RemainingSpellSlotsLevel5 = dto.Sheet3.RemainingSpellSlotsLevel5,
-                    RemainingSpellSlotsLevel6 = dto.Sheet3.RemainingSpellSlotsLevel6,
-                    RemainingSpellSlotsLevel7 = dto.Sheet3.RemainingSpellSlotsLevel7,
-                    RemainingSpellSlotsLevel8 = dto.Sheet3.RemainingSpellSlotsLevel8,
-                    RemainingSpellSlotsLevel9 = dto.Sheet3.RemainingSpellSlotsLevel9
-                };
-                _context.Sheet3.Add(sheet3);
+                _logger.LogError(ex, "Error creating character");
+                return StatusCode(500, "Internal server error.");
             }
-            else
-            {
-                sheet3 = new Sheet3Model
-                {
-                    UserId = uId
-                };
-            }
-
-            // Save sheets to generate IDs
-            await _context.SaveChangesAsync();
-            _logger.LogDebug("Sheets with Id's '{sId1}', '{sId2}', '{sId3}' were created",
-                sheet1.Id, sheet2.Id, sheet3.Id);
-            
-            var character = new CharacterModel
-            {
-                UserId = uId,
-                Sheet1Id = sheet1.Id,
-                Sheet1 = sheet1,
-                Sheet2Id = sheet2.Id,
-                Sheet2 = sheet2,
-                Sheet3Id = sheet3.Id,
-                Sheet3 = sheet3
-            };
-            _context.Character.Add(character);
-
-            await _context.SaveChangesAsync();
-            _logger.LogDebug("Character with Id '{cId}' created",
-                character.Id);
-
-            var response = _mapper.Map<CharacterListDto>(character);
-            return CreatedAtAction(nameof(GetCharacter), new { cId = character.Id }, response);
         }
 
         [HttpGet("characters")]
         public async Task<IActionResult> GetCharacters()
         {
-            var uId = User.FindFirst("id")?.Value;
-
-            if (uId == null)
+            var userId = User.FindFirst("id")?.Value;
+            if (userId == null)
             {
                 _logger.LogWarning("'id' in access_token are null");
                 return Unauthorized("User ID not found.");
             }
 
-            var userData = await _context.Users
-                .Where(u => u.Id == uId)
-                .Select(u => new { u.UserName, u.Email })
-                .FirstOrDefaultAsync();
-
-            if (userData == null)
+            try
             {
-                _logger.LogDebug("User with Id {Id} not found", uId);
-                return NotFound("User not found.");
+                var characters = await _characterService.GetCharactersAsync(userId);
+                var response = _mapper.Map<ICollection<CharacterSelectItemDto>>(characters);
+                return Ok(response);
             }
-
-            var characters = await _context.Character
-                .Include(c => c.Sheet1)
-                .Where(c => c.UserId == uId)
-                .ToListAsync();
-
-            if (!characters.Any())
+            catch (KeyNotFoundException ex)
             {
-                _logger.LogDebug("Characters bound with User Id '{Id}' not found.", uId);
-                return NotFound("Characters not found.");
+                _logger.LogWarning("Not found: {errMsg}",
+                    ex.Message);
+                return NotFound(ex.Message);
             }
-
-            var characterListDto = _mapper.Map<List<CharacterListDto>>(characters);
-            return Ok(characterListDto);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving characters");
+                return StatusCode(500, "Internal server error.");
+            }
         }
 
         [HttpGet("characters/{cId}")]
-        public async Task<IActionResult> GetCharacter(int cId)
+        public async Task<IActionResult> GetCharacter(Guid cId)
         {
-            var uId = User.FindFirst("id")?.Value;
-
-            if (uId == null)
+            var userId = User.FindFirst("id")?.Value;
+            if (userId == null)
             {
-                _logger.LogWarning("'sub' in access_token are null");
+                _logger.LogWarning("'id' in access_token are null");
                 return Unauthorized("User ID not found.");
             }
 
-            var userData = await _context.Users
-                .Where(u => u.Id == uId)
-                .Select(u => new { u.UserName, u.Email })
-                .FirstOrDefaultAsync();
-
-            if (userData == null)
+            try
             {
-                _logger.LogDebug("User with Id '{Id}' not found", uId);
-                return NotFound("User not found.");
+                var character = await _characterService.GetCharacterAsync(cId, userId);
+                var response = _mapper.Map<CharacterDto>(character);
+                return Ok(response);
             }
-
-            var character = await _context.Character
-                .Include(c => c.Sheet1)
-                .Include(c => c.Sheet2)
-                .Include(c => c.Sheet3)
-                .Where(c => c.UserId == uId && c.Id == cId)
-                .FirstOrDefaultAsync();
-
-            if (character == null)
+            catch (KeyNotFoundException ex)
             {
-                _logger.LogDebug("Character with Id '{}' bound with User Id '{}' not found.",
-                    cId, uId);
-                return NotFound("Character not found.");
+                _logger.LogWarning("Not found: {errMsg}",
+                    ex.Message);
+                return NotFound(ex.Message);
             }
-
-            var characterDto = _mapper.Map<CharacterDto>(character);
-            return Ok(characterDto);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving characters");
+                return StatusCode(500, "Internal server error.");
+            }
         }
 
-        [HttpDelete("characters/{id}")]
-        public async Task<IActionResult> DeleteCharacter()
+        [HttpDelete("characters/{cId}")]
+        public async Task<IActionResult> DeleteCharacter(Guid cId)
         {
-            var uId = User.FindFirst("id")?.Value;
-
-            if (uId == null)
+            var userId = User.FindFirst("id")?.Value;
+            if (userId == null)
             {
-                _logger.LogWarning("'sub' in access_token are null");
+                _logger.LogWarning("'id' in access_token are null");
                 return Unauthorized("User ID not found.");
             }
 
-            var userData = await _context.Users
-                .Where(u => u.Id == uId)
-                .Select(u => new { u.UserName, u.Email })
-                .FirstOrDefaultAsync();
-
-            if (userData == null)
+            try
             {
-                _logger.LogDebug("User with Id '{Id}' not found", uId);
-                return NotFound("User not found.");
+                await _characterService.DeleteCharacterAsync(cId, userId);
+                return NoContent();
             }
-
-            var characterToDelete = await _context.Character.FirstOrDefaultAsync(c => c.UserId == uId);
-
-            if (characterToDelete == null)
+            catch (KeyNotFoundException ex)
             {
-                _logger.LogDebug("Character with User Id '{uId}' not found.",
-                    uId);
-                return NotFound($"Character with User Id '{uId}' not found.");
+                _logger.LogWarning("Not found: {errMsg}"
+                    , ex.Message);
+                return NotFound(ex.Message);
             }
-
-            _context.Character.Remove(characterToDelete);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning("Unauthorized: {errMsg}",
+                    ex.Message);
+                return Unauthorized(ex.Message);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex, "Operation failed");
+                return StatusCode(500, ex.Message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving characters");
+                return StatusCode(500, "Internal server error.");
+            }
         }
-
     }
 }

@@ -1,4 +1,4 @@
-﻿namespace DND5E_CE.Server.DTO.App
+﻿namespace DND5E_CE.Server.DTO.App.Sheet3
 {
     public class Sheet3Dto
     {

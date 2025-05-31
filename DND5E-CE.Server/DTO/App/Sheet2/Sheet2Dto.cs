@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace DND5E_CE.Server.DTO.App
+namespace DND5E_CE.Server.DTO.App.Sheet2
 {
     public class Sheet2Dto
     {

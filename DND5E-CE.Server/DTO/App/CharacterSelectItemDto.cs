@@ -1,8 +1,8 @@
 ﻿namespace DND5E_CE.Server.DTO.App
 {
-    public class CharacterListDto
+    public class CharacterSelectItemDto
     {
-        public int Id { get; set; }
+        public Guid Id { get; set; } // Character Id
 
         public string Name { get; set; }
 
