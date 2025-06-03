@@ -4,9 +4,9 @@ name: .NET Core Sprints
 
 on:
   push:
-    branches: [ "sprints" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "sprints" ]
+    branches: [ "main" ]
 
 jobs:
 
