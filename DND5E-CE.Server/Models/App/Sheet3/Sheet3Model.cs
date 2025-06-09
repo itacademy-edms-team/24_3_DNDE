@@ -2,7 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace DND5E_CE.Server.Models.App
+namespace DND5E_CE.Server.Models.App.Sheet3
 {
     public class Sheet3Model
     {
@@ -17,7 +17,7 @@ namespace DND5E_CE.Server.Models.App
 
         // Header fields
         [Required]
-        public string SpellBondAbility { get; set; } = String.Empty;
+        public string SpellBondAbility { get; set; } = "none"; // "none" | "strength" | "dexterity" | "constitution" | "intelligence" | "wisdom" | "charisma";
 
         // Body fields
         [Required]
@@ -47,5 +47,7 @@ namespace DND5E_CE.Server.Models.App
         [Required]
         public int RemainingSpellSlotsLevel9 { get; set; } = 0;
 
+        [Required]
+        public ICollection<SpellModel> Spell { get; set; } = new List<SpellModel>();
     }
 }

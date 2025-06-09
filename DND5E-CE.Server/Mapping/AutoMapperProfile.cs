@@ -5,8 +5,9 @@
     using DND5E_CE.Server.DTO.App.Sheet3;
     using DND5E_CE.Server.Models.App;
     using DND5E_CE.Server.Models.App.Sheet1;
+using DND5E_CE.Server.Models.App.Sheet3;
 
-    namespace DND5E_CE.Server.Mapping
+namespace DND5E_CE.Server.Mapping
     {
         public class AutoMapperProfile : Profile
         {
@@ -43,6 +44,7 @@
                 CreateMap<InventoryGoldModel, InventoryGoldDto>();
                 CreateMap<InventoryItemModel, InventoryItemDto>();
                 CreateMap<ClassResourceModel, ClassResourceDto>();
+                CreateMap<SpellModel, SpellDto>();
 
             // Sheet1CreateDto -> Sheet1Model
             CreateMap<Sheet1CreateDto, Sheet1Model>();

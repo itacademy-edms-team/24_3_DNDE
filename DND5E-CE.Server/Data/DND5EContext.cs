@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using DND5E_CE.Server.Models;
 using DND5E_CE.Server.Models.App;
 using DND5E_CE.Server.Models.App.Sheet1;
+using DND5E_CE.Server.Models.App.Sheet3;
 
 namespace DND5E_CE.Server.Data
 {
@@ -35,6 +36,7 @@ namespace DND5E_CE.Server.Data
         public DbSet<OtherResourceModel> OtherResource { get; set; }
         public DbSet<Sheet2Model> Sheet2 { get; set; }
         public DbSet<Sheet3Model> Sheet3 { get; set; }
+        public DbSet<SpellModel> Spell { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -67,7 +69,7 @@ namespace DND5E_CE.Server.Data
                     .HasForeignKey(rt => rt.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
 
-                action.HasIndex(rt => rt.Token)
+                action.HasIndex(rt => rt.TokenHash)
                     .IsUnique();
             });
 
@@ -225,6 +227,16 @@ namespace DND5E_CE.Server.Data
                     .IsRequired();
             });
 
+            modelBuilder.Entity<Sheet3Model>(action =>
+            {
+                // Spells: one-to-many
+                action.HasMany(s => s.Spell)
+                    .WithOne(sp => sp.Sheet3)
+                    .HasForeignKey(sp => sp.Sheet3Id)
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired();
+            });
+
             modelBuilder.Entity<AbilityModel>(action =>
             {
                 action.ToTable("Abilities", "app");
@@ -303,6 +315,11 @@ namespace DND5E_CE.Server.Data
             modelBuilder.Entity<Sheet3Model>(action =>
             {
                 action.ToTable("Sheet3", "app");
+            });
+
+            modelBuilder.Entity<SpellModel>(action =>
+            {
+                action.ToTable("Spells", "app");
             });
 
             // Configure public schema models here.

@@ -3,6 +3,7 @@ using System;
 using DND5E_CE.Server.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace DND5E_CE.Server.Migrations
 {
     [DbContext(typeof(DND5EContext))]
-    partial class DND5EContextModelSnapshot : ModelSnapshot
+    [Migration("20250602133232_Add Sheet3 Spell")]
+    partial class AddSheet3Spell
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1076,14 +1079,14 @@ namespace DND5E_CE.Server.Migrations
                     b.Property<bool>("IsRevoked")
                         .HasColumnType("boolean");
 
-                    b.Property<DateTime?>("RevokedAt")
-                        .HasColumnType("timestamp with time zone");
+                    b.Property<bool>("IsUsed")
+                        .HasColumnType("boolean");
 
-                    b.Property<string>("Salt")
+                    b.Property<string>("JwtId")
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("TokenHash")
+                    b.Property<string>("Token")
                         .IsRequired()
                         .HasColumnType("text");
 
@@ -1093,7 +1096,7 @@ namespace DND5E_CE.Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TokenHash")
+                    b.HasIndex("Token")
                         .IsUnique();
 
                     b.HasIndex("UserId");

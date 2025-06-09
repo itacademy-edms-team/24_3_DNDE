@@ -1,5 +1,5 @@
-import { AbilityDto, AbilitySaveThrowDto, AttackDto, ClassResourceDto, GlobalDamageModifierDto, InventoryGoldDto, InventoryItemDto, OtherToolDto, SkillDto, ToolDto } from "../types/api";
-import { AbilityType, Attack, AttackDamage, AttackInfo, AttackSavingThrow, Characteristic, ClassResource, GlobalDamageModifier, Inventory, InventoryGold, InventoryItem, OtherTool, OtherToolType, ProficiencyType, ResourceResetType, SaveThrow, Skill, SkillType, Tool } from "../types/state";
+import { AbilityDto, AbilitySaveThrowDto, AttackDto, ClassResourceDto, GlobalDamageModifierDto, InventoryGoldDto, InventoryItemDto, OtherToolDto, SkillDto, SpellDto, ToolDto } from "../types/api";
+import { AbilityType, Attack, AttackDamage, AttackInfo, AttackSavingThrow, CantripProgressionType, Characteristic, ClassResource, GlobalDamageModifier, Inventory, InventoryGold, InventoryItem, OtherTool, OtherToolType, ProficiencyType, ResourceResetType, SaveThrow, Sheet3State, Skill, SkillType, Spell, SpellAbilityType, SpellAttack, SpellAttackType, SpellComponents, SpellDamage, SpellDescriptionInAttackIncludeVariety, SpellHigherLevelCast, SpellHighLevelCastDiceType, SpellOutputType, SpellSavingThrow, SpellSchool, Tool } from "../types/state";
 
 export function mapAbilityDtoToAbilities(dto: AbilityDto): Record<AbilityType, Characteristic>
 {
@@ -170,4 +170,112 @@ export function mapClassResourceDtoToClassResource(cr: ClassResourceDto): ClassR
 export function mapOtherResourceDtosToClassResources(ors: ClassResourceDto[]): ClassResource[]
 {
   return ors.map(cr => mapClassResourceDtoToClassResource(cr));
+}
+
+export function mapSpellDtoToSpell(dto: SpellDto): Spell
+{
+  return {
+    id: dto.id,
+    name: dto.name,
+    school: dto.school as SpellSchool,
+    isRitual: dto.isRitual,
+    castingTime: dto.castingTime,
+    range: dto.range,
+    target: dto.target,
+    components: {
+      v: { isIncluded: dto.componentsV },
+      s: { isIncluded: dto.componentsS },
+      m: { isIncluded: dto.componentsM }
+    } as SpellComponents,
+    componentsDescription: dto.componentsDescription,
+    isConcentration: dto.isConcentration,
+    duration: dto.duration,
+    spellCastingAbility: dto.spellCastingAbility as SpellAbilityType,
+    innate: dto.innate,
+    output: dto.output as SpellOutputType,
+    attack: {
+      attackType: dto.attackType as SpellAttackType,
+      damage1: { dice: dto.attackDamage1Dice, type: dto.attackDamage1Type } as SpellDamage,
+      damage2: { dice: dto.attackDamage2Dice, type: dto.attackDamage2Type } as SpellDamage
+    } as SpellAttack,
+    healingDice: dto.healingDice,
+    isAbilityModIncluded: dto.isAbilityModIncluded,
+    savingThrow: {
+      ability: dto.savingThrowAbility as SpellAbilityType,
+      effect: dto.savingThrowEffect
+    } as SpellSavingThrow,
+    higherLevelCast: {
+      diceAmount: dto.higherLevelCastDiceAmount,
+      diceType: dto.higherLevelCastDiceType as SpellHighLevelCastDiceType,
+      bonus: dto.higherLevelCastBonus
+    } as SpellHigherLevelCast,
+    includeSpellDescriptionInAttack: dto.includeSpellDescriptionInAttack as SpellDescriptionInAttackIncludeVariety,
+    description: dto.description,
+    atHigherLevels: dto.atHigherLevels,
+    class: dto.class,
+    type: dto.type,
+    cantripProgression: dto.cantripProgression as CantripProgressionType,
+    isPrepared: dto.isPrepared
+  };
+}
+
+export function mapSpellDtosToSpells(dtos: SpellDto[]): Spell[]
+{
+  return dtos.map(dto => mapSpellDtoToSpell(dto));
+}
+
+export function mapSpellDtosToCategorizedSpells(dtos: SpellDto[]): Sheet3State['spells']
+{
+  const categorizedSpells: Sheet3State['spells'] = {
+    cantrips: [],
+    level1: [],
+    level2: [],
+    level3: [],
+    level4: [],
+    level5: [],
+    level6: [],
+    level7: [],
+    level8: [],
+    level9: []
+  };
+
+  dtos.forEach(dto =>
+  {
+    const spell = mapSpellDtoToSpell(dto);
+    switch (dto.level)
+    {
+      case 0:
+        categorizedSpells.cantrips.push(spell);
+        break;
+      case 1:
+        categorizedSpells.level1.push(spell);
+        break;
+      case 2:
+        categorizedSpells.level2.push(spell);
+        break;
+      case 3:
+        categorizedSpells.level3.push(spell);
+        break;
+      case 4:
+        categorizedSpells.level4.push(spell);
+        break;
+      case 5:
+        categorizedSpells.level5.push(spell);
+        break;
+      case 6:
+        categorizedSpells.level6.push(spell);
+        break;
+      case 7:
+        categorizedSpells.level7.push(spell);
+        break;
+      case 8:
+        categorizedSpells.level8.push(spell);
+        break;
+      case 9:
+        categorizedSpells.level9.push(spell);
+        break;
+    }
+  });
+
+  return categorizedSpells;
 }

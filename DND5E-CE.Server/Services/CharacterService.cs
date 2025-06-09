@@ -3,6 +3,7 @@ using DND5E_CE.Server.Data;
 using DND5E_CE.Server.DTO.App;
 using DND5E_CE.Server.Models.App;
 using DND5E_CE.Server.Models.App.Sheet1;
+using DND5E_CE.Server.Models.App.Sheet3;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
@@ -173,6 +174,7 @@ namespace DND5E_CE.Server.Services
                     .ThenInclude(s => s.OtherResource)
                 .Include(c => c.Sheet2)
                 .Include(c => c.Sheet3)
+                    .ThenInclude(c => c.Spell)
                 .FirstOrDefaultAsync(c => c.Id.Equals(characterId));
 
             if (character == null)
@@ -218,6 +220,7 @@ namespace DND5E_CE.Server.Services
                     .ThenInclude(s => s.OtherResource)
                 .Include(c => c.Sheet2)
                 .Include(c => c.Sheet3)
+                    .ThenInclude(c => c.Spell)
                 .ToListAsync();
 
             if (!characters.Any())

@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace DND5E_CE.Server.Models
+namespace DND5E_CE.Server.Models.Auth
 {
     public class RegisterModel
     {

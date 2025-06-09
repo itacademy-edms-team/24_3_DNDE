@@ -1,19 +1,26 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using System.ComponentModel.DataAnnotations;
 
 namespace DND5E_CE.Server.Models
 {
     public class RefreshTokenModel
     {
+        [Key]
         public int Id { get; set; }
-        public string Token { get; set; } = string.Empty;
-        public string JwtId { get; set; } = string.Empty;
-        public bool IsUsed { get; set; }
-        public bool IsRevoked { get; set; }
+        
+        public string TokenHash { get; set; } = string.Empty; // Store Hash except raw token
+        public string Salt { get; set; } = string.Empty;
+
+        public bool IsRevoked { get; set; } = false;
+
+        public DateTime? RevokedAt { get; set; }
+        
         public DateTime AddedDate { get; set; }
+        
         public DateTime ExpiryDate { get; set; }
+        
         public string UserId { get; set; } = string.Empty;
 
-        // Navigational property
         public IdentityUser User { get; init; } = null!;
     }
 }

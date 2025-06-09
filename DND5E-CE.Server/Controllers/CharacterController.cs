@@ -24,7 +24,6 @@ namespace DND5E_CE.Server.Controllers
         private readonly DND5EContext _context;
         private readonly IMapper _mapper;
         private readonly UserManager<IdentityUser> _userManager;
-        private readonly ICsrfTokenService _csrfTokenService;
         private readonly ICharacterService _characterService;
         private readonly IConfiguration _configuration;
         private readonly ILogger<CharacterController> _logger;
@@ -34,7 +33,6 @@ namespace DND5E_CE.Server.Controllers
             IMapper mapper,
             UserManager<IdentityUser> userManager,
             SignInManager<IdentityUser> signInManager,
-            ICsrfTokenService csrfTokenService,
             ICharacterService characterService,
             IConfiguration configuration,
             ILogger<CharacterController> logger)
@@ -42,7 +40,6 @@ namespace DND5E_CE.Server.Controllers
             _context = context;
             _mapper = mapper;
             _userManager = userManager;
-            _csrfTokenService = csrfTokenService;
             _characterService = characterService;
             _configuration = configuration;
             _logger = logger;

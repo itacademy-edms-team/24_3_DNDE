@@ -35,7 +35,8 @@ namespace DND5E_CE.Server
             // Identity configuration
             builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
             {
-                options.User.RequireUniqueEmail = true;
+                //options.SignIn.RequireConfirmedEmail = true; // Email confirmation required
+                options.User.RequireUniqueEmail = true; // Prevent multiple UserName on same Email
                 options.Password.RequireDigit = true;
                 options.Password.RequireLowercase = true;
                 options.Password.RequireUppercase = true;
@@ -74,7 +75,6 @@ namespace DND5E_CE.Server
                 {
                     OnMessageReceived = context =>
                     {
-                        // 
                         var accessToken = context.Request.Cookies["access_token"];
                         if (!string.IsNullOrEmpty(accessToken))
                         {
@@ -139,11 +139,13 @@ namespace DND5E_CE.Server
             });
 
             // Add services to the container.
+            builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+            builder.Services.AddSingleton<IEmailSender, EmailSender>();
+
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddOpenApi();
             builder.Services.AddScoped<ITokenService, TokenService>();
-            builder.Services.AddScoped<ICsrfTokenService, CsrfTokenService>();
             builder.Services.AddScoped<ICharacterService,  CharacterService>();
             builder.Services.AddHostedService<TokenCleanupService>();
             builder.Services.AddLogging(logging =>

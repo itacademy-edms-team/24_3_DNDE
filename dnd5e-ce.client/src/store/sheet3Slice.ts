@@ -2,6 +2,7 @@
 import { PayloadAction, createSlice } from '@reduxjs/toolkit';
 import { Spell, CantripProgressionType, Sheet3State, SpellCategoryKey, SpellAbilityType, SpellAttackType, SpellDescriptionInAttackIncludeVariety, SpellHighLevelCastDiceType, SpellOutputType, SpellSchool, SpellLevel, RemainingSpellSlots } from '../types/state';
 import { Sheet3Dto } from '../types/api';
+import { mapSpellDtosToCategorizedSpells } from '../utils/map';
 
 const initialState: Sheet3State = {
   spellBondAbility: "none",
@@ -49,6 +50,19 @@ const sheet3Slice = createSlice({
       state.remainingSpellSlots.level7 = newSheet.remainingSpellSlotsLevel7;
       state.remainingSpellSlots.level8 = newSheet.remainingSpellSlotsLevel8;
       state.remainingSpellSlots.level9 = newSheet.remainingSpellSlotsLevel9;
+
+      // spells
+      const categorizedSpells = mapSpellDtosToCategorizedSpells(newSheet.spell);
+      state.spells.cantrips = categorizedSpells.cantrips;
+      state.spells.level1 = categorizedSpells.level1;
+      state.spells.level2 = categorizedSpells.level2;
+      state.spells.level3 = categorizedSpells.level3;
+      state.spells.level4 = categorizedSpells.level4;
+      state.spells.level5 = categorizedSpells.level5;
+      state.spells.level6 = categorizedSpells.level6;
+      state.spells.level7 = categorizedSpells.level7;
+      state.spells.level8 = categorizedSpells.level8;
+      state.spells.level9 = categorizedSpells.level9;
     },
     updateCharacterSpellCastingAbility(state, action: PayloadAction<SpellAbilityType>): void {
       state.spellBondAbility = action.payload;

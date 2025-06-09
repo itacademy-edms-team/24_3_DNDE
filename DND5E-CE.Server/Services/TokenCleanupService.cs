@@ -35,10 +35,6 @@ namespace DND5E_CE.Server.Services
             {
                 using var scope = _serviceProvider.CreateScope();
                 var dbContext = scope.ServiceProvider.GetRequiredService<DND5EContext>();
-                var csrfTokenService = scope.ServiceProvider.GetRequiredService<ICsrfTokenService>();
-
-                // Clean expired CSRF tokens
-                await csrfTokenService.CleanExpiredTokensAsync();
 
                 // Clean expired refresh tokens
                 var expiredRefreshTokens = dbContext.RefreshTokens
@@ -48,16 +44,6 @@ namespace DND5E_CE.Server.Services
                 {
                     dbContext.RefreshTokens.RemoveRange(expiredRefreshTokens);
                     _logger.LogInformation("Removed {Count} expired refresh tokens", expiredRefreshTokens.Count);
-                }
-
-                // Clean used refresh tokens older than 7 days
-                var oldUsedTokens = dbContext.RefreshTokens
-                    .Where(rt => rt.IsUsed && rt.AddedDate < DateTime.UtcNow.AddDays(-7))
-                    .ToList();
-                if (oldUsedTokens.Any())
-                {
-                dbContext.RefreshTokens.RemoveRange(oldUsedTokens);
-                    _logger.LogInformation("Removed {Count} old used refresh tokens", oldUsedTokens.Count);
                 }
 
                 // Clean revoked refresh tokens older than 7 days

@@ -1,6 +1,6 @@
 ﻿import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router';
-import { Navbar, Nav, Container, Button } from 'react-bootstrap';
+import { Navbar, Nav, Container, Button, NavDropdown } from 'react-bootstrap';
 
 import { useAppSelector, useAppDispatch } from './hooks/index';
 import { selectIsUserAuthenticated } from './store/selectors/authSelectors';
@@ -16,6 +16,7 @@ import LogoutButton from './components/auth/LogoutButton';
 import axios from 'axios';
 import Home from './components/Home';
 import { ToastContainer } from 'react-toastify';
+import PasswordChange from './components/auth/PasswordChange';
 
 
 const App: React.FC = () => {
@@ -44,7 +45,12 @@ const App: React.FC = () => {
             </Nav>
             {isSignedIn && (
               <Nav className="ms-auto">
-                <LogoutButton />
+                <NavDropdown title="Профиль" id="profile-dropdown" align="end">
+                  <NavDropdown.Item as={NavLink} to="/change-password">
+                    Смена пароля
+                  </NavDropdown.Item>
+                  <NavDropdown.Item as={LogoutButton} />
+                </NavDropdown>
               </Nav>
             )}
           </Navbar.Collapse>
@@ -54,6 +60,7 @@ const App: React.FC = () => {
         <Route path="/" element={<Home />} />
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/change-password" element={<AuthRequired> <PasswordChange /> </AuthRequired>} />
         <Route path="/sheet-selection" element={<AuthRequired> <SheetSelect /> </AuthRequired>} />
         <Route path="/dashboard" element={<AuthRequired> <Dashboard /> </AuthRequired>} />
       </Routes>

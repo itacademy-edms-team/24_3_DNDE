@@ -3,6 +3,7 @@ using System;
 using DND5E_CE.Server.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace DND5E_CE.Server.Migrations
 {
     [DbContext(typeof(DND5EContext))]
-    partial class DND5EContextModelSnapshot : ModelSnapshot
+    [Migration("20250608092518_Fix RefreshTokenModel")]
+    partial class FixRefreshTokenModel
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1075,13 +1078,6 @@ namespace DND5E_CE.Server.Migrations
 
                     b.Property<bool>("IsRevoked")
                         .HasColumnType("boolean");
-
-                    b.Property<DateTime?>("RevokedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Salt")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.Property<string>("TokenHash")
                         .IsRequired()

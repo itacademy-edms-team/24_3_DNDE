@@ -3,17 +3,23 @@ using DND5E_CE.Server.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System;
+using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
+using System.Threading.Tasks;
+using Isopoh.Cryptography.Argon2; // Добавляем библиотеку Argon2
 
 namespace DND5E_CE.Server.Services
 {
     public interface ITokenService
     {
         Task<TokenResponse> GenerateTokensAsync(IdentityUser user);
-        Task<TokenResponse> VerifyAndGenerateTokenAsync(TokenRequest tokenRequest);
-        Task<bool> RevokeTokenAsync(string token);
+        Task<TokenResponse> RefreshTokensAsync(string refreshToken);
+        Task<bool> RevokeTokenAsync(string refreshToken, string userId);
+        Task<bool> RevokeAllTokensAsync(string userId);
     }
 
     public class TokenService : ITokenService
@@ -21,20 +27,17 @@ namespace DND5E_CE.Server.Services
         private readonly DND5EContext _context;
         private readonly UserManager<IdentityUser> _userManager;
         private readonly IConfiguration _configuration;
-        private readonly TokenValidationParameters _tokenValidationParameters;
         private readonly ILogger<TokenService> _logger;
 
         public TokenService(
             DND5EContext context,
             UserManager<IdentityUser> userManager,
             IConfiguration configuration,
-            TokenValidationParameters tokenValidationParameters,
             ILogger<TokenService> logger)
         {
             _context = context;
             _userManager = userManager;
             _configuration = configuration;
-            _tokenValidationParameters = tokenValidationParameters;
             _logger = logger;
         }
 
@@ -50,11 +53,31 @@ namespace DND5E_CE.Server.Services
             var jwtToken = await GenerateJwtToken(user);
 
             // Generate refresh token
-            var refreshToken = GenerateRefreshToken(jwtToken);
-            refreshToken.UserId = user.Id;
+            var refreshToken = GenerateRefreshToken();
+
+            var salt = generateSalt();
+            var argon2Config = new Argon2Config
+            {
+                Password = Encoding.UTF8.GetBytes(refreshToken),
+                Salt = salt,
+                TimeCost = 3,
+                MemoryCost = 65536,
+                Threads = 4,
+                Type = Argon2Type.HybridAddressing
+            };
+            var refreshTokenHash = Argon2.Hash(argon2Config);
 
             // Save refresh token
-            await _context.RefreshTokens.AddAsync(refreshToken);
+            await _context.RefreshTokens.AddAsync(new RefreshTokenModel
+            {
+                UserId = user.Id,
+                TokenHash = refreshTokenHash,
+                Salt = Convert.ToBase64String(salt),
+                AddedDate = DateTime.UtcNow,
+                ExpiryDate = DateTime.UtcNow.AddDays(Convert.ToDouble(_configuration["Jwt:RefreshTokenExpiryInDays"])),
+                IsRevoked = false,
+                RevokedAt = null
+            });
             await _context.SaveChangesAsync();
 
             _logger.LogInformation("Tokens generated for user: {UserId}", user.Id);
@@ -62,137 +85,180 @@ namespace DND5E_CE.Server.Services
             return new TokenResponse
             {
                 AccessToken = jwtToken,
-                RefreshToken = refreshToken.Token,
+                RefreshToken = refreshToken,
                 Success = true
             };
         }
 
-        public async Task<TokenResponse> VerifyAndGenerateTokenAsync(TokenRequest tokenRequest)
-        {
-            if (tokenRequest == null || string.IsNullOrEmpty(tokenRequest.AccessToken) || string.IsNullOrEmpty(tokenRequest.RefreshToken))
-            {
-                _logger.LogWarning("Invalid token request: access or refresh token is null or empty");
-                throw new ArgumentException("Access token and refresh token are required");
-            }
-
-            var jwtTokenHandler = new JwtSecurityTokenHandler();
-
-            try
-            {
-                // Validate JWT
-                var tokenInVerification = jwtTokenHandler.ValidateToken(
-                    tokenRequest.AccessToken,
-                    _tokenValidationParameters,
-                    out var validatedToken);
-
-                // Check signing algorithm
-                if (!(validatedToken is JwtSecurityToken jwtSecurityToken &&
-                      jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase)))
-                {
-                    _logger.LogWarning("Invalid JWT signing algorithm for token: {Token}", tokenRequest.AccessToken);
-                    throw new SecurityTokenException("Invalid token signing algorithm");
-                }
-
-                // Check token in database
-                var storedRefreshToken = await _context.RefreshTokens
-                    .FirstOrDefaultAsync(rt => rt.Token == tokenRequest.RefreshToken)
-                    ?? throw new SecurityTokenException("Refresh token does not exist");
-
-                // Check if token is used
-                if (storedRefreshToken.IsUsed)
-                {
-                    _logger.LogWarning("Refresh token already used: {Token}", storedRefreshToken.Token);
-                    throw new SecurityTokenException("Refresh token already used");
-                }
-
-                // Check if token is revoked
-                if (storedRefreshToken.IsRevoked)
-                {
-                    _logger.LogWarning("Refresh token revoked: {Token}", storedRefreshToken.Token);
-                    throw new SecurityTokenException("Refresh token has been revoked");
-                }
-
-                // Check JWT ID
-                var jti = tokenInVerification.Claims.FirstOrDefault(x => x.Type == JwtRegisteredClaimNames.Jti)?.Value
-                    ?? throw new SecurityTokenException("JWT ID claim missing");
-                if (storedRefreshToken.JwtId != jti)
-                {
-                    _logger.LogWarning("Refresh token does not match JWT ID for token: {Token}", storedRefreshToken.Token);
-                    throw new SecurityTokenException("Refresh token does not match JWT token");
-                }
-
-                // Check refresh token expiry
-                if (storedRefreshToken.ExpiryDate < DateTime.UtcNow)
-                {
-                    _logger.LogWarning("Refresh token expired: {Token}", storedRefreshToken.Token);
-                    throw new SecurityTokenException("Refresh token has expired");
-                }
-
-                // Mark token as used
-                storedRefreshToken.IsUsed = true;
-                _context.RefreshTokens.Update(storedRefreshToken);
-                await _context.SaveChangesAsync();
-
-                // Get user
-                var userId = tokenInVerification.Claims.FirstOrDefault(x => x.Type == "id")?.Value
-                    ?? throw new SecurityTokenException("User ID claim missing");
-                var user = await _userManager.FindByIdAsync(userId)
-                    ?? throw new SecurityTokenException("User not found");
-
-                _logger.LogInformation("Refresh token verified, generating new tokens for user: {UserId}", userId);
-
-                // Generate new tokens
-                return await GenerateTokensAsync(user);
-            }
-            catch (SecurityTokenException ex)
-            {
-                _logger.LogWarning("Token verification failed: {Message}", ex.Message);
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error during token verification");
-                throw new InvalidOperationException("Error verifying token", ex);
-            }
-        }
-
-        public async Task<bool> RevokeTokenAsync(string refreshToken)
+        public async Task<TokenResponse> RefreshTokensAsync(string refreshToken)
         {
             if (string.IsNullOrEmpty(refreshToken))
             {
-                _logger.LogWarning("Attempt to revoke null or empty refresh token");
+                _logger.LogWarning("Refresh token is null or empty");
                 throw new ArgumentException("Refresh token is required");
             }
 
-            var token = await _context.RefreshTokens
-                .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
+            var storedRefreshTokens = await _context.RefreshTokens
+                .Where(rt => !rt.IsRevoked && rt.ExpiryDate >= DateTime.UtcNow)
+                .ToListAsync();
 
-            if (token == null)
+            RefreshTokenModel storedRefreshToken = null;
+            foreach (var token in storedRefreshTokens)
             {
-                _logger.LogWarning("Refresh token not found: {Token}", refreshToken);
-                return false;
+                var salt = Convert.FromBase64String(token.Salt);
+                var argon2Config = new Argon2Config
+                {
+                    Password = Encoding.UTF8.GetBytes(refreshToken),
+                    Salt = salt,
+                    TimeCost = 3,
+                    MemoryCost = 65536,
+                    Threads = 4,
+                    Type = Argon2Type.HybridAddressing
+                };
+                if (Argon2.Verify(token.TokenHash, argon2Config))
+                {
+                    storedRefreshToken = token;
+                    break;
+                }
             }
 
-            // If token already used or revoked, return false
-            if (token.IsUsed || token.IsRevoked)
+            if (storedRefreshToken == null)
             {
-                _logger.LogWarning("Refresh token already used or revoked: {Token}", refreshToken);
-                return false;
+                _logger.LogWarning("Refresh token not found in database");
+                throw new SecurityTokenException("Refresh token does not exist");
             }
 
-            // else, revoke token
-            token.IsRevoked = true;
-            _context.RefreshTokens.Update(token);
+            if (storedRefreshToken.IsRevoked)
+            {
+                _logger.LogCritical("Attempt to use revoked refresh token for user: {UserId}. Revoking all tokens.", storedRefreshToken.UserId);
+                await RevokeAllTokensAsync(storedRefreshToken.UserId);
+                throw new SecurityTokenException("Refresh token has been revoked. All sessions terminated for security reasons.");
+            }
+
+            if (storedRefreshToken.ExpiryDate < DateTime.UtcNow)
+            {
+                _logger.LogWarning("Refresh token expired for user: {UserId}", storedRefreshToken.UserId);
+                throw new SecurityTokenException("Refresh token has expired");
+            }
+
+            var user = await _userManager.FindByIdAsync(storedRefreshToken.UserId);
+            if (user == null)
+            {
+                _logger.LogWarning("User not found for refresh token: {UserId}", storedRefreshToken.UserId);
+                throw new SecurityTokenException("User not found");
+            }
+
+            storedRefreshToken.IsRevoked = true;
+            storedRefreshToken.RevokedAt = DateTime.UtcNow;
+            _context.RefreshTokens.Update(storedRefreshToken);
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Refresh token revoked: {Token}", refreshToken);
+            var newTokens = await GenerateTokensAsync(user);
+
+            _logger.LogInformation("Refresh token rotated for user: {UserId}", user.Id);
+            return newTokens;
+        }
+
+        public async Task<bool> RevokeTokenAsync(string refreshToken, string userId)
+        {
+            if (string.IsNullOrWhiteSpace(refreshToken))
+            {
+                _logger.LogWarning("Attempt to revoke null or empty refresh token");
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                _logger.LogWarning("User ID is null or empty");
+                return false;
+            }
+
+            var storedRefreshTokens = await _context.RefreshTokens
+                .Where(rt => rt.UserId == userId && !rt.IsRevoked && rt.ExpiryDate >= DateTime.UtcNow)
+                .ToListAsync();
+
+            RefreshTokenModel storedRefreshToken = null;
+            foreach (var token in storedRefreshTokens)
+            {
+                var salt = Convert.FromBase64String(token.Salt);
+                var argon2Config = new Argon2Config
+                {
+                    Password = Encoding.UTF8.GetBytes(refreshToken),
+                    Salt = salt,
+                    TimeCost = 3,
+                    MemoryCost = 65536,
+                    Threads = 4,
+                    Type = Argon2Type.HybridAddressing
+                };
+                if (Argon2.Verify(token.TokenHash, argon2Config))
+                {
+                    storedRefreshToken = token;
+                    break;
+                }
+            }
+
+            if (storedRefreshToken == null)
+            {
+                _logger.LogWarning("Refresh token not found for user: {UserId}", userId);
+                return false;
+            }
+
+            if (storedRefreshToken.IsRevoked)
+            {
+                _logger.LogWarning("Refresh token already revoked for user: {UserId}", storedRefreshToken.UserId);
+                return false;
+            }
+
+            storedRefreshToken.IsRevoked = true;
+            storedRefreshToken.RevokedAt = DateTime.UtcNow;
+            _context.RefreshTokens.Update(storedRefreshToken);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Refresh token revoked for user: {UserId}", storedRefreshToken.UserId);
             return true;
         }
-        
+
+        public async Task<bool> RevokeAllTokensAsync(string userId)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                _logger.LogWarning("Attempt to revoke tokens for null or empty userId");
+                return false;
+            }
+
+            var tokens = await _context.RefreshTokens
+                .Where(rt => rt.UserId == userId && !rt.IsRevoked)
+                .ToListAsync();
+
+            if (!tokens.Any())
+            {
+                _logger.LogWarning("No active refresh tokens found for user: {UserId}", userId);
+                return false;
+            }
+
+            foreach (var token in tokens)
+            {
+                token.IsRevoked = true;
+                token.RevokedAt = DateTime.UtcNow;
+                _context.RefreshTokens.Update(token);
+            }
+
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("All refresh tokens revoked for user: {UserId}", userId);
+            return true;
+        }
+
         private async Task<string> GenerateJwtToken(IdentityUser user)
         {
+            var configKey = _configuration["Jwt:Key"];
+            if (string.IsNullOrEmpty(configKey))
+            {
+                _logger.LogError("JWT Key configuration is missing");
+                throw new InvalidOperationException("JWT Key configuration is required");
+            }
+
             var jwtTokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]);
+            var key = Encoding.UTF8.GetBytes(configKey);
 
             // Get user roles
             var roles = await _userManager.GetRolesAsync(user);
@@ -203,11 +269,9 @@ namespace DND5E_CE.Server.Services
                 new Claim(JwtRegisteredClaimNames.Sub, user.UserName),
                 new Claim(JwtRegisteredClaimNames.Email, user.Email),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim(JwtRegisteredClaimNames.Email, user.Email),
                 new Claim("id", user.Id)
             };
 
-            // Add roles to claims
             foreach (var role in roles)
             {
                 claims.Add(new Claim(ClaimTypes.Role, role));
@@ -231,44 +295,28 @@ namespace DND5E_CE.Server.Services
                 signingCredentials: new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256)
             );
 
-            _logger.LogDebug("JWT token generated with NotBefore: {NotBefore}, Expires: {Expires}",
-                now, expires);
-
+            _logger.LogDebug("JWT token generated with NotBefore: {NotBefore}, Expires: {Expires}", now, expires);
             return jwtTokenHandler.WriteToken(token);
         }
 
-        private RefreshTokenModel GenerateRefreshToken(string jwtToken)
+        private string GenerateRefreshToken()
         {
-            var jwtTokenHandler = new JwtSecurityTokenHandler();
-            var parsedToken = jwtTokenHandler.ReadJwtToken(jwtToken);
-            var jti = parsedToken.Claims.FirstOrDefault(x => x.Type == JwtRegisteredClaimNames.Jti)?.Value
-                ?? throw new InvalidOperationException("JWT ID claim missing in token");
-
-            return new RefreshTokenModel
+            var bytes = new byte[32];
+            using (var rng = RandomNumberGenerator.Create())
             {
-                Token = RandomStringGenerator(35) + Guid.NewGuid().ToString(),
-                JwtId = jti,
-                IsUsed = false,
-                IsRevoked = false,
-                AddedDate = DateTime.UtcNow,
-                ExpiryDate = DateTime.UtcNow.AddDays(Convert.ToDouble(_configuration["Jwt:RefreshTokenExpiryInDays"]))
-            };
+                rng.GetBytes(bytes);
+            }
+            return Convert.ToBase64String(bytes);
         }
 
-        private DateTime UnixTimeStampToDateTime(long unixTimeStamp)
+        private byte[] generateSalt()
         {
-            return DateTime.UnixEpoch.AddSeconds(unixTimeStamp);
-        }
-
-        private string RandomStringGenerator(int length)
-        {
-            var random = new Random();
-            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-            return string.Create(length, Random.Shared, (span, random) =>
+            var bytes = new byte[16];
+            using (var rng = RandomNumberGenerator.Create())
             {
-                for (int i = 0; i < span.Length; i++)
-                    span[i] = chars[random.Next(chars.Length)];
-            });
+                rng.GetBytes(bytes);
+            }
+            return bytes;
         }
     }
 }

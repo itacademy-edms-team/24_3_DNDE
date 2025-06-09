@@ -8,5 +8,6 @@ namespace DND5E_CE.Server.Models
         public string AccessToken { get; set; }
         [Required]
         public string RefreshToken { get; set; }
+
     }
 }
