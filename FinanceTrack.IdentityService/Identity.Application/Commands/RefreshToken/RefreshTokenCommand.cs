@@ -7,7 +7,7 @@ using Identity.Application.Ports.Repositories;
 using Identity.Application.Ports.Services;
 using Microsoft.Extensions.Logging;
 
-namespace Identity.Application.UseCases.RefreshToken
+namespace Identity.Application.Commands.RefreshToken
 {
     public class RefreshTokenCommand(
         ILogger<RefreshTokenCommand> logger,

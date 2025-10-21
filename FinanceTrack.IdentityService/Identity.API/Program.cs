@@ -1,11 +1,11 @@
 ﻿using System.Text;
-using Idenitity.Application.UseCases.Login;
-using Idenitity.Application.UseCases.SignOut;
 using Idenitity.Domain;
 using Idenitity.Infrastructure.Services.Jwt;
+using Identity.Application.Commands.CreateUser;
+using Identity.Application.Commands.Login;
+using Identity.Application.Commands.RefreshToken;
+using Identity.Application.Commands.SignOut;
 using Identity.Application.Ports.Repositories;
-using Identity.Application.UseCases.CreateUser;
-using Identity.Application.UseCases.RefreshToken;
 using Identity.Domain;
 using Identity.Infrastucture.Data;
 using Identity.Infrastucture.Repositories.PostgreSQL;
@@ -19,23 +19,23 @@ using Microsoft.OpenApi.Models;
 var builder = WebApplication.CreateBuilder(args);
 
 // Configure services
-builder.Services.Configure<PostgreSqlSettings>(
+builder.Services.Configure<PostgreSqlOptions>(
     builder.Configuration.GetSection("PostgreSqlSettings")
 );
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
-builder.Services.Configure<RedisSettings>(builder.Configuration.GetSection("RedisSettings"));
+builder.Services.Configure<RedisOptions>(builder.Configuration.GetSection("RedisSettings"));
 
 // PostgreSQL
 var postgreSqlSettings = builder
     .Configuration.GetSection("PostgreSqlSettings")
-    .Get<PostgreSqlSettings>();
+    .Get<PostgreSqlOptions>();
 builder.Services.AddDbContext<AppIdentityContext>(options =>
     options.UseNpgsql(postgreSqlSettings.ConnectionString)
 );
 builder.Services.AddSingleton<IIdentityRepository, IdentityRepository>();
 
 // Redis
-var redisSettings = builder.Configuration.GetSection("RedisSettings").Get<RedisSettings>();
+var redisSettings = builder.Configuration.GetSection("RedisSettings").Get<RedisOptions>();
 
 // Add Identity services
 builder

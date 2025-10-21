@@ -1,10 +1,10 @@
 ﻿using System.Security.Cryptography.X509Certificates;
-using Identity.Application.UseCases.CreateUser;
-using Identity.Application.UseCases.CreateUser.Request;
-using Identity.Application.UseCases.CreateUser.Response;
-using Identity.Application.UseCases.Login;
-using Identity.Application.UseCases.Login.Request;
-using Identity.Application.UseCases.Login.Response;
+using Identity.Application.Commands.CreateUser;
+using Identity.Application.Commands.CreateUser.Request;
+using Identity.Application.Commands.CreateUser.Response;
+using Identity.Application.Commands.Login;
+using Identity.Application.Commands.Login.Request;
+using Identity.Application.Commands.Login.Response;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
