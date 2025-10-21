@@ -1,11 +1,10 @@
 ﻿using System.Text;
 using Idenitity.Domain;
 using Idenitity.Infrastructure.Services.Jwt;
-using Identity.Application.Commands.CreateUser;
-using Identity.Application.Commands.Login;
-using Identity.Application.Commands.RefreshToken;
-using Identity.Application.Commands.SignOut;
+using Identity.Application.Commands.SignInUser;
+using Identity.Application.Commands.SignUpUser;
 using Identity.Application.Ports.Repositories;
+using Identity.Application.Ports.Services;
 using Identity.Domain;
 using Identity.Infrastucture.Data;
 using Identity.Infrastucture.Repositories.PostgreSQL;
@@ -20,28 +19,27 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Configure services
 builder.Services.Configure<PostgreSqlOptions>(
-    builder.Configuration.GetSection("PostgreSqlSettings")
+    builder.Configuration.GetSection("PostgreSqlOptions")
 );
-builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
-builder.Services.Configure<RedisOptions>(builder.Configuration.GetSection("RedisSettings"));
+builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("JwtOptions"));
+builder.Services.Configure<RedisOptions>(builder.Configuration.GetSection("RedisOptions"));
 
 // PostgreSQL
 var postgreSqlSettings = builder
-    .Configuration.GetSection("PostgreSqlSettings")
+    .Configuration.GetSection("PostgreSqlOptions")
     .Get<PostgreSqlOptions>();
 builder.Services.AddDbContext<AppIdentityContext>(options =>
     options.UseNpgsql(postgreSqlSettings.ConnectionString)
 );
-builder.Services.AddSingleton<IIdentityRepository, IdentityRepository>();
-
-// Redis
-var redisSettings = builder.Configuration.GetSection("RedisSettings").Get<RedisOptions>();
 
 // Add Identity services
 builder
     .Services.AddIdentity<User, Role>()
     .AddEntityFrameworkStores<AppIdentityContext>()
     .AddDefaultTokenProviders();
+
+// Repositories
+builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 
 // Authentication
 builder
@@ -52,18 +50,27 @@ builder
     })
     .AddJwtBearer(options =>
     {
-        var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>();
+        var jwtSettings = builder.Configuration.GetSection("JwtOptions").Get<JwtOptions>();
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = jwtSettings.AccessTokenSettings.Issuer,
-            ValidAudience = jwtSettings.AccessTokenSettings.Audience,
+            ValidIssuer = jwtSettings.AccessTokenOptions.Issuer,
+            ValidAudience = jwtSettings.AccessTokenOptions.Audience,
             IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(jwtSettings.AccessTokenSettings.SigningKey)
+                Encoding.UTF8.GetBytes(jwtSettings.AccessTokenOptions.SigningKey)
             ),
+        };
+        // Read access_token from HttpOnly cookie
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                context.Token = context.Request.Cookies["access_token"];
+                return Task.CompletedTask;
+            },
         };
     })
     .AddCookie(options =>
@@ -73,11 +80,18 @@ builder
         options.Cookie.SameSite = SameSiteMode.Lax;
     });
 
-// Use-Cases
-builder.Services.AddSingleton<LoginCommand>();
-builder.Services.AddSingleton<RefreshTokenCommand>();
-builder.Services.AddSingleton<SignOutCommand>();
-builder.Services.AddSingleton<CreateUserCommand>();
+// Roles
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("SignInRequired", policy => policy.RequireRole("User"));
+});
+
+// JwtService
+builder.Services.AddScoped<IAuthTokenService, JwtService>();
+
+// Commands
+builder.Services.AddScoped<SignUpUserCommand>();
+builder.Services.AddScoped<SignInUserCommand>();
 
 // Controllers
 builder.Services.AddControllers();
@@ -87,6 +101,8 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Identity.API", Version = "v1" });
 });
+
+builder.Services.AddLogging();
 
 var app = builder.Build();
 
@@ -103,4 +119,4 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-app.Run();
+await app.RunAsync();

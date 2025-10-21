@@ -6,7 +6,7 @@ namespace Identity.Application.Ports.Services
 {
     public interface IAuthTokenService
     {
-        Task<string> GenerateAccessToken(User user) { }
-        Task<string> GenerateRefreshToken(User user) { }
+        Task<string> GenerateAccessToken(User user);
+        Task<string> GenerateRefreshToken(User user);
     }
 }

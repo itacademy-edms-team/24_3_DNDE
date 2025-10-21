@@ -1,43 +1,96 @@
-﻿using System.Security.Cryptography.X509Certificates;
-using Identity.Application.Commands.CreateUser;
-using Identity.Application.Commands.CreateUser.Request;
-using Identity.Application.Commands.CreateUser.Response;
-using Identity.Application.Commands.Login;
-using Identity.Application.Commands.Login.Request;
-using Identity.Application.Commands.Login.Response;
+﻿using Idenitity.Infrastructure.Services.Jwt;
+using Identity.Application.Commands.SignInUser;
+using Identity.Application.Commands.SignInUser.Request;
+using Identity.Application.Commands.SignUpUser;
+using Identity.Application.Commands.SignUpUser.Request;
+using Identity.Application.Commands.SignUpUser.Response;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace Auth.API.Controllers
 {
     [Authorize]
     [Route("api/[controller]")]
     [ApiController]
-    public class IdentityController : ControllerBase
+    public class IdentityController(
+        IOptions<JwtOptions> jwtOptions,
+        ISignUpUserCommand signUpCommand,
+        ISignInUserCommand signInCommand
+    ) : ControllerBase
     {
-        private readonly ICreateUserCommand _createUserUseCase;
-        private readonly ILoginCommand _loginUseCase;
-
-        public IdentityController(ICreateUserCommand createUserUseCase, ILoginCommand loginUseCase)
+        [AllowAnonymous]
+        [HttpPost]
+        [Route("SignUp")]
+        public async Task<IActionResult> SignUpUser(SignUpUserRequest request)
         {
-            _createUserUseCase = createUserUseCase;
-            _loginUseCase = loginUseCase;
+            var response = await signUpCommand.Execute(request);
+
+            if (response.IsSuccess)
+            {
+                return CreatedAtAction(
+                    nameof(SignUpUser),
+                    new { userId = response.UserId },
+                    new { response.UserId }
+                );
+            }
+
+            return Problem(
+                statusCode: response.Error.Status,
+                title: response.Error.Title,
+                detail: response.Error.Detail
+            );
         }
 
         [AllowAnonymous]
         [HttpPost]
-        [Route("CreateUser")]
-        public async Task<CreateUserResponse> CreateUser(CreateUserRequest request)
+        [Route("SignIn")]
+        public async Task<IActionResult> SignInUser(SignInUserRequest request)
         {
-            return await _createUserUseCase.Execute(request);
-        }
+            var response = await signInCommand.Execute(request);
 
-        [AllowAnonymous]
-        [HttpPost]
-        [Route("LoginUser")]
-        public async Task<LoginResponse> LoginUser(LoginRequest request)
-        {
-            return await _loginUseCase.Execute(request);
+            if (response.IsSuccess)
+            {
+                var dtNow = DateTime.Now;
+
+                var accesTokenExpires = dtNow.AddMinutes(
+                    jwtOptions.Value.AccessTokenOptions.LifeTimeInMinutes
+                );
+                HttpContext.Response.Cookies.Append(
+                    "access_token",
+                    response.AccessToken,
+                    new CookieOptions
+                    {
+                        HttpOnly = true,
+                        Secure = true,
+                        SameSite = SameSiteMode.Strict,
+                        Expires = accesTokenExpires,
+                    }
+                );
+
+                var refreshTokenExpires = dtNow.AddMinutes(
+                    jwtOptions.Value.RefreshTokenOptions.LifeTimeInMinutes
+                );
+                HttpContext.Response.Cookies.Append(
+                    "refresh_token",
+                    response.RefreshToken,
+                    new CookieOptions
+                    {
+                        HttpOnly = true,
+                        Secure = true,
+                        SameSite = SameSiteMode.Strict,
+                        Expires = refreshTokenExpires, // Match database Expires
+                    }
+                );
+
+                return Ok();
+            }
+
+            return Problem(
+                statusCode: response.Error.Status,
+                title: response.Error.Title,
+                detail: response.Error.Detail
+            );
         }
     }
 }

@@ -6,9 +6,9 @@ namespace Identity.Application.Ports.Repositories
 {
     public interface IIdentityRepository
     {
-        Task<User> GetUserByEmail(string email);
-        Task UpdateUser(User user);
-        Task<User> GetUserByUserId(Guid userId);
-        Task CreateUser(User user, string password);
+        Task<User> GetUserByEmailAsync(string email);
+        Task UpdateUserAsync(User user);
+        Task<User> GetUserByUserIdAsync(Guid userId);
+        Task CreateUserAsync(User user, string password);
     }
 }
