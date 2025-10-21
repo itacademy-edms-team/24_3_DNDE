@@ -9,6 +9,5 @@ namespace Identity.Infrastucture.Repositories.PostgreSQL
     public class PostgreSqlSettings
     {
         public string ConnectionString { get; set; }
-        public string DatabaseName { get; set; }
     }
 }
