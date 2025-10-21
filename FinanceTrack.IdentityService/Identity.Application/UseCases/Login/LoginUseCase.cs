@@ -76,17 +76,27 @@ namespace Idenitity.Application.UseCases.Login
                     RefreshToken = refreshToken,
                 };
             }
+            catch (LoginUserException ex)
+            {
+                _logger.LogWarning(ex, "Login failed for email: {Email}", request.Email);
+                return new LoginErrorResponse
+                {
+                    Message = ex.Message,
+                    Code = ErrorCodes.UserLoginFailed.ToString("D"),
+                };
+            }
             catch (Exception ex)
             {
-                _logger.LogError(ex, ex.Message);
-
-                var response = new LoginErrorResponse
+                _logger.LogError(
+                    ex,
+                    "Unexpected error during login for email: {Email}",
+                    request.Email
+                );
+                return new LoginErrorResponse
                 {
                     Message = Enum.GetName(ErrorCodes.AnUnexpectedErrorOcurred),
                     Code = ErrorCodes.AnUnexpectedErrorOcurred.ToString("D"),
                 };
-
-                return response;
             }
         }
     }

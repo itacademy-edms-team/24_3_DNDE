@@ -10,5 +10,8 @@
         RefreshTokenIsNotCorrect = 105,
         UserDoesNotExist = 106,
         PasswordsDoNotMatch = 107,
+        UserCreationFailed = 108,
+        DatabaseError = 109,
+        UserLoginFailed = 110,
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Linq;
 using System.Threading.Tasks;
 using Identity.Application.Enums;
@@ -49,17 +50,36 @@ namespace Identity.Application.UseCases.CreateUser
 
                 return new CreateUserSuccessResponse { UserId = user.Id };
             }
+            catch (CreateUserException ex)
+            {
+                _logger.LogWarning(ex, "User creation failed: {Email}", request.Email);
+                return new CreateUserErrorResponse
+                {
+                    Message = ex.Message,
+                    Code = ErrorCodes.UserCreationFailed.ToString("D"),
+                };
+            }
+            catch (DbException ex)
+            {
+                _logger.LogError(ex, "Database error during user creation: {Email}", request.Email);
+                return new CreateUserErrorResponse
+                {
+                    Message = "Database error occurred",
+                    Code = ErrorCodes.DatabaseError.ToString("D"),
+                };
+            }
             catch (Exception ex)
             {
-                _logger.LogError(ex, ex.Message);
-
-                var response = new CreateUserErrorResponse
+                _logger.LogError(
+                    ex,
+                    "Unexpected error during user creation: {Email}",
+                    request.Email
+                );
+                return new CreateUserErrorResponse
                 {
                     Message = Enum.GetName(ErrorCodes.AnUnexpectedErrorOcurred),
                     Code = ErrorCodes.AnUnexpectedErrorOcurred.ToString("D"),
                 };
-
-                return response;
             }
         }
     }
