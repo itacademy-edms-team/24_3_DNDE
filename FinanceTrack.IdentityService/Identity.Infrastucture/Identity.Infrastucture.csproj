@@ -14,4 +14,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Identity.Application\Identity.Application.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Services\Cryptography\" />
+  </ItemGroup>
 </Project>
