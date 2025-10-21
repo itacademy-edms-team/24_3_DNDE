@@ -5,9 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Identity.Application.Exceptions;
-using Identity.Application.Exceptions;
 using Identity.Application.Ports.Repositories;
-using Identity.Application.UseCases.CreateUser.Request;
 using Identity.Domain;
 using Identity.Infrastucture.Data;
 using Microsoft.AspNetCore.Identity;
@@ -40,7 +38,7 @@ namespace Identity.Infrastucture.Repositories.PostgreSQL
             return await _userManager.FindByEmailAsync(email);
         }
 
-        public async Task<User?> UpdateUser(User user)
+        public async Task UpdateUser(User user)
         {
             var result = _userManager.UpdateAsync(user);
             if (!result.IsCompletedSuccessfully)
@@ -50,10 +48,10 @@ namespace Identity.Infrastucture.Repositories.PostgreSQL
                     innerException: result.Exception
                 );
             }
-            return await _userManager.FindByIdAsync(user.Id.ToString());
+            await _userManager.FindByIdAsync(user.Id.ToString());
         }
 
-        public async Task<User?> CreateUser(User user, string password)
+        public async Task CreateUser(User user, string password)
         {
             var result = await _userManager.CreateAsync(user, password);
             if (!result.Succeeded)
@@ -61,7 +59,6 @@ namespace Identity.Infrastucture.Repositories.PostgreSQL
                 var errorMessage = string.Join("; ", result.Errors.Select(e => e.Description));
                 throw new CreateUserException($"Failed to create user: {errorMessage}");
             }
-            return await _userManager.FindByIdAsync(user.Id.ToString());
         }
     }
 }

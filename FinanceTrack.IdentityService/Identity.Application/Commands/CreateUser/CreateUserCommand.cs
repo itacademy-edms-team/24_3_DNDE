@@ -25,10 +25,12 @@ namespace Identity.Application.Commands.CreateUser
 
             try
             {
-                var user = await repo.CreateUser(
+                await repo.CreateUser(
                     new User { UserName = request.Email, Email = request.Email },
                     request.Password
                 );
+
+                var user = repo.GetUserByEmail(request.Email).Result;
 
                 if (user == null)
                 {
