@@ -74,10 +74,10 @@ builder
     });
 
 // Use-Cases
-builder.Services.AddSingleton<LoginUseCase>();
-builder.Services.AddSingleton<RefreshTokenUseCase>();
-builder.Services.AddSingleton<SignOutUseCase>();
-builder.Services.AddSingleton<CreateUserUseCase>();
+builder.Services.AddSingleton<LoginCommand>();
+builder.Services.AddSingleton<RefreshTokenCommand>();
+builder.Services.AddSingleton<SignOutCommand>();
+builder.Services.AddSingleton<CreateUserCommand>();
 
 // Controllers
 builder.Services.AddControllers();

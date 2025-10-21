@@ -15,10 +15,10 @@ namespace Auth.API.Controllers
     [ApiController]
     public class IdentityController : ControllerBase
     {
-        private readonly ICreateUserUseCase _createUserUseCase;
-        private readonly ILoginUseCase _loginUseCase;
+        private readonly ICreateUserCommand _createUserUseCase;
+        private readonly ILoginCommand _loginUseCase;
 
-        public IdentityController(ICreateUserUseCase createUserUseCase, ILoginUseCase loginUseCase)
+        public IdentityController(ICreateUserCommand createUserUseCase, ILoginCommand loginUseCase)
         {
             _createUserUseCase = createUserUseCase;
             _loginUseCase = loginUseCase;
