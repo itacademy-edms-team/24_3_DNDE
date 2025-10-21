@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Identity.Infrastucture.Repositories.Redis
 {
-    public class RedisSettings
+    public class RedisOptions
     {
         public string ConnectionString { get; set; }
     }

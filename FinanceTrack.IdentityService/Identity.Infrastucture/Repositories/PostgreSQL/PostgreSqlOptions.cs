@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Identity.Infrastucture.Repositories.PostgreSQL
 {
-    public class PostgreSqlSettings
+    public class PostgreSqlOptions
     {
         public string ConnectionString { get; set; }
     }
