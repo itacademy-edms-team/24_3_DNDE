@@ -10,6 +10,7 @@ using Identity.Domain;
 using Identity.Infrastucture.Data;
 using Identity.Infrastucture.Repositories.PostgreSQL;
 using Identity.Infrastucture.Repositories.Redis;
+using Identity.Infrastucture.Services.Auth;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -89,6 +90,9 @@ builder.Services.AddAuthorization(options =>
 
 // JwtService
 builder.Services.AddScoped<IAuthTokenService, JwtService>();
+
+// PasswordCheckService
+builder.Services.AddScoped<IUserPasswordSignInService, UserPasswordSignInService>();
 
 // Commands
 builder.Services.AddScoped<ISignUpUserCommand, SignUpUserCommand>();
