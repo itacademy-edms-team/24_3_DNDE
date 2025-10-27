@@ -15,29 +15,53 @@ namespace Identity.Application.Commands.SignUpUser
     {
         public async Task<SignUpUserResponse> Execute(SignUpUserRequest request)
         {
-            // Password != PasswordConfirm
-            if (request.Password != request.PasswordConfirm)
+            // request == null or empty body
+            if (request == null)
             {
-                logger.LogWarning("Sign-up attempt with password != passwordConfirm");
+                logger.LogWarning("Sign-up attempt with null request body");
                 return new SignUpUserResponse
                 {
                     IsSuccess = false,
                     Error = new ProblemDetails
                     {
                         Status = 400,
-                        Title = "Invalid Input",
-                        Detail = "Passwords do not match",
+                        Title = "ValidationError",
+                        Detail = "Request body is required.",
+                    },
+                };
+            }
+
+            // Password != PasswordConfirm
+            if (request.Password != request.PasswordConfirm)
+            {
+                logger.LogWarning(
+                    "Sign-up attempt with password mismatch for {Email}",
+                    request.Email
+                );
+
+                return new SignUpUserResponse
+                {
+                    IsSuccess = false,
+                    Error = new ProblemDetails
+                    {
+                        Status = 400,
+                        Title = "ValidationError",
+                        Detail = "Passwords do not match.",
                     },
                 };
             }
 
             try
             {
-                // Check if user already exist
+                // Check if user already exists
                 var existingUser = await userManager.FindByEmailAsync(request.Email);
                 if (existingUser != null)
                 {
-                    logger.LogWarning("Sign-up attempt using existing email");
+                    logger.LogWarning(
+                        "Sign-up attempt using existing email {Email}",
+                        request.Email
+                    );
+
                     return new SignUpUserResponse
                     {
                         IsSuccess = false,
@@ -45,46 +69,92 @@ namespace Identity.Application.Commands.SignUpUser
                         {
                             Status = 409,
                             Title = "Conflict",
-                            Detail = "Email already exists",
+                            Detail = "Email already exists.",
                         },
                     };
                 }
 
                 // Create user
                 var user = new User { UserName = request.Email, Email = request.Email };
-                var result = await userManager.CreateAsync(user, request.Password);
 
-                if (!result.Succeeded)
+                var createResult = await userManager.CreateAsync(user, request.Password);
+
+                if (!createResult.Succeeded)
                 {
-                    var errors = string.Join("; ", result.Errors.Select(e => e.Description));
+                    var errors = string.Join(
+                        "; ",
+                        createResult.Errors.Select(e => $"{e.Code}: {e.Description}")
+                    );
+
+                    logger.LogWarning(
+                        "User creation failed for {Email}: {Errors}",
+                        request.Email,
+                        errors
+                    );
+
                     return new SignUpUserResponse
                     {
                         IsSuccess = false,
                         Error = new ProblemDetails
                         {
                             Status = 400,
-                            Title = "Invalid Input",
+                            Title = "ValidationError",
                             Detail = errors,
                         },
                     };
                 }
 
-                // Add user role
-                await userManager.AddToRoleAsync(user, "User");
+                // Assign default role
+                var addToRoleResult = await userManager.AddToRoleAsync(user, "User");
+                if (!addToRoleResult.Succeeded)
+                {
+                    var roleErrors = string.Join(
+                        "; ",
+                        addToRoleResult.Errors.Select(e => $"{e.Code}: {e.Description}")
+                    );
+
+                    logger.LogError(
+                        "Failed to assign default role 'User' for {Email}: {RoleErrors}",
+                        request.Email,
+                        roleErrors
+                    );
+
+                    return new SignUpUserResponse
+                    {
+                        IsSuccess = false,
+                        Error = new ProblemDetails
+                        {
+                            Status = 500,
+                            Title = "ServerError",
+                            Detail = "User created but failed to assign default role.",
+                        },
+                    };
+                }
+
+                logger.LogInformation(
+                    "User {UserId} successfully registered with email {Email}",
+                    user.Id,
+                    request.Email
+                );
 
                 return new SignUpUserResponse { IsSuccess = true, UserId = user.Id.ToString() };
             }
             catch (DbException ex)
             {
-                logger.LogError(ex, "Database error during user creation: {Email}", request.Email);
+                logger.LogError(
+                    ex,
+                    "Database error during user creation for {Email}",
+                    request.Email
+                );
+
                 return new SignUpUserResponse
                 {
                     IsSuccess = false,
                     Error = new ProblemDetails
                     {
                         Status = 500,
-                        Title = "Server Error",
-                        Detail = "Database error occurred",
+                        Title = "DatabaseError",
+                        Detail = "A database error occurred.",
                     },
                 };
             }
@@ -92,17 +162,18 @@ namespace Identity.Application.Commands.SignUpUser
             {
                 logger.LogError(
                     ex,
-                    "Unexpected error during user creation: {Email}",
+                    "Unexpected error during user creation for {Email}",
                     request.Email
                 );
+
                 return new SignUpUserResponse
                 {
                     IsSuccess = false,
                     Error = new ProblemDetails
                     {
                         Status = 500,
-                        Title = "Server Error",
-                        Detail = "An unexpected error occurred",
+                        Title = "UnexpectedError",
+                        Detail = "An unexpected error occurred.",
                     },
                 };
             }
