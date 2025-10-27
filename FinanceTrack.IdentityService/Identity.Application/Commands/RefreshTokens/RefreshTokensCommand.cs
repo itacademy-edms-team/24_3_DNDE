@@ -9,6 +9,7 @@ using Identity.Application.Exceptions;
 using Identity.Application.Ports.Repositories;
 using Identity.Application.Ports.Services;
 using Identity.Domain;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -26,6 +27,21 @@ namespace Identity.Application.Commands.RefreshTokens
         {
             try
             {
+                // RefreshToken == null or RefreshToken == ""
+                if (string.IsNullOrWhiteSpace(request.RefreshToken))
+                {
+                    return new RefreshTokensResponse
+                    {
+                        IsSuccess = false,
+                        Error = new ProblemDetails
+                        {
+                            Status = 401,
+                            Title = "Unauthorized",
+                            Detail = "Refresh token is not provided",
+                        },
+                    };
+                }
+
                 // Get refreshToken from db
                 var refreshTokenModel = await refreshTokenRepository.GetRefreshTokenAsync(
                     request.RefreshToken
@@ -45,7 +61,7 @@ namespace Identity.Application.Commands.RefreshTokens
                         {
                             Status = 401,
                             Title = "Unauthorized",
-                            Detail = "Refresh token is not provided",
+                            Detail = "Refresh token is invalid",
                         },
                     };
                 }

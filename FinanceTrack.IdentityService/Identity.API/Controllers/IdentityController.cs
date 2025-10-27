@@ -154,14 +154,6 @@ namespace Auth.API.Controllers
         public async Task<IActionResult> RefreshToken()
         {
             var refreshToken = Request.Cookies["refresh_token"];
-            if (string.IsNullOrWhiteSpace(refreshToken))
-            {
-                return Problem(
-                    statusCode: StatusCodes.Status401Unauthorized,
-                    title: "Unauthorized",
-                    detail: "Refresh token is not provided."
-                );
-            }
 
             var request = new RefreshTokensRequest { RefreshToken = refreshToken };
 
