@@ -49,7 +49,7 @@ namespace Identity.Application.Commands.SignInUser
                 );
 
                 // Invalid password
-                if (checkPasswordResult.Succeeded)
+                if (!checkPasswordResult.Succeeded)
                 {
                     logger.LogWarning(
                         "Sign-in attempt with invalid password: {Email}",
