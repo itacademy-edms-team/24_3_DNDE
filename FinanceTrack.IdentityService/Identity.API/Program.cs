@@ -90,8 +90,8 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddScoped<IAuthTokenService, JwtService>();
 
 // Commands
-builder.Services.AddScoped<SignUpUserCommand>();
-builder.Services.AddScoped<SignInUserCommand>();
+builder.Services.AddScoped<ISignUpUserCommand, SignUpUserCommand>();
+builder.Services.AddScoped<ISignInUserCommand, SignInUserCommand>();
 
 // Controllers
 builder.Services.AddControllers();
