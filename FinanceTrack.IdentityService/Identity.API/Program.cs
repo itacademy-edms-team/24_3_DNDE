@@ -2,6 +2,7 @@
 using Idenitity.Domain;
 using Idenitity.Infrastructure.Services.Jwt;
 using Identity.API.Startup;
+using Identity.Application.Commands.RefreshTokens;
 using Identity.Application.Commands.SignInUser;
 using Identity.Application.Commands.SignUpUser;
 using Identity.Application.Ports.Repositories;
@@ -97,6 +98,7 @@ builder.Services.AddScoped<IUserPasswordSignInService, UserPasswordSignInService
 // Commands
 builder.Services.AddScoped<ISignUpUserCommand, SignUpUserCommand>();
 builder.Services.AddScoped<ISignInUserCommand, SignInUserCommand>();
+builder.Services.AddScoped<IRefreshTokensCommand, RefreshTokensCommand>();
 
 // Controllers
 builder.Services.AddControllers();

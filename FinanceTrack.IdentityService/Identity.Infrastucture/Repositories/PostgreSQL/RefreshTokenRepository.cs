@@ -52,48 +52,26 @@ namespace Identity.Infrastucture.Repositories.PostgreSQL
             }
         }
 
-        public async Task DeleteRefreshTokenAsync(RefreshToken refreshToken)
-        {
-            try
-            {
-                appIdentityContext.RefreshTokens.Remove(refreshToken);
-                await appIdentityContext.SaveChangesAsync();
-            }
-            catch (DbUpdateException ex)
-            {
-                logger.LogError(
-                    ex,
-                    "Failed to delete refresh token for user {UserId}",
-                    refreshToken.UserId
-                );
-                throw new RefreshTokenRepositoryException(
-                    $"Failed to delete refresh token for user {refreshToken.UserId}",
-                    ex
-                );
-            }
-            catch (NpgsqlException ex)
-            {
-                logger.LogError(
-                    ex,
-                    "Database error during refresh token deletion {Token}",
-                    refreshToken.Token
-                );
-                throw new RefreshTokenRepositoryException(
-                    $"Database error during refresh token deletion for user {refreshToken.UserId}",
-                    ex
-                );
-            }
-        }
-
-        public async Task<RefreshToken> GetRefreshTokenAsync(User user)
+        public async Task<RefreshToken?> GetRefreshTokenAsync(User user)
         {
             var token = await appIdentityContext.RefreshTokens.FirstOrDefaultAsync(t =>
                 t.UserId == user.Id
             );
             if (token == null)
             {
-                logger.LogError("Refresh token not found for user {UserId}", user.Id);
-                throw new RefreshTokenRepositoryException($"Token not found for user {user.Id}");
+                logger.LogWarning("Refresh token not found for user {UserId}", user.Id);
+            }
+            return token;
+        }
+
+        public async Task<RefreshToken?> GetRefreshTokenAsync(string refreshToken)
+        {
+            var token = await appIdentityContext.RefreshTokens.FirstOrDefaultAsync(t =>
+                t.Token == refreshToken
+            );
+            if (token == null)
+            {
+                logger.LogWarning("Refresh token not found for token {Token}", refreshToken);
             }
             return token;
         }
@@ -122,6 +100,45 @@ namespace Identity.Infrastucture.Repositories.PostgreSQL
                 );
                 throw new RefreshTokenRepositoryException(
                     $"Database error during refresh token update {refreshToken.Token}",
+                    ex
+                );
+            }
+        }
+
+        public async Task RevokeTokenAsync(RefreshToken refreshToken)
+        {
+            refreshToken.IsRevoked = true;
+            await UpdateRefreshTokenAsync(refreshToken);
+        }
+
+        public async Task DeleteRefreshTokenAsync(RefreshToken refreshToken)
+        {
+            try
+            {
+                appIdentityContext.RefreshTokens.Remove(refreshToken);
+                await appIdentityContext.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                logger.LogError(
+                    ex,
+                    "Failed to delete refresh token for user {UserId}",
+                    refreshToken.UserId
+                );
+                throw new RefreshTokenRepositoryException(
+                    $"Failed to delete refresh token for user {refreshToken.UserId}",
+                    ex
+                );
+            }
+            catch (NpgsqlException ex)
+            {
+                logger.LogError(
+                    ex,
+                    "Database error during refresh token deletion {Token}",
+                    refreshToken.Token
+                );
+                throw new RefreshTokenRepositoryException(
+                    $"Database error during refresh token deletion for user {refreshToken.UserId}",
                     ex
                 );
             }
