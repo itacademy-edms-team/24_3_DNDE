@@ -1,6 +1,7 @@
 ﻿using System.Text;
 using Idenitity.Domain;
 using Idenitity.Infrastructure.Services.Jwt;
+using Identity.API.Startup;
 using Identity.Application.Commands.SignInUser;
 using Identity.Application.Commands.SignUpUser;
 using Identity.Application.Ports.Repositories;
@@ -105,6 +106,20 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddLogging();
 
 var app = builder.Build();
+
+// Seeding data
+using var scope = app.Services.CreateScope();
+var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
+try
+{
+    await IdentityDataSeeder.SeedAsync(app.Services, logger);
+    logger.LogInformation("IdentityDataSeeder completed successfully");
+}
+catch (Exception ex)
+{
+    logger.LogError(ex, "IdentityDataSeeder failed");
+    throw;
+}
 
 // Configure middleware
 if (app.Environment.IsDevelopment())
