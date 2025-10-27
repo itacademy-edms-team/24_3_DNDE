@@ -119,6 +119,8 @@ namespace Identity.Application.Commands.SignUpUser
                         roleErrors
                     );
 
+                    await userManager.DeleteAsync(user); // Delete broken user
+
                     return new SignUpUserResponse
                     {
                         IsSuccess = false,
@@ -126,7 +128,7 @@ namespace Identity.Application.Commands.SignUpUser
                         {
                             Status = 500,
                             Title = "ServerError",
-                            Detail = "User created but failed to assign default role.",
+                            Detail = "Failed to finalize user creation.",
                         },
                     };
                 }
