@@ -63,8 +63,8 @@ namespace Identity.Application.Commands.SignInUser
                 }
 
                 // Generating tokens
-                var accessTokenString = await authTokenService.GenerateAccessToken(user);
-                var refreshTokenString = await authTokenService.GenerateRefreshToken(user);
+                var accessTokenString = await authTokenService.GenerateAccessTokenAsync(user);
+                var refreshTokenString = await authTokenService.GenerateRefreshTokenAsync(user);
 
                 return new SignInUserResponse
                 {

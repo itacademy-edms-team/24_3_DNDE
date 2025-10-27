@@ -73,7 +73,10 @@ namespace Identity.Application.UnitTests
                 s => s.CheckPassword(It.IsAny<User>(), It.IsAny<string>(), It.IsAny<bool>()),
                 Times.Never
             );
-            authTokenServiceMock.Verify(s => s.GenerateAccessToken(It.IsAny<User>()), Times.Never);
+            authTokenServiceMock.Verify(
+                s => s.GenerateAccessTokenAsync(It.IsAny<User>()),
+                Times.Never
+            );
         }
 
         [Fact]
@@ -119,7 +122,10 @@ namespace Identity.Application.UnitTests
             result.Error.Title.Should().Be("Unauthorized");
             result.Error.Detail.Should().Be("Invalid email or password");
 
-            authTokenServiceMock.Verify(s => s.GenerateAccessToken(It.IsAny<User>()), Times.Never);
+            authTokenServiceMock.Verify(
+                s => s.GenerateAccessTokenAsync(It.IsAny<User>()),
+                Times.Never
+            );
         }
 
         [Fact]
@@ -151,10 +157,10 @@ namespace Identity.Application.UnitTests
 
             var authTokenServiceMock = new Mock<IAuthTokenService>();
             authTokenServiceMock
-                .Setup(s => s.GenerateAccessToken(fakeUser))
+                .Setup(s => s.GenerateAccessTokenAsync(fakeUser))
                 .ReturnsAsync("ACCESS_123");
             authTokenServiceMock
-                .Setup(s => s.GenerateRefreshToken(fakeUser))
+                .Setup(s => s.GenerateRefreshTokenAsync(fakeUser))
                 .ReturnsAsync("REFRESH_456");
 
             var logger = NullLogger<SignInUserCommand>.Instance;
@@ -175,8 +181,8 @@ namespace Identity.Application.UnitTests
             result.RefreshToken.Should().Be("REFRESH_456");
             result.Error.Should().BeNull();
 
-            authTokenServiceMock.Verify(s => s.GenerateAccessToken(fakeUser), Times.Once);
-            authTokenServiceMock.Verify(s => s.GenerateRefreshToken(fakeUser), Times.Once);
+            authTokenServiceMock.Verify(s => s.GenerateAccessTokenAsync(fakeUser), Times.Once);
+            authTokenServiceMock.Verify(s => s.GenerateRefreshTokenAsync(fakeUser), Times.Once);
         }
 
         [Fact]
@@ -208,12 +214,12 @@ namespace Identity.Application.UnitTests
 
             var authTokenServiceMock = new Mock<IAuthTokenService>();
             authTokenServiceMock
-                .Setup(s => s.GenerateAccessToken(fakeUser))
+                .Setup(s => s.GenerateAccessTokenAsync(fakeUser))
                 .ReturnsAsync("ACCESS_123");
 
             // модель: падает при создании refresh токена
             authTokenServiceMock
-                .Setup(s => s.GenerateRefreshToken(fakeUser))
+                .Setup(s => s.GenerateRefreshTokenAsync(fakeUser))
                 .ThrowsAsync(new RefreshTokenRepositoryException("db fail"));
 
             var logger = NullLogger<SignInUserCommand>.Instance;
