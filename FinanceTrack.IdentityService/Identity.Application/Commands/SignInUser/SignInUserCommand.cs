@@ -1,12 +1,8 @@
-﻿using System.Security.Claims;
-using System.Text;
-using Identity.Application.Commands.SignInUser.Request;
+﻿using Identity.Application.Commands.SignInUser.Request;
 using Identity.Application.Commands.SignInUser.Response;
 using Identity.Application.Exceptions;
-using Identity.Application.Ports.Repositories;
 using Identity.Application.Ports.Services;
 using Identity.Domain;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -16,7 +12,7 @@ namespace Identity.Application.Commands.SignInUser
     public class SignInUserCommand(
         ILogger<SignInUserCommand> logger,
         UserManager<User> userManager,
-        SignInManager<User> signInManager,
+        IUserPasswordSignInService passwordSignInService,
         IAuthTokenService authTokenService
     ) : ISignInUserCommand
     {
@@ -42,14 +38,13 @@ namespace Identity.Application.Commands.SignInUser
                     };
                 }
 
-                var checkPasswordResult = await signInManager.CheckPasswordSignInAsync(
+                var signInResult = await passwordSignInService.CheckPassword(
                     user,
-                    request.Password,
-                    false
+                    request.Password
                 );
 
                 // Invalid password
-                if (checkPasswordResult.Succeeded)
+                if (!signInResult.Succeeded)
                 {
                     logger.LogWarning(
                         "Sign-in attempt with invalid password: {Email}",
@@ -68,8 +63,8 @@ namespace Identity.Application.Commands.SignInUser
                 }
 
                 // Generating tokens
-                var accessTokenString = await authTokenService.GenerateAccessToken(user);
-                var refreshTokenString = await authTokenService.GenerateRefreshToken(user);
+                var accessTokenString = await authTokenService.GenerateAccessTokenAsync(user);
+                var refreshTokenString = await authTokenService.GenerateRefreshTokenAsync(user);
 
                 return new SignInUserResponse
                 {

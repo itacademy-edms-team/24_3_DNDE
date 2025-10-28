@@ -22,7 +22,7 @@ namespace Idenitity.Infrastructure.Services.Jwt
         UserManager<User> userManager
     ) : IAuthTokenService
     {
-        public async Task<string> GenerateAccessToken(User user)
+        public async Task<string> GenerateAccessTokenAsync(User user)
         {
             var roles = await userManager.GetRolesAsync(user);
             var claims = new[]
@@ -43,7 +43,7 @@ namespace Idenitity.Infrastructure.Services.Jwt
                 issuer: jwtOptions.Value.AccessTokenOptions.Issuer,
                 audience: jwtOptions.Value.AccessTokenOptions.Audience,
                 claims: claims,
-                expires: DateTime.Now.AddMinutes(
+                expires: DateTime.UtcNow.AddMinutes(
                     jwtOptions.Value.AccessTokenOptions.LifeTimeInMinutes
                 ),
                 signingCredentials: creds
@@ -52,18 +52,20 @@ namespace Idenitity.Infrastructure.Services.Jwt
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
-        public async Task<string> GenerateRefreshToken(User user)
+        public async Task<string> GenerateRefreshTokenAsync(User user)
         {
             var token = Guid.NewGuid().ToString();
 
-            var dtNow = DateTime.Now;
+            var dtUtcNow = DateTime.UtcNow;
             var refreshTokenModel = new RefreshToken
             {
                 Id = Guid.NewGuid(),
                 UserId = user.Id,
                 Token = token,
-                Created = dtNow,
-                Expires = dtNow.AddMinutes(jwtOptions.Value.RefreshTokenOptions.LifeTimeInMinutes),
+                Created = dtUtcNow,
+                Expires = dtUtcNow.AddMinutes(
+                    jwtOptions.Value.RefreshTokenOptions.LifeTimeInMinutes
+                ),
                 IsRevoked = false,
                 User = user,
             };

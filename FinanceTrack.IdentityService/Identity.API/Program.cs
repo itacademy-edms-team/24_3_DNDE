@@ -1,6 +1,8 @@
 ﻿using System.Text;
 using Idenitity.Domain;
 using Idenitity.Infrastructure.Services.Jwt;
+using Identity.API.Startup;
+using Identity.Application.Commands.RefreshTokens;
 using Identity.Application.Commands.SignInUser;
 using Identity.Application.Commands.SignUpUser;
 using Identity.Application.Ports.Repositories;
@@ -9,6 +11,7 @@ using Identity.Domain;
 using Identity.Infrastucture.Data;
 using Identity.Infrastucture.Repositories.PostgreSQL;
 using Identity.Infrastucture.Repositories.Redis;
+using Identity.Infrastucture.Services.Auth;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -89,9 +92,13 @@ builder.Services.AddAuthorization(options =>
 // JwtService
 builder.Services.AddScoped<IAuthTokenService, JwtService>();
 
+// PasswordCheckService
+builder.Services.AddScoped<IUserPasswordSignInService, UserPasswordSignInService>();
+
 // Commands
-builder.Services.AddScoped<SignUpUserCommand>();
-builder.Services.AddScoped<SignInUserCommand>();
+builder.Services.AddScoped<ISignUpUserCommand, SignUpUserCommand>();
+builder.Services.AddScoped<ISignInUserCommand, SignInUserCommand>();
+builder.Services.AddScoped<IRefreshTokensCommand, RefreshTokensCommand>();
 
 // Controllers
 builder.Services.AddControllers();
@@ -105,6 +112,20 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddLogging();
 
 var app = builder.Build();
+
+// Seeding data
+using var scope = app.Services.CreateScope();
+var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("Startup");
+try
+{
+    await IdentityDataSeeder.SeedAsync(app.Services, logger);
+    logger.LogInformation("IdentityDataSeeder completed successfully");
+}
+catch (Exception ex)
+{
+    logger.LogError(ex, "IdentityDataSeeder failed");
+    throw;
+}
 
 // Configure middleware
 if (app.Environment.IsDevelopment())
