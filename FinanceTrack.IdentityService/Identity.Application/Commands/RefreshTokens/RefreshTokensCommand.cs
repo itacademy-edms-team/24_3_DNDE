@@ -27,7 +27,6 @@ namespace Identity.Application.Commands.RefreshTokens
         {
             try
             {
-                // RefreshToken == null or RefreshToken == ""
                 if (string.IsNullOrWhiteSpace(request.RefreshToken))
                 {
                     return new RefreshTokensResponse
