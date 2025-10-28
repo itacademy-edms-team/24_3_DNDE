@@ -30,11 +30,12 @@ namespace Identity.Infrastucture.Repositories.PostgreSQL
             {
                 logger.LogError(
                     ex,
-                    "Failed to create refresh token for user {UserId}",
+                    "Failed to create refresh token {TokenId} for user {UserId}",
+                    refreshToken.Id,
                     refreshToken.UserId
                 );
                 throw new RefreshTokenRepositoryException(
-                    $"Failed to create refresh token for user {refreshToken.UserId}",
+                    $"Failed to create refresh token {refreshToken.Id} for user {refreshToken.UserId}",
                     ex
                 );
             }
@@ -42,11 +43,12 @@ namespace Identity.Infrastucture.Repositories.PostgreSQL
             {
                 logger.LogError(
                     ex,
-                    "Database error during refresh token creation for user {UserId}",
+                    "Database error during refresh token {TokenId} creation for user {UserId}",
+                    refreshToken.Id,
                     refreshToken.UserId
                 );
                 throw new RefreshTokenRepositoryException(
-                    $"Database error during refresh token creation for user {refreshToken.UserId}",
+                    $"Database error during refresh token {refreshToken.Id} creation for user {refreshToken.UserId}",
                     ex
                 );
             }
@@ -71,7 +73,7 @@ namespace Identity.Infrastucture.Repositories.PostgreSQL
             );
             if (token == null)
             {
-                logger.LogWarning("Refresh token not found for token {Token}", refreshToken);
+                logger.LogWarning("Refresh token not found in DB");
             }
             return token;
         }
@@ -85,9 +87,14 @@ namespace Identity.Infrastucture.Repositories.PostgreSQL
             }
             catch (DbUpdateException ex)
             {
-                logger.LogError(ex, "Failed to update refresh token {Token}", refreshToken.Token);
+                logger.LogError(
+                    ex,
+                    "Failed to update refresh token with Id {TokenId} for user {UserId}",
+                    refreshToken.Id,
+                    refreshToken.UserId
+                );
                 throw new RefreshTokenRepositoryException(
-                    $"Failed to update refresh token {refreshToken.Token}",
+                    $"Failed to update refresh token with Id {refreshToken.Id} for user {refreshToken.UserId}",
                     ex
                 );
             }
@@ -95,11 +102,12 @@ namespace Identity.Infrastucture.Repositories.PostgreSQL
             {
                 logger.LogError(
                     ex,
-                    "Database error during refresh token update {Token}",
-                    refreshToken.Token
+                    "Database error during refresh token update with Id {TokenId} for user {UserId}",
+                    refreshToken.Id,
+                    refreshToken.UserId
                 );
                 throw new RefreshTokenRepositoryException(
-                    $"Database error during refresh token update {refreshToken.Token}",
+                    $"Database error during refresh token update with Id {refreshToken.Id} for user {refreshToken.UserId}",
                     ex
                 );
             }
@@ -122,11 +130,12 @@ namespace Identity.Infrastucture.Repositories.PostgreSQL
             {
                 logger.LogError(
                     ex,
-                    "Failed to delete refresh token for user {UserId}",
+                    "Failed to delete refresh token {TokenId} for user {UserId}",
+                    refreshToken.Id,
                     refreshToken.UserId
                 );
                 throw new RefreshTokenRepositoryException(
-                    $"Failed to delete refresh token for user {refreshToken.UserId}",
+                    $"Failed to delete refresh token {refreshToken.Id} for user {refreshToken.UserId}",
                     ex
                 );
             }
@@ -134,11 +143,12 @@ namespace Identity.Infrastucture.Repositories.PostgreSQL
             {
                 logger.LogError(
                     ex,
-                    "Database error during refresh token deletion {Token}",
-                    refreshToken.Token
+                    "Database error during refresh token deletion {TokenId} for user {UserId}",
+                    refreshToken.Id,
+                    refreshToken.UserId
                 );
                 throw new RefreshTokenRepositoryException(
-                    $"Database error during refresh token deletion for user {refreshToken.UserId}",
+                    $"Database error during refresh token {refreshToken.Id} deletion for user {refreshToken.UserId}",
                     ex
                 );
             }
