@@ -21,6 +21,7 @@ namespace Identity.API.Startup
                 if (isRoleExists)
                 {
                     logger.LogDebug("Role {Role} already exists", roleName);
+                    continue;
                 }
 
                 var result = await roleManager.CreateAsync(new Role { Name = roleName });
@@ -33,10 +34,8 @@ namespace Identity.API.Startup
                         string.Join("; ", result.Errors.Select(e => $"{e.Code}: {e.Description}"))
                     );
                 }
-                else
-                {
-                    logger.LogInformation("Created role {Role}", roleName);
-                }
+
+                logger.LogInformation("Created role {Role}", roleName);
             }
         }
     }
