@@ -4,7 +4,9 @@ using Identity.Application.Commands.SignUpUser;
 using Identity.Application.Commands.SignUpUser.Request;
 using Identity.Domain;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Moq;
 
 namespace Identity.Application.UnitTests
@@ -15,17 +17,34 @@ namespace Identity.Application.UnitTests
         {
             var store = new Mock<IUserStore<User>>();
 
-            return new Mock<UserManager<User>>(
+            var options = Options.Create(new IdentityOptions());
+
+            var passwordHasher = new Mock<IPasswordHasher<User>>();
+
+            var userValidators = new List<IUserValidator<User>>();
+            var passwordValidators = new List<IPasswordValidator<User>>();
+
+            var keyNormalizer = new Mock<ILookupNormalizer>();
+
+            var errors = new IdentityErrorDescriber();
+
+            var services = new ServiceCollection().BuildServiceProvider();
+
+            var logger = new Mock<Microsoft.Extensions.Logging.ILogger<UserManager<User>>>();
+
+            var userManagerMock = new Mock<UserManager<User>>(
                 store.Object,
-                null, // IOptions<IdentityOptions>
-                null, // IPasswordHasher<User>
-                null, // IEnumerable<IUserValidator<User>>
-                null, // IEnumerable<IPasswordValidator<User>>
-                null, // ILookupNormalizer
-                null, // IdentityErrorDescriber
-                null, // IServiceProvider
-                null // ILogger<UserManager<User>>
+                options,
+                passwordHasher.Object,
+                userValidators,
+                passwordValidators,
+                keyNormalizer.Object,
+                errors,
+                services,
+                logger.Object
             );
+
+            return userManagerMock;
         }
 
         [Fact]
