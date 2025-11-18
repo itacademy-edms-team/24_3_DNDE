@@ -1,9 +1,14 @@
-import Keycloak from "keycloak-js";
+import Keycloak from 'keycloak-js';
 
 const keycloak = new Keycloak({
- url: "http://127.0.0.1:16000",
- realm: "FinanceTrack",
- clientId: "FinanceTrack-react",
+  url: 'http://localhost:5000/keycloak',
+  realm: 'FinanceTrack',
+  clientId: 'FinanceTrack-react',
 });
+
+export const keycloakInitOptions = {
+  onLoad: 'check-sso',
+  checkLoginIframe: false, // Disable wrong working default auth check. Going to implement own
+};
 
 export default keycloak;

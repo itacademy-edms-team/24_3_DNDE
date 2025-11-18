@@ -7,7 +7,8 @@ import { Provider as JotaiProvider } from 'jotai';
 
 import ThemeProvider from '@/theme/Provider';
 import { ReactKeycloakProvider } from '@react-keycloak/web';
-import keycloack from '@/utils/keycloak/keycloak';
+import keycloak, { keycloakInitOptions } from '@/utils/keycloak/keycloak';
+import { handleTokens } from './utils/keycloak/token-refresh';
 
 const container = document.getElementById('root') as HTMLElement;
 const root = createRoot(container);
@@ -15,7 +16,7 @@ const root = createRoot(container);
 function render(App: ComponentType) {
   root.render(
     <StrictMode>
-      <ReactKeycloakProvider authClient={keycloack}>
+      <ReactKeycloakProvider authClient={keycloak} initOptions={keycloakInitOptions} onTokens={(tokens) => handleTokens(keycloak, tokens)}>
         <JotaiProvider>
           <ThemeProvider>
             <NotificationsProvider>
