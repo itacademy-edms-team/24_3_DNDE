@@ -1,7 +1,7 @@
 import Keycloak from 'keycloak-js';
 
 const keycloak = new Keycloak({
-  url: 'http://localhost:5000/keycloak',
+  url: 'https://localhost:7095',
   realm: 'FinanceTrack',
   clientId: 'FinanceTrack-react',
 });
