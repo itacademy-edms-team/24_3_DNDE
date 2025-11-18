@@ -1,0 +1,6 @@
+@FinanceTrack.Gateway_HostAddress = http://localhost:5000
+
+GET {{FinanceTrack.Gateway_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
