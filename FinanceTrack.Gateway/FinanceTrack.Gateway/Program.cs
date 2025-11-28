@@ -13,7 +13,9 @@ var builder = WebApplication.CreateBuilder(args);
 // Oidc options
 builder
     .Services.AddOptions<OidcOptions>()
-    .Bind(builder.Configuration.GetSection(OidcOptions.SectionName));
+    .Bind(builder.Configuration.GetSection(OidcOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
 
 // Yarp
 builder
@@ -43,14 +45,14 @@ builder
         options =>
         {
             // Keycloak directly, no proxy, (server to server)
-            options.Authority = oidcOptions.Authority;
+            options.Authority = oidcOptions.Bff.Authority;
             options.RequireHttpsMetadata = false; // dev only
 
-            options.ClientId = oidcOptions.ClientId; // ClientId from keycloak
-            options.ClientSecret = oidcOptions.ClientSecret; // ClientSecret from keycloak
+            options.ClientId = oidcOptions.Bff.ClientId; // ClientId from keycloak
+            options.ClientSecret = oidcOptions.Bff.ClientSecret; // ClientSecret from keycloak
             options.ResponseType = OpenIdConnectResponseType.Code;
 
-            options.SaveTokens = true; // access/refresh tokens saved in auth-sessions
+            options.SaveTokens = true; // access/refresh tokens saved in auth-sessions (cookie)
             options.GetClaimsFromUserInfoEndpoint = true;
 
             options.TokenValidationParameters = new TokenValidationParameters
@@ -113,6 +115,21 @@ app.MapGet(
         }
     )
     .RequireAuthorization();
+
+app.MapGet(
+    "/debug/tokens",
+    async (HttpContext ctx) =>
+    {
+        return Results.Json(
+            new
+            {
+                access = await ctx.GetTokenAsync("access_token"),
+                refresh = await ctx.GetTokenAsync("refresh_token"),
+                id = await ctx.GetTokenAsync("id_token"),
+            }
+        );
+    }
+);
 
 // Example of a protected API endpoint
 //app.MapGet("/api/transactions", () => ...)
