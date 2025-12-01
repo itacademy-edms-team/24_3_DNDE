@@ -1,5 +1,6 @@
 ﻿using System.Net.Http.Headers;
 using FinanceTrack.Gateway.Configuration;
+using FinanceTrack.Gateway.Extensions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
@@ -58,6 +59,9 @@ builder
             options.Cookie.HttpOnly = true;
             options.Cookie.SameSite = SameSiteMode.Lax; // dev, SPA on same origin
             // options.Cookie.SecurePolicy = CookieSecurePolicy.Always; // prod
+            // Refresh-token lifetime
+            options.ExpireTimeSpan = TimeSpan.FromDays(7);
+            options.SlidingExpiration = true;
         }
     )
     .AddOpenIdConnect(
@@ -92,6 +96,7 @@ var app = builder.Build();
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseKeycloakTokenRefresh();
 
 // Yarp. Proxy all routes in configuration
 app.MapReverseProxy();
