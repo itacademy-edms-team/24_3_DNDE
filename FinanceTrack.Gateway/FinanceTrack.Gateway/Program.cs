@@ -1,9 +1,11 @@
-﻿using FinanceTrack.Gateway.Configuration;
+﻿using System.Net.Http.Headers;
+using FinanceTrack.Gateway.Configuration;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
+using Yarp.ReverseProxy.Transforms;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,7 +22,25 @@ builder
 // Yarp
 builder
     .Services.AddReverseProxy()
-    .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
+    .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
+    .AddTransforms(builderContext =>
+    {
+        // Transform access_token to downstream finance-api
+        if (builderContext.Route.RouteId == "finance-api")
+        {
+            builderContext.AddRequestTransform(async transformContext =>
+            {
+                var accessToken = await transformContext.HttpContext.GetTokenAsync("access_token");
+
+                if (!string.IsNullOrEmpty(accessToken))
+                {
+                    transformContext.ProxyRequest.Headers.Authorization =
+                        new AuthenticationHeaderValue("Bearer", accessToken);
+                }
+                // if token is not provided, the downstream API will respond with 401/403
+            });
+        }
+    });
 
 // Bff
 var oidcOptions = builder.Configuration.GetSection(OidcOptions.SectionName).Get<OidcOptions>();

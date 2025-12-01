@@ -1,0 +1,19 @@
+name: FinanceTrack-financeservice-dev
+
+services:
+  db:
+    image: postgres:16
+    container_name: FinanceTrack-financeservice-postgres
+    restart: unless-stopped
+
+    env_file:
+      - .env.dev
+
+    ports:
+      - "${POSTGRES_PORT_EXTERNAL}:${POSTGRES_PORT_INTERNAL}"
+
+    volumes:
+      - FinanceTrack_financeservice_pgdata:/var/lib/postgresql/data
+
+volumes:
+  FinanceTrack_financeservice_pgdata:
