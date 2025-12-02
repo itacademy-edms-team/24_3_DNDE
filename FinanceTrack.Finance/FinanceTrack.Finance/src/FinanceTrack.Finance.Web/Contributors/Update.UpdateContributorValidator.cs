@@ -3,6 +3,7 @@ using FinanceTrack.Finance.Infrastructure.Data.Config;
 using FluentValidation;
 
 namespace FinanceTrack.Finance.Web.Contributors;
+
 /// <summary>
 /// See: https://fast-endpoints.com/docs/validation
 /// </summary>
@@ -14,7 +15,7 @@ public class UpdateContributorValidator : Validator<UpdateContributorRequest>
       .NotEmpty()
       .WithMessage("Name is required.")
       .MinimumLength(2)
-      .MaximumLength(DataSchemaConstants.DEFAULT_NAME_LENGTH);
+      .MaximumLength(ContributorDataSchemaConstants.DEFAULT_NAME_LENGTH);
     RuleFor(x => x.ContributorId)
       .Must((args, contributorId) => args.Id == contributorId)
       .WithMessage("Route and body Ids must match; cannot update Id of an existing resource.");

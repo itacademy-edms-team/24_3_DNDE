@@ -1,5 +1,6 @@
 ﻿using FinanceTrack.Finance.Core.Interfaces;
 using FinanceTrack.Finance.Core.Services;
+using FinanceTrack.Finance.Core.TransactionAggregate;
 using FinanceTrack.Finance.Infrastructure.Data;
 using FinanceTrack.Finance.Infrastructure.Data.Queries;
 using FinanceTrack.Finance.UseCases.Contributors.List;
