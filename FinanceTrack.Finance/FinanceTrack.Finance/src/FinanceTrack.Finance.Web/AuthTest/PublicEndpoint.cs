@@ -4,7 +4,7 @@ public class PublicEndpoint : EndpointWithoutRequest<string>
 {
   public override void Configure()
   {
-    Get("/api/finance/auth-test/public");
+    Get("/auth-test/public");
     AllowAnonymous();
   }
 

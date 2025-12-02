@@ -4,7 +4,7 @@ public class SecureEndpoint : EndpointWithoutRequest<string>
 {
   public override void Configure()
   {
-    Get("/api/finance/auth-test/secure");
+    Get("/auth-test/secure");
     // Require 'user' role
     Roles("user");
   }

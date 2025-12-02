@@ -26,19 +26,24 @@ builder
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
     .AddTransforms(builderContext =>
     {
-        // Transform access_token to downstream finance-api
         if (builderContext.Route.RouteId == "finance-api")
         {
             builderContext.AddRequestTransform(async transformContext =>
             {
-                var accessToken = await transformContext.HttpContext.GetTokenAsync("access_token");
+                var httpContext = transformContext.HttpContext;
+
+                var accessToken = httpContext.Items.TryGetValue(
+                    "bff_access_token",
+                    out var tokenObj
+                )
+                    ? tokenObj as string
+                    : await httpContext.GetTokenAsync("access_token");
 
                 if (!string.IsNullOrEmpty(accessToken))
                 {
                     transformContext.ProxyRequest.Headers.Authorization =
                         new AuthenticationHeaderValue("Bearer", accessToken);
                 }
-                // if token is not provided, the downstream API will respond with 401/403
             });
         }
     });

@@ -142,6 +142,8 @@ namespace FinanceTrack.Gateway.Extensions
                         authResult.Properties
                     );
 
+                    context.Items["bff_access_token"] = newAccessToken;
+
                     await next();
                 }
             );

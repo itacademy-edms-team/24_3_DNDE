@@ -4,12 +4,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FinanceTrack.Finance.UseCases.Transactions.CreateExpense;
+namespace FinanceTrack.Finance.UseCases.Transactions.Incomes.Create;
 
-public sealed record CreateExpenseTransactionCommand(
+public sealed record CreateIncomeTransactionCommand(
   string UserId,
   decimal Amount,
   DateOnly OperationDate,
-  bool IsMonthly,
-  Guid IncomeTransactionId
+  bool IsMonthly
 ) : ICommand<Result<Guid>>;

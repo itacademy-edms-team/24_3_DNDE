@@ -16,15 +16,15 @@ const routes: Routes = [
     icon: HomeIcon,
   },
   {
-    component: asyncComponentLoader(() => import('@/pages/Page1')),
-    path: '/page-1',
-    title: 'Page 1',
+    component: asyncComponentLoader(() => import('@/pages/AccountPage')),
+    path: '/account',
+    title: 'Account',
     icon: GitHubIcon,
   },
   {
-    component: asyncComponentLoader(() => import('@/pages/Page2')),
-    path: '/page-2',
-    title: 'Page 2',
+    component: asyncComponentLoader(() => import('@/pages/TransactionsPage')),
+    path: '/transactions',
+    title: 'Transactions',
     icon: AddTaskIcon,
   },
   {

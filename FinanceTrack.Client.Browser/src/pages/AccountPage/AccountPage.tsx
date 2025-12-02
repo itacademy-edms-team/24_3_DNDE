@@ -50,6 +50,7 @@ function LoginPage() {
 
   return (
     <>
+      <meta name="title" content="Account" />
       <Typography variant="h3">Login</Typography>
       {!isAuth && (
         <Button onClick={handleLogin}>Login</Button>

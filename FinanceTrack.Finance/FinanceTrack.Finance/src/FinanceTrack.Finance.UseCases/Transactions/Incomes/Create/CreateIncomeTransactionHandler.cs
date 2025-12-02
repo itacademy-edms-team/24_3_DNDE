@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using FinanceTrack.Finance.Core.TransactionAggregate;
 
-namespace FinanceTrack.Finance.UseCases.Transactions.CreateIncome;
+namespace FinanceTrack.Finance.UseCases.Transactions.Incomes.Create;
 
 public sealed class CreateIncomeTransactionHandler(IRepository<Transaction> transactionRepository)
   : ICommandHandler<CreateIncomeTransactionCommand, Result<Guid>>

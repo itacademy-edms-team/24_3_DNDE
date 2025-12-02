@@ -1,6 +1,7 @@
 ﻿using FinanceTrack.Finance.UseCases.Contributors.Create;
 
 namespace FinanceTrack.Finance.Web.Contributors;
+
 /// <summary>
 /// Create a new Contributor
 /// </summary>
@@ -25,13 +26,17 @@ public class Create(IMediator _mediator)
 
   public override async Task HandleAsync(
     CreateContributorRequest request,
-    CancellationToken cancellationToken)
+    CancellationToken cancellationToken
+  )
   {
-    var result = await _mediator.Send(new CreateContributorCommand(request.Name!,
-      request.PhoneNumber), cancellationToken);
+    var result = await _mediator.Send(
+      new CreateContributorCommand(request.Name!, request.PhoneNumber),
+      cancellationToken
+    );
 
-    var result2 = await new CreateContributorCommand2(request.Name!)
-      .ExecuteAsync(cancellationToken);
+    var result2 = await new CreateContributorCommand2(request.Name!).ExecuteAsync(
+      cancellationToken
+    );
 
     if (result.IsSuccess)
     {
