@@ -155,7 +155,7 @@ function TransactionsPage() {
 
   const validateAmount = (raw: string): number | null => {
     const value = parseAmount(raw);
-    if (Number.isNaN(value) || value <= 0) {
+    if (Number.isNaN(value) || value < 0.01) {
       return null;
     }
     return value;
@@ -169,7 +169,7 @@ function TransactionsPage() {
 
     const amount = validateAmount(addForm.amount);
     if (amount === null) {
-      alert('Incorrect amount');
+      alert('Incorrect amount. Must be at least 0.01');
       return;
     }
 
@@ -215,7 +215,7 @@ function TransactionsPage() {
 
     const amount = validateAmount(editForm.amount);
     if (amount === null) {
-      alert('Incorrect amount');
+      alert('Incorrect amount. Must be at least 0.01');
       return;
     }
 
@@ -494,6 +494,7 @@ function TransactionsPage() {
               <TextField
                 label="Amount"
                 type="number"
+                inputProps={{ step: '0.01', min: '0.01' }}
                 fullWidth
                 value={editForm.amount}
                 onChange={e =>

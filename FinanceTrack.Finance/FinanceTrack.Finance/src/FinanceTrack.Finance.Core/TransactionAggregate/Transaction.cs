@@ -40,6 +40,7 @@ public sealed class Transaction : EntityBase<Guid>, IAggregateRoot
   {
     Guard.Against.NullOrWhiteSpace(userId);
     Guard.Against.NullOrWhiteSpace(name);
+    var roundedAmount = decimal.Round(amount, 2);
     Guard.Against.NegativeOrZero(amount);
     Guard.Against.Default(operationDate);
 
@@ -52,7 +53,7 @@ public sealed class Transaction : EntityBase<Guid>, IAggregateRoot
     UserId = userId;
     Name = name;
     TransactionType = type;
-    Amount = decimal.Round(amount, 2);
+    Amount = roundedAmount;
     OperationDate = operationDate;
     IsMonthly = isMonthly;
     IncomeTransactionId = incomeTransactionId;
@@ -103,8 +104,9 @@ public sealed class Transaction : EntityBase<Guid>, IAggregateRoot
 
   public Transaction UpdateAmount(decimal newAmount)
   {
-    Guard.Against.NegativeOrZero(newAmount);
-    Amount = decimal.Round(newAmount, 2);
+    var roundedNewAmount = decimal.Round(newAmount, 2);
+    Guard.Against.NegativeOrZero(roundedNewAmount);
+    Amount = roundedNewAmount;
     return this;
   }
 
