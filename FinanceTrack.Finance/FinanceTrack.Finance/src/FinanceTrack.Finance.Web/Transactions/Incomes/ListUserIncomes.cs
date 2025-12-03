@@ -28,7 +28,14 @@ public class ListUserIncomes(IMediator _mediator)
     Response = new ListIncomeTransactionsByUserIdResponse
     {
       Transactions = incomes
-        .Select(i => new TransactionRecord(i.Id, i.Amount, i.OperationDate, i.IsMonthly, i.Type))
+        .Select(i => new TransactionRecord(
+          i.Id,
+          i.Name,
+          i.Amount,
+          i.OperationDate,
+          i.IsMonthly,
+          i.Type
+        ))
         .ToList(),
     };
   }

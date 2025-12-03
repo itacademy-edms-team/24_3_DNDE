@@ -4,7 +4,7 @@ import type { Theme } from '@mui/material';
 
 import { objectInsertIf } from '@/utils/insertIf';
 
-import { PrivateRoute } from '@/components/PrivateRoute';
+import { PrivateRoute } from '@/routes/PrivateRoute/PrivateRoute';
 
 import { Routes } from '../types';
 

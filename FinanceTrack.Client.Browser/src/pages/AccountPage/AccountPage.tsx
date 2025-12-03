@@ -1,3 +1,4 @@
+import { FullSizeCentered } from '@/components/styled';
 import { Button, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
 
@@ -51,19 +52,19 @@ function LoginPage() {
   return (
     <>
       <meta name="title" content="Account" />
-      <Typography variant="h3">Login</Typography>
       {!isAuth && (
-        <Button onClick={handleLogin}>Login</Button>
+        <Button onClick={handleLogin}>Sign In</Button>
       )}
       {isAuth && (
-        <>
+        <FullSizeCentered>
+          <Typography variant="h3">Account</Typography>
           <Typography variant="body1">
             Hello, {user.name}
           </Typography>
           <Button onClick={handleLogout}>
-            Logout
+            Sign Out
           </Button>
-        </>
+        </FullSizeCentered>
       )}
     </>
   );

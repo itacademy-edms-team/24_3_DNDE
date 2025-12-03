@@ -26,6 +26,7 @@ public class Create(IMediator mediator)
 
     var command = new CreateIncomeTransactionCommand(
       UserId: userId,
+      Name: request.Name,
       Amount: request.Amount,
       OperationDate: request.OperationDate,
       IsMonthly: request.IsMonthly

@@ -20,12 +20,14 @@ const routes: Routes = [
     path: '/account',
     title: 'Account',
     icon: GitHubIcon,
+    protected: true,
   },
   {
     component: asyncComponentLoader(() => import('@/pages/TransactionsPage')),
     path: '/transactions',
     title: 'Transactions',
     icon: AddTaskIcon,
+    protected: true,
   },
   {
     component: asyncComponentLoader(() => import('@/pages/Page3')),

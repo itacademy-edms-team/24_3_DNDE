@@ -20,6 +20,7 @@ import {
 
 type IncomeTransactionRecord = {
   id: string;
+  name: string;
   amount: number;
   operationDate: string; // "YYYY-MM-DD"
   isMonthly: boolean;
@@ -31,12 +32,15 @@ type ListIncomeTransactionsByUserIdResponse = {
 };
 
 type AddIncomeFormState = {
+  name: string;
   amount: string;
   operationDate: string;
   isMonthly: boolean;
 };
 
 type EditIncomeFormState = {
+  name: string;
+  amount: string;
   operationDate: string;
   isMonthly: boolean;
 };
@@ -48,14 +52,18 @@ function TransactionsPage() {
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false); // 🔹
 
   const [addForm, setAddForm] = useState<AddIncomeFormState>({
+    name: '',
     amount: '',
     operationDate: '',
     isMonthly: false,
   });
 
   const [editForm, setEditForm] = useState<EditIncomeFormState>({
+    name: '',
+    amount: '',
     operationDate: '',
     isMonthly: false,
   });
@@ -78,19 +86,19 @@ function TransactionsPage() {
       });
 
       if (!response.ok) {
-        throw new Error(`Ошибка загрузки: ${response.status}`);
+        throw new Error(`Loading error: ${response.status}`);
       }
 
       const data = (await response.json()) as ListIncomeTransactionsByUserIdResponse;
 
       if (!data || !Array.isArray(data.transactions)) {
-        throw new Error('Некорректный формат ответа сервера');
+        throw new Error('Invalid server response');
       }
 
       setTransactions(data.transactions);
     } catch (e) {
       const err = e as Error;
-      setError(err.message ?? 'Неизвестная ошибка');
+      setError(err.message ?? 'Unexpected error');
     } finally {
       setLoading(false);
     }
@@ -102,6 +110,7 @@ function TransactionsPage() {
 
   const handleOpenAddDialog = () => {
     setAddForm({
+      name: '',
       amount: '',
       operationDate: '',
       isMonthly: false,
@@ -117,6 +126,8 @@ function TransactionsPage() {
     if (!selectedTransaction) return;
 
     setEditForm({
+      name: selectedTransaction.name,
+      amount: selectedTransaction.amount.toString(),
       operationDate: selectedTransaction.operationDate,
       isMonthly: selectedTransaction.isMonthly,
     });
@@ -128,16 +139,42 @@ function TransactionsPage() {
     setIsEditDialogOpen(false);
   };
 
-  const handleAddIncome = async () => {
-    const amount = Number(addForm.amount.replace(',', '.'));
+  const handleOpenDeleteConfirm = () => {
+    if (!selectedTransaction) return;
+    setIsDeleteConfirmOpen(true);
+  };
 
-    if (Number.isNaN(amount) || amount <= 0) {
-      alert('Неверная сумма');
+  const handleCloseDeleteConfirm = () => {
+    setIsDeleteConfirmOpen(false);
+  };
+
+  const parseAmount = (raw: string): number => {
+    const value = Number(raw.replace(',', '.'));
+    return value;
+  };
+
+  const validateAmount = (raw: string): number | null => {
+    const value = parseAmount(raw);
+    if (Number.isNaN(value) || value <= 0) {
+      return null;
+    }
+    return value;
+  };
+
+  const handleAddIncome = async () => {
+    if (!addForm.name.trim()) {
+      alert('Name is required');
+      return;
+    }
+
+    const amount = validateAmount(addForm.amount);
+    if (amount === null) {
+      alert('Incorrect amount');
       return;
     }
 
     if (!/^\d{4}-\d{2}-\d{2}$/.test(addForm.operationDate)) {
-      alert('Дата должна быть в формате ГГГГ-ММ-ДД');
+      alert('Date must be format YYYY-MM-DD');
       return;
     }
 
@@ -149,29 +186,41 @@ function TransactionsPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          amount,
+          name: addForm.name.trim(),
+          amount, // отправляем число, не строку
           operationDate: addForm.operationDate,
           isMonthly: addForm.isMonthly,
         }),
       });
 
       if (!response.ok) {
-        throw new Error(`Ошибка создания: ${response.status}`);
+        throw new Error(`Create error: ${response.status}`);
       }
 
       await loadIncomes();
       setIsAddDialogOpen(false);
     } catch (e) {
       const err = e as Error;
-      alert(err.message ?? 'Ошибка при создании дохода');
+      alert(err.message ?? 'Error when creating income');
     }
   };
 
   const handleSaveEdit = async () => {
     if (!selectedTransaction) return;
 
+    if (!editForm.name.trim()) {
+      alert('Name is required');
+      return;
+    }
+
+    const amount = validateAmount(editForm.amount);
+    if (amount === null) {
+      alert('Incorrect amount');
+      return;
+    }
+
     if (!/^\d{4}-\d{2}-\d{2}$/.test(editForm.operationDate)) {
-      alert('Дата должна быть в формате ГГГГ-ММ-ДД');
+      alert('Date must be format YYYY-MM-DD');
       return;
     }
 
@@ -185,7 +234,8 @@ function TransactionsPage() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            amount: selectedTransaction.amount, // пока не редактируем сумму
+            name: editForm.name.trim(),
+            amount,
             operationDate: editForm.operationDate,
             isMonthly: editForm.isMonthly,
           }),
@@ -193,14 +243,40 @@ function TransactionsPage() {
       );
 
       if (!response.ok) {
-        throw new Error(`Ошибка обновления: ${response.status}`);
+        throw new Error(`Update error: ${response.status}`);
       }
 
       await loadIncomes();
       setIsEditDialogOpen(false);
     } catch (e) {
       const err = e as Error;
-      alert(err.message ?? 'Ошибка при обновлении дохода');
+      alert(err.message ?? 'Error when updating income');
+    }
+  };
+
+  const handleConfirmDelete = async () => {        // 🔹
+    if (!selectedTransaction) return;
+
+    try {
+      const response = await fetch(
+        `/api/finance/transactions/income/${encodeURIComponent(selectedTransaction.id)}`,
+        {
+          method: 'DELETE',
+          credentials: 'include',
+        }
+      );
+
+      if (response.status !== 204 && !response.ok) {
+        throw new Error(`Delete error: ${response.status}`);
+      }
+
+      setIsDeleteConfirmOpen(false);
+      setIsEditDialogOpen(false);
+      setSelectedId(null);
+      await loadIncomes();
+    } catch (e) {
+      const err = e as Error;
+      alert(err.message ?? 'Error when deleting income');
     }
   };
 
@@ -210,7 +286,6 @@ function TransactionsPage() {
 
   const formatOperationDate = (dateStr: string): string => {
     if (!dateStr) return '';
-    // ожидаем "YYYY-MM-DD"
     const [year, month, day] = dateStr.split('-');
     if (!year || !month || !day) return dateStr;
     return `${day}.${month}.${year}`;
@@ -219,19 +294,19 @@ function TransactionsPage() {
   return (
     <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Typography variant="h3" gutterBottom>
-        Доходы
+        Incomes
       </Typography>
 
       <Stack direction="row" spacing={2} alignItems="center">
         <Button variant="contained" onClick={handleOpenAddDialog}>
-          Добавить доход
+          Add income
         </Button>
         <Button variant="outlined" onClick={() => void loadIncomes()}>
-          Обновить список
+          Refresh incomes
         </Button>
         {loading && (
           <Typography variant="body2" color="text.secondary">
-            Загрузка...
+            Loading...
           </Typography>
         )}
       </Stack>
@@ -256,7 +331,7 @@ function TransactionsPage() {
       >
         {transactions.length === 0 && !loading && (
           <Typography variant="body2" color="text.secondary">
-            Доходов пока нет. Нажми &quot;Добавить доход&quot;, чтобы создать первый.
+            No incomes yet. Press &quot;Add income&quot; to create the first one.
           </Typography>
         )}
 
@@ -273,13 +348,17 @@ function TransactionsPage() {
               }}
             >
               <CardActionArea onClick={() => handleSelectTransaction(tx.id)}>
-                <CardContent sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <CardContent
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
                   <Box>
-                    <Typography variant="subtitle1">
-                      Доход {tx.id.slice(0, 8)}…
-                    </Typography>
+                    <Typography variant="subtitle1">{tx.name}</Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Дата: {formatOperationDate(tx.operationDate)}
+                      Date: {formatOperationDate(tx.operationDate)}
                     </Typography>
                   </Box>
                   <Box sx={{ textAlign: 'right' }}>
@@ -287,7 +366,7 @@ function TransactionsPage() {
                       {tx.amount.toFixed(2)} ₽
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      {tx.isMonthly ? 'Ежемесячный' : 'Разовый'}
+                      {tx.isMonthly ? 'Monthly' : 'Single'}
                     </Typography>
                   </Box>
                 </CardContent>
@@ -297,11 +376,11 @@ function TransactionsPage() {
         })}
       </Paper>
 
-      {/* Карточка под лентой с деталями выбранного дохода */}
+      {/* Карточка с деталями выбранного дохода */}
       {selectedTransaction && (
         <Box>
           <Typography variant="h6" gutterBottom>
-            Детали дохода
+            Income details
           </Typography>
           <Card
             variant="outlined"
@@ -314,19 +393,19 @@ function TransactionsPage() {
           >
             <CardContent>
               <Typography variant="subtitle1" gutterBottom>
-                Доход {selectedTransaction.id.slice(0, 8)}…
+                {selectedTransaction.name}
               </Typography>
               <Typography variant="body2">
-                Сумма: {selectedTransaction.amount.toFixed(2)} ₽
+                Amount: {selectedTransaction.amount.toFixed(2)} ₽
               </Typography>
               <Typography variant="body2">
-                Дата поступления: {formatOperationDate(selectedTransaction.operationDate)}
+                Income date: {formatOperationDate(selectedTransaction.operationDate)}
               </Typography>
               <Typography variant="body2">
-                Тип: {selectedTransaction.isMonthly ? 'Ежемесячный' : 'Разовый'}
+                Type: {selectedTransaction.isMonthly ? 'Monthly' : 'Single'}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                Нажми, чтобы изменить дату и ежемесячность
+                Press to edit
               </Typography>
             </CardContent>
           </Card>
@@ -335,23 +414,36 @@ function TransactionsPage() {
 
       {/* Диалог добавления дохода */}
       <Dialog open={isAddDialogOpen} onClose={handleCloseAddDialog} maxWidth="xs" fullWidth>
-        <DialogTitle>Добавить доход</DialogTitle>
+        <DialogTitle>Add income</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField
-              label="Сумма"
+              label="Name"
+              type="text"
+              fullWidth
+              value={addForm.name}
+              onChange={e =>
+                setAddForm(prev => ({ ...prev, name: e.target.value }))
+              }
+            />
+            <TextField
+              label="Amount"
               type="number"
               fullWidth
               value={addForm.amount}
-              onChange={e => setAddForm(prev => ({ ...prev, amount: e.target.value }))}
+              onChange={e =>
+                setAddForm(prev => ({ ...prev, amount: e.target.value }))
+              }
             />
             <TextField
-              label="Дата операции"
+              label="Operation date"
               type="date"
               fullWidth
               InputLabelProps={{ shrink: true }}
               value={addForm.operationDate}
-              onChange={e => setAddForm(prev => ({ ...prev, operationDate: e.target.value }))}
+              onChange={e =>
+                setAddForm(prev => ({ ...prev, operationDate: e.target.value }))
+              }
             />
             <FormControlLabel
               control={
@@ -362,44 +454,63 @@ function TransactionsPage() {
                   }
                 />
               }
-              label="Ежемесячный доход"
+              label="Is monthly?"
             />
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseAddDialog}>Назад</Button>
+          <Button onClick={handleCloseAddDialog}>Back</Button>
           <Button onClick={handleAddIncome} variant="contained">
-            Добавить
+            Add
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Диалог редактирования дохода */}
       <Dialog open={isEditDialogOpen} onClose={handleCloseEditDialog} maxWidth="xs" fullWidth>
-        <DialogTitle>Изменить доход</DialogTitle>
+        <DialogTitle>Edit income</DialogTitle>
         <DialogContent dividers>
           {selectedTransaction ? (
             <Stack spacing={2} sx={{ mt: 1 }}>
               <Box>
                 <Typography variant="subtitle2" color="text.secondary">
-                  Доход
+                  Current
                 </Typography>
+                <Typography variant="body2">{selectedTransaction.name}</Typography>
                 <Typography variant="body2">
-                  {selectedTransaction.id}
-                </Typography>
-                <Typography variant="body2">
-                  Сумма: {selectedTransaction.amount.toFixed(2)} ₽
+                  Amount: {selectedTransaction.amount.toFixed(2)} ₽
                 </Typography>
               </Box>
               <Divider />
               <TextField
-                label="Дата операции"
+                label="Name"
+                type="text"
+                fullWidth
+                value={editForm.name}
+                onChange={e =>
+                  setEditForm(prev => ({ ...prev, name: e.target.value }))
+                }
+              />
+              <TextField
+                label="Amount"
+                type="number"
+                fullWidth
+                value={editForm.amount}
+                onChange={e =>
+                  setEditForm(prev => ({ ...prev, amount: e.target.value }))
+                }
+              />
+              <TextField
+                label="Operation date"
                 type="date"
                 fullWidth
                 InputLabelProps={{ shrink: true }}
                 value={editForm.operationDate}
                 onChange={e =>
-                  setEditForm(prev => ({ ...prev, operationDate: e.target.value }))
+                  setEditForm(prev => ({
+                    ...prev,
+                    operationDate: e.target.value,
+                  }))
                 }
               />
               <FormControlLabel
@@ -407,25 +518,61 @@ function TransactionsPage() {
                   <Switch
                     checked={editForm.isMonthly}
                     onChange={e =>
-                      setEditForm(prev => ({ ...prev, isMonthly: e.target.checked }))
+                      setEditForm(prev => ({
+                        ...prev,
+                        isMonthly: e.target.checked,
+                      }))
                     }
                   />
                 }
-                label="Ежемесячный доход"
+                label="Is monthly?"
               />
             </Stack>
           ) : (
-            <Typography>Доход не выбран</Typography>
+            <Typography>No selected income</Typography>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseEditDialog}>Назад</Button>
+          <Button onClick={handleCloseEditDialog}>Back</Button>
+          <Button
+            color="error"
+            onClick={handleOpenDeleteConfirm}
+            disabled={!selectedTransaction}
+          >
+            Delete
+          </Button>
           <Button
             onClick={handleSaveEdit}
             variant="contained"
             disabled={!selectedTransaction}
           >
-            Сохранить
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Диалог подтверждения удаления */}
+      <Dialog
+        open={isDeleteConfirmOpen}
+        onClose={handleCloseDeleteConfirm}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Delete income</DialogTitle>
+        <DialogContent dividers>
+          <Typography>
+            Are you sure you want to delete this income?
+          </Typography>
+          {selectedTransaction && (
+            <Typography sx={{ mt: 1 }} color="text.secondary" variant="body2">
+              {selectedTransaction.name} — {selectedTransaction.amount.toFixed(2)} ₽
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDeleteConfirm}>Cancel</Button>
+          <Button color="error" variant="contained" onClick={handleConfirmDelete}>
+            Delete
           </Button>
         </DialogActions>
       </Dialog>

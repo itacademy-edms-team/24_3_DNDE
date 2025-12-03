@@ -17,6 +17,7 @@ public sealed class CreateIncomeTransactionHandler(IRepository<Transaction> tran
   {
     var income = Transaction.CreateIncome(
       userId: request.UserId,
+      name: request.Name,
       amount: request.Amount,
       operationDate: request.OperationDate,
       isMonthly: request.IsMonthly

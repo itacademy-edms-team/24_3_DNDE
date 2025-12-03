@@ -15,6 +15,11 @@ public class TransactionConfiguration : IEntityTypeConfiguration<Transaction>
       .HasMaxLength(TransactionDataSchemaConstants.USER_ID_MAX_LENGTH);
 
     builder
+      .Property(t => t.Name)
+      .IsRequired()
+      .HasMaxLength(TransactionDataSchemaConstants.TRANSACTION_NAME_MAX_LENGTH);
+
+    builder
       .Property(t => t.TransactionType)
       .HasConversion(x => x.Value, x => TransactionType.FromValue(x))
       .IsRequired();

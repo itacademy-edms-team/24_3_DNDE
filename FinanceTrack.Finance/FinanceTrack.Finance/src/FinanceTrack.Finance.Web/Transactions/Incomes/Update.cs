@@ -29,6 +29,7 @@ public class Update(IMediator _mediator)
     var command = new UpdateIncomeTransactionCommand(
       TransactionId: request.TransactionId,
       UserId: userId,
+      Name: request.Name,
       Amount: request.Amount,
       OperationDate: request.OperationDate,
       IsMonthly: request.IsMonthly
@@ -58,6 +59,7 @@ public class Update(IMediator _mediator)
         var dto = result.Value;
         Response = new TransactionRecord(
           dto.Id,
+          dto.Name,
           dto.Amount,
           dto.OperationDate,
           dto.IsMonthly,

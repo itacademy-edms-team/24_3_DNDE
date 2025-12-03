@@ -7,6 +7,7 @@ public sealed class Transaction : EntityBase<Guid>, IAggregateRoot
 {
   // Keycloak sub is string
   public string UserId { get; private set; } = default!;
+  public string Name { get; private set; } = default!;
 
   // For Income - null, For Expense - reference to parent Income Transaction
   public Guid? IncomeTransactionId { get; private set; }
@@ -28,6 +29,7 @@ public sealed class Transaction : EntityBase<Guid>, IAggregateRoot
 
   private Transaction(
     string userId,
+    string name,
     TransactionType type,
     decimal amount,
     DateOnly operationDate,
@@ -37,6 +39,7 @@ public sealed class Transaction : EntityBase<Guid>, IAggregateRoot
   )
   {
     Guard.Against.NullOrWhiteSpace(userId);
+    Guard.Against.NullOrWhiteSpace(name);
     Guard.Against.NegativeOrZero(amount);
     Guard.Against.Default(operationDate);
 
@@ -47,6 +50,7 @@ public sealed class Transaction : EntityBase<Guid>, IAggregateRoot
       throw new InvalidOperationException("Expense transaction must have IncomeTransactionId.");
 
     UserId = userId;
+    Name = name;
     TransactionType = type;
     Amount = decimal.Round(amount, 2);
     OperationDate = operationDate;
@@ -57,12 +61,14 @@ public sealed class Transaction : EntityBase<Guid>, IAggregateRoot
 
   public static Transaction CreateIncome(
     string userId,
+    string name,
     decimal amount,
     DateOnly operationDate,
     bool isMonthly
   ) =>
     new(
       userId: userId,
+      name: name,
       type: TransactionType.Income,
       amount: amount,
       operationDate: operationDate,
@@ -72,6 +78,7 @@ public sealed class Transaction : EntityBase<Guid>, IAggregateRoot
 
   public static Transaction CreateExpense(
     string userId,
+    string name,
     decimal amount,
     DateOnly operationDate,
     bool isMonthly,
@@ -79,12 +86,20 @@ public sealed class Transaction : EntityBase<Guid>, IAggregateRoot
   ) =>
     new(
       userId: userId,
+      name: name,
       type: TransactionType.Expense,
       amount: amount,
       operationDate: operationDate,
       isMonthly: isMonthly,
       incomeTransactionId: incomeTransactionId
     );
+
+  public Transaction UpdateName(string name)
+  {
+    Guard.Against.NullOrWhiteSpace(name);
+    Name = name;
+    return this;
+  }
 
   public Transaction UpdateAmount(decimal newAmount)
   {
