@@ -1,0 +1,69 @@
+﻿using System.Security.Claims;
+using FinanceTrack.Finance.UseCases.Transactions.Incomes.Update;
+using FinanceTrack.Finance.Web.Extensions;
+using MediatR;
+
+namespace FinanceTrack.Finance.Web.Transactions.Incomes;
+
+public class Update(IMediator _mediator)
+  : Endpoint<UpdateIncomeTransactionRequest, TransactionRecord>
+{
+  public override void Configure()
+  {
+    Put(UpdateIncomeTransactionRequest.Route);
+    Roles("user");
+  }
+
+  public override async Task HandleAsync(
+    UpdateIncomeTransactionRequest request,
+    CancellationToken ct
+  )
+  {
+    var userId = User.GetUserId();
+    if (string.IsNullOrWhiteSpace(userId))
+    {
+      await SendUnauthorizedAsync(ct);
+      return;
+    }
+
+    var command = new UpdateIncomeTransactionCommand(
+      TransactionId: request.TransactionId,
+      UserId: userId,
+      Amount: request.Amount,
+      OperationDate: request.OperationDate,
+      IsMonthly: request.IsMonthly
+    );
+
+    var result = await _mediator.Send(command, ct);
+
+    switch (result.Status)
+    {
+      case ResultStatus.NotFound:
+        await SendNotFoundAsync(ct);
+        return;
+
+      case ResultStatus.Forbidden:
+        await SendForbiddenAsync(ct);
+        return;
+
+      case ResultStatus.Invalid:
+      case ResultStatus.Error:
+        if (result.Errors.Any())
+          AddError(result.Errors.First());
+        await SendErrorsAsync(cancellation: ct);
+        return;
+
+      case ResultStatus.Ok:
+      default:
+        var dto = result.Value;
+        Response = new TransactionRecord(
+          dto.Id,
+          dto.Amount,
+          dto.OperationDate,
+          dto.IsMonthly,
+          dto.Type
+        );
+        return;
+    }
+  }
+}

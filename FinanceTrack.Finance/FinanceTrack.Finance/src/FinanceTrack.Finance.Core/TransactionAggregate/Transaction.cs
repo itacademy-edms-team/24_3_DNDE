@@ -23,7 +23,7 @@ public sealed class Transaction : EntityBase<Guid>, IAggregateRoot
 
   public Transaction? IncomeTransaction { get; private set; }
 
-  // Для ORM
+  // ORM
   private Transaction() { }
 
   private Transaction(
@@ -96,6 +96,13 @@ public sealed class Transaction : EntityBase<Guid>, IAggregateRoot
   public Transaction SetMonthly(bool isMonthly)
   {
     IsMonthly = isMonthly;
+    return this;
+  }
+
+  public Transaction SetOperationDate(DateOnly newDate)
+  {
+    Guard.Against.Default(newDate);
+    OperationDate = newDate;
     return this;
   }
 }
