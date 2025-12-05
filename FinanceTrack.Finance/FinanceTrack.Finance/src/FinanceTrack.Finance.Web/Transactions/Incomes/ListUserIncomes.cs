@@ -1,42 +1,40 @@
-﻿using System.Security.Claims;
-using FinanceTrack.Finance.UseCases.Transactions.Incomes.List;
+﻿using FinanceTrack.Finance.UseCases.Transactions.Incomes.List;
 using FinanceTrack.Finance.Web.Extensions;
-using MediatR;
 
 namespace FinanceTrack.Finance.Web.Transactions.Incomes;
 
 public class ListUserIncomes(IMediator _mediator)
-  : EndpointWithoutRequest<ListIncomeTransactionsByUserIdResponse>
+    : EndpointWithoutRequest<ListIncomeTransactionsByUserIdResponse>
 {
-  public override void Configure()
-  {
-    Get(ListUserIncomesByUserIdRequest.Route);
-    Roles("user");
-  }
-
-  public override async Task HandleAsync(CancellationToken ct)
-  {
-    var userId = User.GetUserId();
-    if (string.IsNullOrWhiteSpace(userId))
+    public override void Configure()
     {
-      await SendUnauthorizedAsync(ct);
-      return;
+        Get(ListUserIncomesByUserIdRequest.Route);
+        Roles("user");
     }
 
-    var incomes = await _mediator.Send(new ListUserIncomeTransactionsQuery(userId), ct);
-
-    Response = new ListIncomeTransactionsByUserIdResponse
+    public override async Task HandleAsync(CancellationToken ct)
     {
-      Transactions = incomes
-        .Select(i => new TransactionRecord(
-          i.Id,
-          i.Name,
-          i.Amount,
-          i.OperationDate,
-          i.IsMonthly,
-          i.Type
-        ))
-        .ToList(),
-    };
-  }
+        var userId = User.GetUserId();
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            await SendUnauthorizedAsync(ct);
+            return;
+        }
+
+        var incomes = await _mediator.Send(new ListUserIncomeTransactionsQuery(userId), ct);
+
+        Response = new ListIncomeTransactionsByUserIdResponse
+        {
+            Transactions = incomes
+                .Select(i => new TransactionRecord(
+                    i.Id,
+                    i.Name,
+                    i.Amount,
+                    i.OperationDate,
+                    i.IsMonthly,
+                    i.Type
+                ))
+                .ToList(),
+        };
+    }
 }

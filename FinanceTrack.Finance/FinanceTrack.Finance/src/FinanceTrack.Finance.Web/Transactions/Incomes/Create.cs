@@ -4,43 +4,58 @@ using FinanceTrack.Finance.Web.Extensions;
 namespace FinanceTrack.Finance.Web.Transactions.Incomes;
 
 public class Create(IMediator mediator)
-  : Endpoint<CreateIncomeTransactionRequest, CreateIncomeTransactionResponse>
+    : Endpoint<CreateIncomeTransactionRequest, CreateIncomeTransactionResponse>
 {
-  public override void Configure()
-  {
-    Post(CreateIncomeTransactionRequest.Route);
-    Roles("user");
-  }
-
-  public override async Task HandleAsync(
-    CreateIncomeTransactionRequest request,
-    CancellationToken cancellationToken
-  )
-  {
-    var userId = User.GetUserId();
-    if (string.IsNullOrWhiteSpace(userId))
+    public override void Configure()
     {
-      await SendUnauthorizedAsync(cancellationToken);
-      return;
+        Post(CreateIncomeTransactionRequest.Route);
+        Roles("user");
     }
 
-    var command = new CreateIncomeTransactionCommand(
-      UserId: userId,
-      Name: request.Name,
-      Amount: request.Amount,
-      OperationDate: request.OperationDate,
-      IsMonthly: request.IsMonthly
-    );
-
-    var result = await mediator.Send(command, cancellationToken);
-    if (!result.IsSuccess)
+    public override async Task HandleAsync(
+        CreateIncomeTransactionRequest request,
+        CancellationToken cancellationToken
+    )
     {
-      // TODO: маппинг ошибки в HTTP (400/500 и т.п.)
-      await SendErrorsAsync(cancellation: cancellationToken);
-      return;
-    }
-    var id = result.Value;
+        var userId = User.GetUserId();
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            await SendUnauthorizedAsync(cancellationToken);
+            return;
+        }
 
-    Response = new CreateIncomeTransactionResponse(id);
-  }
+        var command = new CreateIncomeTransactionCommand(
+            UserId: userId,
+            Name: request.Name,
+            Amount: request.Amount,
+            OperationDate: request.OperationDate,
+            IsMonthly: request.IsMonthly
+        );
+
+        var result = await mediator.Send(command, cancellationToken);
+
+        switch (result.Status)
+        {
+            case ResultStatus.Forbidden:
+                await SendForbiddenAsync(cancellationToken);
+                return;
+
+            case ResultStatus.NotFound:
+                await SendNotFoundAsync(cancellationToken);
+                return;
+
+            case ResultStatus.Error:
+            case ResultStatus.Invalid:
+                if (result.Errors.Any())
+                    AddError(result.Errors.First());
+                await SendErrorsAsync(cancellation: cancellationToken);
+                return;
+
+            case ResultStatus.Ok:
+            default:
+                var id = result.Value;
+                Response = new CreateIncomeTransactionResponse(id);
+                return;
+        }
+    }
 }

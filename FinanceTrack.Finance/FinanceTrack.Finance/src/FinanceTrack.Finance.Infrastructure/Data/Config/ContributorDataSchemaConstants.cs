@@ -2,5 +2,5 @@
 
 public static class ContributorDataSchemaConstants
 {
-  public const int DEFAULT_NAME_LENGTH = 100;
+    public const int DEFAULT_NAME_LENGTH = 100;
 }

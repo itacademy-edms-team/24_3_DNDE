@@ -2,5 +2,5 @@
 
 public class ListIncomeTransactionsByUserIdResponse
 {
-  public List<TransactionRecord> Transactions { get; set; } = [];
+    public List<TransactionRecord> Transactions { get; set; } = [];
 }

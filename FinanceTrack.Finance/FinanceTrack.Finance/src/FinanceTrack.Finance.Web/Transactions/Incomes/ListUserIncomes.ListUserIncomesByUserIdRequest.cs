@@ -2,5 +2,5 @@
 
 public class ListUserIncomesByUserIdRequest
 {
-  public const string Route = "/Transactions/Income";
+    public const string Route = "/Transactions/Income";
 }

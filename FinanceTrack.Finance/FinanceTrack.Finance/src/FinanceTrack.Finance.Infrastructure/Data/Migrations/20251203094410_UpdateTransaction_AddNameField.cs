@@ -16,15 +16,14 @@ namespace FinanceTrack.Finance.Infrastructure.Data.Migrations
                 type: "character varying(50)",
                 maxLength: 50,
                 nullable: false,
-                defaultValue: "");
+                defaultValue: ""
+            );
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "Name",
-                table: "Transactions");
+            migrationBuilder.DropColumn(name: "Name", table: "Transactions");
         }
     }
 }

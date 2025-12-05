@@ -1,26 +1,32 @@
-﻿using Ardalis.SharedKernel;
-using FastEndpoints;
-using FinanceTrack.Finance.Core.ContributorAggregate;
-using FinanceTrack.Finance.UseCases.Contributors.Create;
+﻿using FastEndpoints;
 
 namespace FinanceTrack.Finance.UseCases.Contributors.List;
-public record ListContributorsQuery(int? Skip, int? Take) : IQuery<Result<IEnumerable<ContributorDTO>>>;
-public record ListContributorsQuery2(int? Skip, int? Take) : FastEndpoints.ICommand<Result<IEnumerable<ContributorDTO>>>;
 
-public class ListContributorsQueryHandler2 : CommandHandler<ListContributorsQuery2, Result<IEnumerable<ContributorDTO>>>
+public record ListContributorsQuery(int? Skip, int? Take)
+    : IQuery<Result<IEnumerable<ContributorDTO>>>;
+
+public record ListContributorsQuery2(int? Skip, int? Take)
+    : FastEndpoints.ICommand<Result<IEnumerable<ContributorDTO>>>;
+
+public class ListContributorsQueryHandler2
+    : CommandHandler<ListContributorsQuery2, Result<IEnumerable<ContributorDTO>>>
 {
-  private readonly IListContributorsQueryService _query;
+    private readonly IListContributorsQueryService _query;
 
-  public ListContributorsQueryHandler2(IListContributorsQueryService query)
-  {
-    _query = query;
-  }
-  public override async Task<Result<IEnumerable<ContributorDTO>>> ExecuteAsync(ListContributorsQuery2 request, CancellationToken cancellationToken)
-  {
-    var result = await _query.ListAsync();
+    public ListContributorsQueryHandler2(IListContributorsQueryService query)
+    {
+        _query = query;
+    }
 
-    Console.WriteLine($"<<<<<<<Listed {result.Count()} contributors");
+    public override async Task<Result<IEnumerable<ContributorDTO>>> ExecuteAsync(
+        ListContributorsQuery2 request,
+        CancellationToken cancellationToken
+    )
+    {
+        var result = await _query.ListAsync();
 
-    return Result.Success(result);
-  }
+        Console.WriteLine($"<<<<<<<Listed {result.Count()} contributors");
+
+        return Result.Success(result);
+    }
 }

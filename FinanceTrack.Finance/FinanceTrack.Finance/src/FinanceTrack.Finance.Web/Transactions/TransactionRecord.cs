@@ -1,6 +1,4 @@
-﻿using FinanceTrack.Finance.Core.TransactionAggregate;
-
-namespace FinanceTrack.Finance.Web.Transactions;
+﻿namespace FinanceTrack.Finance.Web.Transactions;
 
 public sealed record TransactionRecord(
   Guid Id,
