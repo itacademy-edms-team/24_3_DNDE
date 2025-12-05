@@ -1,43 +1,58 @@
-# For more info on HTTP files go to https://aka.ms/vs/httpfile
+﻿# For more info on HTTP files go to https://aka.ms/vs/httpfile
+
 @host=https://localhost
 @port=57679
 
-// List all contributors
-GET {{host}}:{{port}}/Contributors
+
+
+// List income transactions for current user
+
+GET {{host}}:{{port}}/Transactions/Income
+
+
 
 ###
 
-// Get a specific contributor
-@id_to_get=1
-GET {{host}}:{{port}}/Contributors/{{id_to_get}}
 
-###
 
-// Add a new contributor
-POST {{host}}:{{port}}/Contributors
+// Create income transaction
+
+POST {{host}}:{{port}}/Transactions/Income
 Content-Type: application/json
-
 {
-  "name": "John Doe 3",
-  "email": "test@test.com",
-  "phoneNumber": "1234567890"
+  "name": "Salary",
+  "amount": 1234.56,
+  "operationDate": "2025-01-01",
+  "isMonthly": true
 }
 
+
+
 ###
 
-// Update a contributor
-@id_to_update=1
-PUT {{host}}:{{port}}/Contributors/{{id_to_update}}
-Content-Type: application/json
 
+
+// Update income transaction
+
+@transaction_id={{transaction_id}}
+
+PUT {{host}}:{{port}}/Transactions/Income/{{transaction_id}}
+Content-Type: application/json
 {
-  "id": {{id_to_update}},
-  "name": "ardalis2"
+  "name": "Salary updated",
+  "amount": 1300.00,
+  "operationDate": "2025-01-02",
+  "isMonthly": false
 }
 
+
+
 ###
 
-// Delete a contributor
-@id_to_delete=1
-DELETE {{host}}:{{port}}/Contributors/{{id_to_delete}}
+
+
+// Delete income transaction
+
+DELETE {{host}}:{{port}}/Transactions/Income/{{transaction_id}}
+
 
