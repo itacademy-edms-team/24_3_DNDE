@@ -46,8 +46,9 @@
         /// </summary>
         public DownstreamServiceOptions? GetByRouteId(string routeId)
         {
-            return Services.Values.FirstOrDefault(s => 
-                s.RouteId.Equals(routeId, StringComparison.OrdinalIgnoreCase));
+            return Services.Values.FirstOrDefault(s =>
+                s.RouteId.Equals(routeId, StringComparison.OrdinalIgnoreCase)
+            );
         }
     }
 

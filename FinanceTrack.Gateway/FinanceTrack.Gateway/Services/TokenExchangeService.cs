@@ -1,5 +1,4 @@
-using System.Net.Http.Headers;
-using System.Text.Json;
+﻿using System.Text.Json;
 using FinanceTrack.Gateway.Configuration;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
@@ -71,9 +70,15 @@ public class TokenExchangeService : ITokenExchangeService
         var cacheKey = $"token_exchange:{subjectToken.GetHashCode()}:{targetAudience}:{scopesKey}";
 
         // Check cache first
-        if (_cache.TryGetValue(cacheKey, out TokenExchangeResult? cachedResult) && cachedResult != null)
+        if (
+            _cache.TryGetValue(cacheKey, out TokenExchangeResult? cachedResult)
+            && cachedResult != null
+        )
         {
-            _logger.LogDebug("Returning cached exchanged token for audience {Audience}", targetAudience);
+            _logger.LogDebug(
+                "Returning cached exchanged token for audience {Audience}",
+                targetAudience
+            );
             return cachedResult;
         }
 
@@ -89,7 +94,7 @@ public class TokenExchangeService : ITokenExchangeService
                 ["requested_token_type"] = AccessTokenType,
                 ["audience"] = targetAudience,
                 ["client_id"] = _oidcOptions.Bff.ClientId,
-                ["client_secret"] = _oidcOptions.Bff.ClientSecret
+                ["client_secret"] = _oidcOptions.Bff.ClientSecret,
             };
 
             // Add scopes if specified
@@ -100,7 +105,7 @@ public class TokenExchangeService : ITokenExchangeService
 
             var request = new HttpRequestMessage(HttpMethod.Post, tokenEndpoint)
             {
-                Content = new FormUrlEncodedContent(requestBody)
+                Content = new FormUrlEncodedContent(requestBody),
             };
 
             _logger.LogDebug(
@@ -183,19 +188,7 @@ public class TokenExchangeService : ITokenExchangeService
         }
     }
 
-    private class TokenExchangeResponse
-    {
-        public string? AccessToken { get; set; }
-        public string? TokenType { get; set; }
-        public int ExpiresIn { get; set; }
-        public string? IssuedTokenType { get; set; }
-        public string? Scope { get; set; }
-    }
+    private sealed record TokenExchangeResponse(string? AccessToken, int ExpiresIn);
 
-    private class TokenExchangeErrorResponse
-    {
-        public string? Error { get; set; }
-        public string? ErrorDescription { get; set; }
-    }
+    private sealed record TokenExchangeErrorResponse(string? Error, string? ErrorDescription);
 }
-

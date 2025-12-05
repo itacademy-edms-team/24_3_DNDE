@@ -48,7 +48,7 @@ public static class ServiceConfigs
     var authSection = configuration.GetSection("Authentication");
     var authority = Guard.Against.Null(authSection.GetValue<string>("Authority"));
     var requireHttps = Guard.Against.Null(authSection.GetValue<bool>("RequireHttps"));
-    
+
     // Audience validation - set to your API client_id in Keycloak
     var validAudience = authSection.GetValue<string>("Audience");
     var validateAudience = !string.IsNullOrEmpty(validAudience);
@@ -78,7 +78,9 @@ public static class ServiceConfigs
         }
         else
         {
-          logger.LogWarning("JWT audience validation is DISABLED. Set 'Authentication:Audience' to enable.");
+          logger.LogWarning(
+            "JWT audience validation is DISABLED. Set 'Authentication:Audience' to enable."
+          );
         }
       });
 
