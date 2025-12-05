@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using System.Text.Json.Serialization;
 using FinanceTrack.Gateway.Configuration;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
@@ -188,7 +189,13 @@ public class TokenExchangeService : ITokenExchangeService
         }
     }
 
-    private sealed record TokenExchangeResponse(string? AccessToken, int ExpiresIn);
+    private sealed record TokenExchangeResponse(
+        [property: JsonPropertyName("access_token")] string? AccessToken,
+        [property: JsonPropertyName("expires_in")] int ExpiresIn
+    );
 
-    private sealed record TokenExchangeErrorResponse(string? Error, string? ErrorDescription);
+    private sealed record TokenExchangeErrorResponse(
+        [property: JsonPropertyName("error")] string? Error,
+        [property: JsonPropertyName("error_description")] string? ErrorDescription
+    );
 }
