@@ -4,6 +4,7 @@ using FinanceTrack.Finance.Core.TransactionAggregate;
 using FinanceTrack.Finance.Infrastructure.Data;
 using FinanceTrack.Finance.Infrastructure.Data.Queries;
 using FinanceTrack.Finance.UseCases.Contributors.List;
+using FinanceTrack.Finance.UseCases.Transactions.Incomes.List;
 
 namespace FinanceTrack.Finance.Infrastructure;
 
@@ -15,15 +16,18 @@ public static class InfrastructureServiceExtensions
     ILogger logger
   )
   {
-    string? connectionString = config.GetConnectionString("DefaultConnection");
-    Guard.Against.Null(connectionString);
+    string connectionString = Guard.Against.NullOrEmpty(
+      config.GetConnectionString("DefaultConnection")
+    );
     services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
 
     services
       .AddScoped(typeof(IRepository<>), typeof(EfRepository<>))
       .AddScoped(typeof(IReadRepository<>), typeof(EfRepository<>))
       .AddScoped<IListContributorsQueryService, ListContributorsQueryService>()
-      .AddScoped<IDeleteContributorService, DeleteContributorService>();
+      .AddScoped<IListUserIncomeTransactionsQueryService, ListUserIncomeTransactionsQueryService>()
+      .AddScoped<IDeleteContributorService, DeleteContributorService>()
+      .AddScoped<IDeleteIncomeTransactionService, DeleteIncomeTransactionService>();
 
     logger.LogInformation("{Project} services registered", "Infrastructure");
 
