@@ -1,4 +1,4 @@
-﻿using Ardalis.GuardClauses;
+using Ardalis.GuardClauses;
 using Ardalis.SharedKernel;
 
 namespace FinanceTrack.Finance.Core.TransactionAggregate;
@@ -40,8 +40,9 @@ public sealed class Transaction : EntityBase<Guid>, IAggregateRoot
   {
     Guard.Against.NullOrWhiteSpace(userId);
     Guard.Against.NullOrWhiteSpace(name);
+    // Validate original amount to reject values like 0.009 before rounding
+    Guard.Against.OutOfRange(amount, nameof(amount), 0.01m, decimal.MaxValue);
     var roundedAmount = decimal.Round(amount, 2);
-    Guard.Against.NegativeOrZero(amount);
     Guard.Against.Default(operationDate);
 
     if (type == TransactionType.Income && incomeTransactionId.HasValue)
