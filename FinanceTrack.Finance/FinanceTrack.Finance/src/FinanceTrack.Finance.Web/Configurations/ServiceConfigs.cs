@@ -48,6 +48,10 @@ public static class ServiceConfigs
     var authSection = configuration.GetSection("Authentication");
     var authority = Guard.Against.Null(authSection.GetValue<string>("Authority"));
     var requireHttps = Guard.Against.Null(authSection.GetValue<bool>("RequireHttps"));
+    
+    // Audience validation - set to your API client_id in Keycloak
+    var validAudience = authSection.GetValue<string>("Audience");
+    var validateAudience = !string.IsNullOrEmpty(validAudience);
 
     // For keycloak JWT
     services
@@ -59,13 +63,23 @@ public static class ServiceConfigs
 
         options.TokenValidationParameters = new TokenValidationParameters
         {
-          // Temp fix, because aud="account"
-          ValidateAudience = false,
+          // Audience validation - enabled when "Audience" is configured
+          ValidateAudience = validateAudience,
+          ValidAudience = validAudience,
           ValidIssuer = authority,
 
           NameClaimType = "preferred_username",
           RoleClaimType = ClaimTypes.Role,
         };
+
+        if (validateAudience)
+        {
+          logger.LogInformation("JWT audience validation enabled for: {Audience}", validAudience);
+        }
+        else
+        {
+          logger.LogWarning("JWT audience validation is DISABLED. Set 'Authentication:Audience' to enable.");
+        }
       });
 
     // realm_access.roles -> Role-claims

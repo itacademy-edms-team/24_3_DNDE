@@ -1,9 +1,11 @@
 ﻿using System.Net.Http.Headers;
 using FinanceTrack.Gateway.Configuration;
 using FinanceTrack.Gateway.Extensions;
+using FinanceTrack.Gateway.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using Yarp.ReverseProxy.Transforms;
@@ -20,32 +22,84 @@ builder
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
+// Memory cache for token exchange
+builder.Services.AddMemoryCache();
+
+// Token Exchange Service
+builder.Services.AddHttpClient<ITokenExchangeService, TokenExchangeService>();
+
 // Yarp
 builder
     .Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
     .AddTransforms(builderContext =>
     {
-        if (builderContext.Route.RouteId == "finance-api")
+        // Apply token exchange transform to routes that have configured services
+        var routeId = builderContext.Route.RouteId;
+        
+        builderContext.AddRequestTransform(async transformContext =>
         {
-            builderContext.AddRequestTransform(async transformContext =>
+            var httpContext = transformContext.HttpContext;
+            var logger = httpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+
+            // Get the original access token
+            var accessToken = httpContext.Items.TryGetValue(
+                "bff_access_token",
+                out var tokenObj
+            )
+                ? tokenObj as string
+                : await httpContext.GetTokenAsync("access_token");
+
+            if (string.IsNullOrEmpty(accessToken))
             {
-                var httpContext = transformContext.HttpContext;
+                // No token - might be a public route
+                return;
+            }
 
-                var accessToken = httpContext.Items.TryGetValue(
-                    "bff_access_token",
-                    out var tokenObj
-                )
-                    ? tokenObj as string
-                    : await httpContext.GetTokenAsync("access_token");
+            // Check if token exchange is enabled and configured for this route
+            var oidcOptions = httpContext.RequestServices
+                .GetRequiredService<IOptions<OidcOptions>>().Value;
 
-                if (!string.IsNullOrEmpty(accessToken))
+            var serviceConfig = oidcOptions.TokenExchange.GetByRouteId(routeId);
+            
+            if (oidcOptions.TokenExchange.Enabled && 
+                serviceConfig != null && 
+                !string.IsNullOrEmpty(serviceConfig.Audience))
+            {
+                // Perform token exchange
+                var tokenExchangeService = httpContext.RequestServices
+                    .GetRequiredService<ITokenExchangeService>();
+
+                var exchangeResult = await tokenExchangeService.ExchangeTokenAsync(
+                    accessToken,
+                    serviceConfig.Audience,
+                    serviceConfig.Scopes,
+                    httpContext.RequestAborted
+                );
+
+                if (exchangeResult.Success && !string.IsNullOrEmpty(exchangeResult.AccessToken))
                 {
-                    transformContext.ProxyRequest.Headers.Authorization =
-                        new AuthenticationHeaderValue("Bearer", accessToken);
+                    accessToken = exchangeResult.AccessToken;
+                    logger.LogDebug(
+                        "Using exchanged token for route {RouteId} (audience: {Audience})",
+                        routeId,
+                        serviceConfig.Audience
+                    );
                 }
-            });
-        }
+                else
+                {
+                    logger.LogWarning(
+                        "Token exchange failed for route {RouteId}: {Error} - {Description}. Using original token.",
+                        routeId,
+                        exchangeResult.Error,
+                        exchangeResult.ErrorDescription
+                    );
+                }
+            }
+
+            transformContext.ProxyRequest.Headers.Authorization =
+                new AuthenticationHeaderValue("Bearer", accessToken);
+        });
     });
 
 // Bff
