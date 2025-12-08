@@ -43,7 +43,7 @@ public class KeycloakRealmRolesClaimsTransformation(
         }
         catch (Exception ex)
         {
-            logger.LogWarning("Unexpected exception: {Exception}", ex);
+            logger.LogError(ex, "Unexpected exception: {Exception}", ex);
         }
 
         return Task.FromResult(principal);
