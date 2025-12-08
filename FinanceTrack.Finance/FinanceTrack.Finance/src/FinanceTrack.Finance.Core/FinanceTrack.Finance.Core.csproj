@@ -12,8 +12,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="TransactionAggregate\Events\" />
-    <Folder Include="TransactionAggregate\Handlers\" />
+    <Folder Include="FinancialTransactionAggregate\Events\" />
+    <Folder Include="FinancialTransactionAggregate\Handlers\" />
   </ItemGroup>
 
 </Project>

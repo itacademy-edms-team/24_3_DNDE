@@ -1,5 +1,5 @@
 ﻿using FinanceTrack.Finance.Core.ContributorAggregate;
-using FinanceTrack.Finance.Core.TransactionAggregate;
+using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
 
 namespace FinanceTrack.Finance.Infrastructure.Data;
 
@@ -11,7 +11,7 @@ public class AppDbContext(
     private readonly IDomainEventDispatcher? _dispatcher = dispatcher;
 
     public DbSet<Contributor> Contributors => Set<Contributor>();
-    public DbSet<Transaction> Transactions => Set<Transaction>();
+    public DbSet<FinancialTransaction> FinancialTransactions => Set<FinancialTransaction>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

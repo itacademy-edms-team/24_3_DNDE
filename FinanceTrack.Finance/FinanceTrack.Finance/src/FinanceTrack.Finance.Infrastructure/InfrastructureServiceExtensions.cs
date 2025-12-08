@@ -3,7 +3,7 @@ using FinanceTrack.Finance.Core.Services;
 using FinanceTrack.Finance.Infrastructure.Data;
 using FinanceTrack.Finance.Infrastructure.Data.Queries;
 using FinanceTrack.Finance.UseCases.Contributors.List;
-using FinanceTrack.Finance.UseCases.Transactions.Incomes.List;
+using FinanceTrack.Finance.UseCases.FinancialTransactions.Incomes.List;
 
 namespace FinanceTrack.Finance.Infrastructure;
 
@@ -25,11 +25,14 @@ public static class InfrastructureServiceExtensions
             .AddScoped(typeof(IReadRepository<>), typeof(EfRepository<>))
             .AddScoped<IListContributorsQueryService, ListContributorsQueryService>()
             .AddScoped<
-                IListUserIncomeTransactionsQueryService,
-                ListUserIncomeTransactionsQueryService
+                IListUserIncomeFinancialTransactionsQueryService,
+                ListUserIncomeFinancialTransactionsQueryService
             >()
             .AddScoped<IDeleteContributorService, DeleteContributorService>()
-            .AddScoped<IDeleteIncomeTransactionService, DeleteIncomeTransactionService>();
+            .AddScoped<
+                IDeleteIncomeFinancialTransactionService,
+                DeleteIncomeFinancialTransactionService
+            >();
 
         logger.LogInformation("{Project} services registered", "Infrastructure");
 
