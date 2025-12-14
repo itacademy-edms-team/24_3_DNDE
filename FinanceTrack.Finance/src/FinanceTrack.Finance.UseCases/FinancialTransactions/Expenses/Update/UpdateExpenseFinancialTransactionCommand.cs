@@ -1,6 +1,4 @@
-using FinanceTrack.Finance.UseCases.FinancialTransactions;
-
-namespace FinanceTrack.Finance.UseCases.FinancialTransactions.Expenses.Update;
+﻿namespace FinanceTrack.Finance.UseCases.FinancialTransactions.Expenses.Update;
 
 public sealed record UpdateExpenseFinancialTransactionCommand(
     Guid TransactionId,
@@ -11,4 +9,3 @@ public sealed record UpdateExpenseFinancialTransactionCommand(
     bool IsMonthly,
     Guid IncomeTransactionId
 ) : ICommand<Result<FinancialTransactionDto>>;
-

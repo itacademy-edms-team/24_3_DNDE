@@ -1,5 +1,4 @@
 ﻿using FinanceTrack.Finance.Core.Interfaces;
-using FinanceTrack.Finance.UseCases.FinancialTransactions;
 
 namespace FinanceTrack.Finance.UseCases.FinancialTransactions.Expenses.Update;
 

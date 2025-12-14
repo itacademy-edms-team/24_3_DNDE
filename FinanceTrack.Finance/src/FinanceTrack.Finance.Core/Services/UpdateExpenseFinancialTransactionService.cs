@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
+﻿using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
 using FinanceTrack.Finance.Core.Interfaces;
 
 namespace FinanceTrack.Finance.Core.Services;

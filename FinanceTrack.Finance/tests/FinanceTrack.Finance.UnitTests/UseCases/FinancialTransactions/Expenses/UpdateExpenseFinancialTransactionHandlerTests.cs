@@ -1,6 +1,5 @@
-using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
+﻿using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
 using FinanceTrack.Finance.Core.Interfaces;
-using FinanceTrack.Finance.UseCases.FinancialTransactions;
 using FinanceTrack.Finance.UseCases.FinancialTransactions.Expenses.Update;
 
 namespace FinanceTrack.Finance.UnitTests.UseCases.FinancialTransactions.Expenses;
@@ -8,9 +7,8 @@ namespace FinanceTrack.Finance.UnitTests.UseCases.FinancialTransactions.Expenses
 public class UpdateExpenseFinancialTransactionHandlerTests
 {
     private const string User = "user";
-    private readonly IUpdateExpenseFinancialTransactionService _service = Substitute.For<
-        IUpdateExpenseFinancialTransactionService
-    >();
+    private readonly IUpdateExpenseFinancialTransactionService _service =
+        Substitute.For<IUpdateExpenseFinancialTransactionService>();
 
     private readonly UpdateExpenseFinancialTransactionHandler _handler;
     private readonly DateOnly _today = DateOnly.FromDateTime(DateTime.UtcNow.Date);
@@ -83,4 +81,3 @@ public class UpdateExpenseFinancialTransactionHandlerTests
         result.Status.ShouldBe(ResultStatus.NotFound);
     }
 }
-

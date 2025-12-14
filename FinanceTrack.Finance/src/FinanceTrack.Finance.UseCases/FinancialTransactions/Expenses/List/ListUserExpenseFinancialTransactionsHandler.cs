@@ -1,13 +1,12 @@
-using FinanceTrack.Finance.Core.Interfaces;
-
-namespace FinanceTrack.Finance.UseCases.FinancialTransactions.Expenses.List;
+﻿namespace FinanceTrack.Finance.UseCases.FinancialTransactions.Expenses.List;
 
 public sealed class ListUserExpenseFinancialTransactionsHandler(
     IListUserExpenseFinancialTransactionsQueryService _service
-) : IQueryHandler<
-    ListUserExpenseFinancialTransactionsQuery,
-    Result<IReadOnlyList<FinancialTransactionDto>>
->
+)
+    : IQueryHandler<
+        ListUserExpenseFinancialTransactionsQuery,
+        Result<IReadOnlyList<FinancialTransactionDto>>
+    >
 {
     public async Task<Result<IReadOnlyList<FinancialTransactionDto>>> Handle(
         ListUserExpenseFinancialTransactionsQuery request,
@@ -21,4 +20,3 @@ public sealed class ListUserExpenseFinancialTransactionsHandler(
         );
     }
 }
-
