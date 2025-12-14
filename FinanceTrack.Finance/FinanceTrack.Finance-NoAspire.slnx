@@ -1,0 +1,28 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path="CleanArchitecture.nuspec" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/FinanceTrack.Finance.Core/FinanceTrack.Finance.Core.csproj" />
+    <Project Path="src/FinanceTrack.Finance.Infrastructure/FinanceTrack.Finance.Infrastructure.csproj" />
+    <Project Path="src/FinanceTrack.Finance.UseCases/FinanceTrack.Finance.UseCases.csproj" />
+    <Project Path="src/FinanceTrack.Finance.Web/FinanceTrack.Finance.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FinanceTrack.Finance.FunctionalTests/FinanceTrack.Finance.FunctionalTests.csproj">
+      <BuildDependency Project="src/FinanceTrack.Finance.Web/FinanceTrack.Finance.Web.csproj" />
+    </Project>
+    <Project Path="tests/FinanceTrack.Finance.IntegrationTests/FinanceTrack.Finance.IntegrationTests.csproj">
+      <BuildDependency Project="src/FinanceTrack.Finance.Infrastructure/FinanceTrack.Finance.Infrastructure.csproj" />
+    </Project>
+    <Project Path="tests/FinanceTrack.Finance.UnitTests/FinanceTrack.Finance.UnitTests.csproj" />
+  </Folder>
+</Solution>

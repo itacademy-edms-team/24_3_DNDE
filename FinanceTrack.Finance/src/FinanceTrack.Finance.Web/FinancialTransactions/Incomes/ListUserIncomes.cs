@@ -1,0 +1,43 @@
+﻿using FinanceTrack.Finance.UseCases.FinancialTransactions.Incomes.List;
+using FinanceTrack.Finance.Web.Extensions;
+
+namespace FinanceTrack.Finance.Web.Transactions.Incomes;
+
+public class ListUserIncomes(IMediator _mediator)
+    : EndpointWithoutRequest<ListIncomeTransactionsByUserIdResponse>
+{
+    public override void Configure()
+    {
+        Get(ListUserIncomesByUserIdRequest.Route);
+        Roles("user");
+    }
+
+    public override async Task HandleAsync(CancellationToken ct)
+    {
+        var userId = User.GetUserId();
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            await SendUnauthorizedAsync(ct);
+            return;
+        }
+
+        var incomes = await _mediator.Send(
+            new ListUserIncomeFinancialTransactionsQuery(userId),
+            ct
+        );
+
+        Response = new ListIncomeTransactionsByUserIdResponse
+        {
+            Transactions = incomes
+                .Select(i => new FinancialTransactionRecord(
+                    i.Id,
+                    i.Name,
+                    i.Amount,
+                    i.OperationDate,
+                    i.IsMonthly,
+                    i.Type
+                ))
+                .ToList(),
+        };
+    }
+}

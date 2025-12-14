@@ -1,0 +1,29 @@
+2025-11-28 17:08:10.832 +07:00 [INF] Registered 5 endpoints in 986 milliseconds.
+2025-11-28 17:08:12.135 +07:00 [INF] Executed DbCommand (12ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+PRAGMA journal_mode = 'wal';
+2025-11-28 17:08:12.286 +07:00 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+CREATE TABLE "Contributors" (
+    "Id" INTEGER NOT NULL CONSTRAINT "PK_Contributors" PRIMARY KEY AUTOINCREMENT,
+    "Name" TEXT NOT NULL,
+    "Status" INTEGER NOT NULL,
+    "PhoneNumber_CountryCode" TEXT NULL,
+    "PhoneNumber_Number" TEXT NULL,
+    "PhoneNumber_Extension" TEXT NULL
+);
+2025-11-28 17:08:12.630 +07:00 [INF] Executed DbCommand (1ms) [Parameters=[], CommandType='"Text"', CommandTimeout='30']
+SELECT EXISTS (
+    SELECT 1
+    FROM "Contributors" AS "c")
+2025-11-28 17:08:12.848 +07:00 [INF] Executed DbCommand (16ms) [Parameters=[@p0='?' (Size = 7), @p1='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO "Contributors" ("Name", "Status")
+VALUES (@p0, @p1)
+RETURNING "Id";
+2025-11-28 17:08:12.992 +07:00 [INF] Executed DbCommand (0ms) [Parameters=[@p0='?' (Size = 8), @p1='?' (DbType = Int32)], CommandType='"Text"', CommandTimeout='30']
+INSERT INTO "Contributors" ("Name", "Status")
+VALUES (@p0, @p1)
+RETURNING "Id";
+2025-11-28 17:08:13.225 +07:00 [INF] Now listening on: https://localhost:57679
+2025-11-28 17:08:13.233 +07:00 [INF] No action descriptors found. This may indicate an incorrectly configured application or missing application parts. To learn more, visit https://aka.ms/aspnet/mvc/app-parts
+2025-11-28 17:08:13.361 +07:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-11-28 17:08:13.362 +07:00 [INF] Hosting environment: Development
+2025-11-28 17:08:13.364 +07:00 [INF] Content root path: C:\Users\Alex\SOURCE\repos\24_3_DNDE\FinanceTrack.Finance\FinanceTrack.Finance\src\FinanceTrack.Finance.Web

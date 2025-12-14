@@ -1,0 +1,58 @@
+﻿# For more info on HTTP files go to https://aka.ms/vs/httpfile
+
+@host=https://localhost
+@port=57679
+
+
+
+// List income transactions for current user
+
+GET {{host}}:{{port}}/Transactions/Income
+
+
+
+###
+
+
+
+// Create income transaction
+
+POST {{host}}:{{port}}/Transactions/Income
+Content-Type: application/json
+{
+  "name": "Salary",
+  "amount": 1234.56,
+  "operationDate": "2025-01-01",
+  "isMonthly": true
+}
+
+
+
+###
+
+
+
+// Update income transaction
+
+@transaction_id={{transaction_id}}
+
+PUT {{host}}:{{port}}/Transactions/Income/{{transaction_id}}
+Content-Type: application/json
+{
+  "name": "Salary updated",
+  "amount": 1300.00,
+  "operationDate": "2025-01-02",
+  "isMonthly": false
+}
+
+
+
+###
+
+
+
+// Delete income transaction
+
+DELETE {{host}}:{{port}}/Transactions/Income/{{transaction_id}}
+
+
