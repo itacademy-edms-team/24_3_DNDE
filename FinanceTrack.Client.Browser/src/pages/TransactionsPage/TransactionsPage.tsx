@@ -61,6 +61,8 @@ function formatDate(dateStr: string): string {
   return `${day}.${month}.${year}`;
 }
 
+const formatMoney = (value: number): string => `${value.toFixed(2)} ₽`;
+
 function TransactionsPage() {
   const [incomes, setIncomes] = useState<IncomeTransaction[]>([]);
   const [expensesByIncome, setExpensesByIncome] = useState<Record<string, ExpenseTransaction[]>>(
@@ -112,6 +114,14 @@ function TransactionsPage() {
     const query = filterText.trim().toLowerCase();
     return currentExpenses.filter(e => e.name.toLowerCase().includes(query));
   }, [currentExpenses, filterText]);
+
+  const totalExpenses = useMemo(
+    () => currentExpenses.reduce((sum, e) => sum + e.amount, 0),
+    [currentExpenses]
+  );
+
+  const currentIncomeAmount = selectedIncome?.amount ?? 0;
+  const remaining = currentIncomeAmount - totalExpenses;
 
   const validateAmount = (raw: string): number | null => {
     const value = Number(raw.replace(',', '.'));
@@ -323,13 +333,13 @@ function TransactionsPage() {
   return (
     <Box sx={{ maxWidth: 1100, mx: 'auto', px: { xs: 2, sm: 3 }, py: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1.5}>
-        <Typography variant="h4">Transactions</Typography>
+        <Typography variant="h4">Транзакции</Typography>
         <Stack direction="row" spacing={1}>
           <Button startIcon={<AddIcon />} variant="contained" onClick={() => openIncomeDialog('create')}>
-            Add income
+            Добавить доход
           </Button>
           <Button startIcon={<RefreshIcon />} variant="outlined" onClick={() => void loadIncomes()}>
-            Refresh incomes
+            Обновить доходы
           </Button>
         </Stack>
       </Stack>
@@ -345,7 +355,7 @@ function TransactionsPage() {
               Нет доходов. Добавьте первый, чтобы видеть связанные расходы.
             </Typography>
             <Button startIcon={<AddIcon />} variant="contained" onClick={() => openIncomeDialog('create')}>
-              Add income
+              Добавить доход
             </Button>
           </Stack>
         ) : (
@@ -384,7 +394,7 @@ function TransactionsPage() {
               disabled={!selectedIncome}
               onClick={() => selectedIncome && openIncomeDialog('edit', selectedIncome)}
             >
-              Edit income
+              Редактировать доход
             </Button>
             <Button
               color="error"
@@ -395,7 +405,7 @@ function TransactionsPage() {
                 setConfirmDialog({ open: true, type: 'income', targetId: selectedIncome.id })
               }
             >
-              Delete income
+              Удалить доход
             </Button>
           </Stack>
           <Stack direction="row" spacing={1} alignItems="center">
@@ -405,7 +415,7 @@ function TransactionsPage() {
               disabled={!selectedIncome}
               onClick={() => openExpenseDialog('create')}
             >
-              Add expense
+              Добавить расход
             </Button>
             <Button
               startIcon={<RefreshIcon />}
@@ -413,13 +423,13 @@ function TransactionsPage() {
               disabled={!selectedIncome}
               onClick={handleRefreshExpenses}
             >
-              Refresh expenses
+              Обновить расходы
             </Button>
           </Stack>
         </Stack>
 
         <TextField
-          placeholder="Search expenses by name"
+          placeholder="Поиск расхода по названию"
           value={filterText}
           onChange={e => setFilterText(e.target.value)}
           size="small"
@@ -431,14 +441,14 @@ function TransactionsPage() {
             ),
           }}
         />
-        <TableContainer component={Paper} variant="outlined">
-          <Table size="small">
+        <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 360 }}>
+          <Table size="small" stickyHeader>
               <TableHead>
                 <TableRow>
-                  <TableCell>Name</TableCell>
-                  <TableCell width="130">Amount</TableCell>
-                  <TableCell width="130">Date</TableCell>
-                  <TableCell width="120">Type</TableCell>
+                  <TableCell>Название</TableCell>
+                  <TableCell width="130">Сумма</TableCell>
+                  <TableCell width="130">Дата</TableCell>
+                  <TableCell width="120">Тип</TableCell>
                 </TableRow>
               </TableHead>
             <TableBody>
@@ -447,7 +457,7 @@ function TransactionsPage() {
                   <TableCell colSpan={5} align="center">
                     <Stack direction="row" spacing={1} justifyContent="center" alignItems="center">
                       <CircularProgress size={20} />
-                      <Typography variant="body2">Loading expenses...</Typography>
+                      <Typography variant="body2">Загружаем расходы...</Typography>
                     </Stack>
                   </TableCell>
                 </TableRow>
@@ -455,7 +465,7 @@ function TransactionsPage() {
                 <TableRow>
                   <TableCell colSpan={5} align="center">
                     <Typography variant="body2" color="text.secondary">
-                      {selectedIncome ? 'No expenses for this income yet' : 'Select an income to see expenses'}
+                      {selectedIncome ? 'Для этого дохода ещё нет расходов' : 'Выберите доход, чтобы увидеть расходы'}
                     </Typography>
                   </TableCell>
                 </TableRow>
@@ -472,15 +482,25 @@ function TransactionsPage() {
                     sx={{ cursor: 'pointer' }}
                   >
                     <TableCell>{expense.name}</TableCell>
-                    <TableCell>{expense.amount.toFixed(2)} ₽</TableCell>
+                    <TableCell>{formatMoney(expense.amount)}</TableCell>
                     <TableCell>{formatDate(expense.operationDate)}</TableCell>
-                    <TableCell>{expense.isMonthly ? 'Monthly' : 'Single'}</TableCell>
+                    <TableCell>{expense.isMonthly ? 'Ежемесячный' : 'Разовый'}</TableCell>
                   </TableRow>
                 ))
               )}
             </TableBody>
           </Table>
         </TableContainer>
+        {selectedIncome && (
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Typography variant="body2" color="text.secondary">
+              Сумма расходов: {formatMoney(totalExpenses)}
+            </Typography>
+            <Typography variant="body2" fontWeight={600} color={remaining < 0 ? 'error.main' : 'success.main'}>
+              Остаток за месяц: {formatMoney(remaining)}
+            </Typography>
+          </Stack>
+        )}
       </Paper>
 
       <IncomeDialog
@@ -562,17 +582,17 @@ function IncomeDialog({
 }: FormDialogProps<IncomeFormState>) {
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
-      <DialogTitle>{mode === 'create' ? 'Add income' : 'Edit income'}</DialogTitle>
+      <DialogTitle>{mode === 'create' ? 'Добавить доход' : 'Редактировать доход'}</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2} sx={{ mt: 1 }}>
           <TextField
-            label="Name"
+            label="Название"
             value={form.name}
             onChange={e => onChange({ ...form, name: e.target.value })}
             fullWidth
           />
           <TextField
-            label="Amount"
+            label="Сумма"
             type="number"
             inputProps={{ step: '0.01', min: '0.01' }}
             value={form.amount}
@@ -580,7 +600,7 @@ function IncomeDialog({
             fullWidth
           />
           <TextField
-            label="Operation date"
+            label="Дата операции"
             type="date"
             InputLabelProps={{ shrink: true }}
             value={form.operationDate}
@@ -594,14 +614,14 @@ function IncomeDialog({
                 onChange={e => onChange({ ...form, isMonthly: e.target.checked })}
               />
             }
-            label="Is monthly?"
+            label="Ежемесячный платеж"
           />
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
+        <Button onClick={onClose}>Отмена</Button>
         <Button onClick={onSubmit} variant="contained">
-          {mode === 'create' ? 'Add' : 'Save'}
+          {mode === 'create' ? 'Добавить' : 'Сохранить'}
         </Button>
       </DialogActions>
     </Dialog>
@@ -620,17 +640,17 @@ function ExpenseDialog({
 }: FormDialogProps<ExpenseFormState> & { onDelete?: () => void }) {
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
-      <DialogTitle>{mode === 'create' ? 'Add expense' : 'Edit expense'}</DialogTitle>
+      <DialogTitle>{mode === 'create' ? 'Добавить расход' : 'Редактировать расход'}</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2} sx={{ mt: 1 }}>
           <TextField
-            label="Name"
+            label="Название"
             value={form.name}
             onChange={e => onChange({ ...form, name: e.target.value })}
             fullWidth
           />
           <TextField
-            label="Amount"
+            label="Сумма"
             type="number"
             inputProps={{ step: '0.01', min: '0.01' }}
             value={form.amount}
@@ -638,7 +658,7 @@ function ExpenseDialog({
             fullWidth
           />
           <TextField
-            label="Operation date"
+            label="Дата операции"
             type="date"
             InputLabelProps={{ shrink: true }}
             value={form.operationDate}
@@ -652,19 +672,19 @@ function ExpenseDialog({
                 onChange={e => onChange({ ...form, isMonthly: e.target.checked })}
               />
             }
-            label="Is monthly?"
+            label="Ежемесячный платеж"
           />
         </Stack>
       </DialogContent>
       <DialogActions>
         {mode === 'edit' && onDelete && (
           <Button color="error" onClick={onDelete}>
-            Delete
+            Удалить
           </Button>
         )}
-        <Button onClick={onClose}>Cancel</Button>
+        <Button onClick={onClose}>Отмена</Button>
         <Button onClick={onSubmit} variant="contained" disabled={disabled}>
-          {mode === 'create' ? 'Add' : 'Save'}
+          {mode === 'create' ? 'Добавить' : 'Сохранить'}
         </Button>
       </DialogActions>
     </Dialog>
@@ -687,9 +707,9 @@ function ConfirmDialog({ open, title, description, onConfirm, onCancel }: Confir
         <Typography variant="body2">{description}</Typography>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onCancel}>Cancel</Button>
+        <Button onClick={onCancel}>Отмена</Button>
         <Button onClick={onConfirm} color="error" variant="contained">
-          Delete
+          Удалить
         </Button>
       </DialogActions>
     </Dialog>
@@ -705,13 +725,13 @@ type ErrorDialogProps = {
 function ErrorDialog({ open, message, onClose }: ErrorDialogProps) {
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
-      <DialogTitle>Error</DialogTitle>
+      <DialogTitle>Ошибка</DialogTitle>
       <DialogContent dividers>
         <Typography variant="body2">{message}</Typography>
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} autoFocus>
-          OK
+          Ок
         </Button>
       </DialogActions>
     </Dialog>
