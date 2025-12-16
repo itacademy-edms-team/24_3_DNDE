@@ -267,6 +267,13 @@ function TransactionsPage() {
   }, [selectedIncomeId]);
 
   useEffect(() => {
+    if (!selectedExpenseId) return;
+    if (!filteredExpenses.some(e => e.id === selectedExpenseId)) {
+      setSelectedExpenseId(null);
+    }
+  }, [filteredExpenses, selectedExpenseId]);
+
+  useEffect(() => {
     void loadIncomes();
   }, [loadIncomes]);
 
