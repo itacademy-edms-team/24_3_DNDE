@@ -11,6 +11,7 @@ import {
   DialogTitle,
   FormControlLabel,
   InputAdornment,
+  MenuItem,
   Stack,
   Switch,
   Tab,
@@ -62,6 +63,44 @@ function formatDate(dateStr: string): string {
 }
 
 const formatMoney = (value: number): string => `${value.toFixed(2)} ₽`;
+const getYearMonth = (dateStr: string): { year: number; month: number } => {
+  const [yearRaw, monthRaw] = dateStr.split('-');
+  return {
+    year: Number(yearRaw) || 0,
+    month: Number(monthRaw) || 0,
+  };
+};
+
+const isInPeriod = (
+  transactionDate: string,
+  isMonthly: boolean,
+  selectedYear: number,
+  selectedMonth: number
+): boolean => {
+  const { year, month } = getYearMonth(transactionDate);
+  if (!year || !month) return false;
+  if (isMonthly) {
+    return (
+      year < selectedYear || (year === selectedYear && month <= selectedMonth)
+    );
+  }
+  return year === selectedYear && month === selectedMonth;
+};
+
+const MONTH_OPTIONS = [
+  { value: 1, label: 'Январь' },
+  { value: 2, label: 'Февраль' },
+  { value: 3, label: 'Март' },
+  { value: 4, label: 'Апрель' },
+  { value: 5, label: 'Май' },
+  { value: 6, label: 'Июнь' },
+  { value: 7, label: 'Июль' },
+  { value: 8, label: 'Август' },
+  { value: 9, label: 'Сентябрь' },
+  { value: 10, label: 'Октябрь' },
+  { value: 11, label: 'Ноябрь' },
+  { value: 12, label: 'Декабрь' },
+];
 
 function TransactionsPage() {
   const [incomes, setIncomes] = useState<IncomeTransaction[]>([]);
@@ -98,6 +137,9 @@ function TransactionsPage() {
     operationDate: '',
     isMonthly: false,
   });
+  const now = new Date();
+  const [selectedYear, setSelectedYear] = useState<number>(now.getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState<number>(now.getMonth() + 1);
 
   const selectedIncome = useMemo(
     () => incomes.find(i => i.id === selectedIncomeId) ?? null,
@@ -110,18 +152,48 @@ function TransactionsPage() {
   }, [expensesByIncome, selectedIncomeId]);
 
   const filteredExpenses = useMemo(() => {
-    if (!filterText.trim()) return currentExpenses;
+    const byPeriod = currentExpenses.filter(e =>
+      isInPeriod(e.operationDate, e.isMonthly, selectedYear, selectedMonth)
+    );
+    if (!filterText.trim()) return byPeriod;
     const query = filterText.trim().toLowerCase();
-    return currentExpenses.filter(e => e.name.toLowerCase().includes(query));
-  }, [currentExpenses, filterText]);
+    return byPeriod.filter(e => e.name.toLowerCase().includes(query));
+  }, [currentExpenses, filterText, selectedMonth, selectedYear]);
 
   const totalExpenses = useMemo(
-    () => currentExpenses.reduce((sum, e) => sum + e.amount, 0),
-    [currentExpenses]
+    () => filteredExpenses.reduce((sum, e) => sum + e.amount, 0),
+    [filteredExpenses]
   );
 
   const currentIncomeAmount = selectedIncome?.amount ?? 0;
   const remaining = currentIncomeAmount - totalExpenses;
+
+  const availableYears = useMemo(() => {
+    const set = new Set<number>([now.getFullYear()]);
+    incomes.forEach(i => {
+      const { year } = getYearMonth(i.operationDate);
+      if (year) set.add(year);
+    });
+    return Array.from(set).sort((a, b) => b - a);
+  }, [incomes, now]);
+
+  const filteredIncomes = useMemo(
+    () =>
+      incomes.filter(i =>
+        isInPeriod(i.operationDate, i.isMonthly, selectedYear, selectedMonth)
+      ),
+    [incomes, selectedMonth, selectedYear]
+  );
+
+  useEffect(() => {
+    if (!filteredIncomes.length) {
+      setSelectedIncomeId(null);
+      return;
+    }
+    if (!selectedIncomeId || !filteredIncomes.some(i => i.id === selectedIncomeId)) {
+      setSelectedIncomeId(filteredIncomes[0].id);
+    }
+  }, [filteredIncomes, selectedIncomeId]);
 
   const validateAmount = (raw: string): number | null => {
     const value = Number(raw.replace(',', '.'));
@@ -343,16 +415,46 @@ function TransactionsPage() {
           </Button>
         </Stack>
       </Stack>
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ xs: 'stretch', sm: 'center' }}>
+        <TextField
+          select
+          size="small"
+          label="Месяц"
+          value={selectedMonth}
+          onChange={e => setSelectedMonth(Number(e.target.value))}
+          sx={{ minWidth: 180 }}
+        >
+          {MONTH_OPTIONS.map(m => (
+            <MenuItem key={m.value} value={m.value}>
+              {m.label}
+            </MenuItem>
+          ))}
+        </TextField>
+        <TextField
+          select
+          size="small"
+          label="Год"
+          value={selectedYear}
+          onChange={e => setSelectedYear(Number(e.target.value))}
+          sx={{ minWidth: 140 }}
+        >
+          {availableYears.map(y => (
+            <MenuItem key={y} value={y}>
+              {y}
+            </MenuItem>
+          ))}
+        </TextField>
+      </Stack>
 
       <Paper variant="outlined" sx={{ p: 2 }}>
         {loadingIncomes ? (
           <Stack alignItems="center" justifyContent="center" sx={{ py: 3 }}>
             <CircularProgress size={26} />
           </Stack>
-        ) : incomes.length === 0 ? (
+        ) : filteredIncomes.length === 0 ? (
           <Stack alignItems="center" spacing={1} sx={{ py: 3 }}>
             <Typography variant="body2" color="text.secondary">
-              Нет доходов. Добавьте первый, чтобы видеть связанные расходы.
+              Нет доходов за выбранный месяц/год. Добавьте или смените период.
             </Typography>
             <Button startIcon={<AddIcon />} variant="contained" onClick={() => openIncomeDialog('create')}>
               Добавить доход
@@ -366,7 +468,7 @@ function TransactionsPage() {
             scrollButtons="auto"
             allowScrollButtonsMobile
           >
-            {incomes.map(income => (
+            {filteredIncomes.map(income => (
               <Tab
                 key={income.id}
                 value={income.id}
@@ -465,7 +567,9 @@ function TransactionsPage() {
                 <TableRow>
                   <TableCell colSpan={5} align="center">
                     <Typography variant="body2" color="text.secondary">
-                      {selectedIncome ? 'Для этого дохода ещё нет расходов' : 'Выберите доход, чтобы увидеть расходы'}
+                      {selectedIncome
+                        ? 'Для этого дохода в выбранный период ещё нет расходов'
+                        : 'Выберите доход, чтобы увидеть расходы'}
                     </Typography>
                   </TableCell>
                 </TableRow>
