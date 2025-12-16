@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AddIcon from '@mui/icons-material/Add';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
+import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import SearchIcon from '@mui/icons-material/Search';
 import {
   Box,
@@ -169,13 +171,13 @@ function TransactionsPage() {
   const remaining = currentIncomeAmount - totalExpenses;
 
   const availableYears = useMemo(() => {
-    const set = new Set<number>([now.getFullYear()]);
+    const set = new Set<number>([now.getFullYear(), selectedYear]);
     incomes.forEach(i => {
       const { year } = getYearMonth(i.operationDate);
       if (year) set.add(year);
     });
     return Array.from(set).sort((a, b) => b - a);
-  }, [incomes, now]);
+  }, [incomes, now, selectedYear]);
 
   const filteredIncomes = useMemo(
     () =>
@@ -184,6 +186,22 @@ function TransactionsPage() {
       ),
     [incomes, selectedMonth, selectedYear]
   );
+
+  const shiftMonth = (delta: number) => {
+    setSelectedMonth(prev => {
+      let nextMonth = prev + delta;
+      let nextYear = selectedYear;
+      if (nextMonth > 12) {
+        nextMonth = 1;
+        nextYear += 1;
+      } else if (nextMonth < 1) {
+        nextMonth = 12;
+        nextYear -= 1;
+      }
+      setSelectedYear(nextYear);
+      return nextMonth;
+    });
+  };
 
   useEffect(() => {
     if (!filteredIncomes.length) {
@@ -201,6 +219,11 @@ function TransactionsPage() {
       return null;
     }
     return value;
+  };
+
+  const isDateBefore = (a: string, b: string): boolean => {
+    // строки в формате YYYY-MM-DD сравниваются лексикографически корректно
+    return a < b;
   };
 
   const showError = (message: string) => {
@@ -337,13 +360,17 @@ function TransactionsPage() {
   };
 
   const handleSaveExpense = async () => {
-    if (!selectedIncomeId) {
+    if (!selectedIncomeId || !selectedIncome) {
       showError('Сначала выберите доход');
       return;
     }
     const amount = validateAmount(expenseForm.amount);
     if (!expenseForm.name.trim() || amount === null || !/^\d{4}-\d{2}-\d{2}$/.test(expenseForm.operationDate)) {
       showError('Проверьте корректность полей расхода');
+      return;
+    }
+    if (isDateBefore(expenseForm.operationDate, selectedIncome.operationDate)) {
+      showError('Дата расхода не может быть раньше даты дохода');
       return;
     }
 
@@ -411,25 +438,25 @@ function TransactionsPage() {
 
   return (
     <Box sx={{ maxWidth: 1100, mx: 'auto', px: { xs: 2, sm: 3 }, py: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1.5}>
+      <Stack direction="row" justifyContent="center" alignItems="center">
         <Typography variant="h4">Транзакции</Typography>
-        <Stack direction="row" spacing={1}>
-          <Button startIcon={<AddIcon />} variant="contained" onClick={() => openIncomeDialog('create')}>
-            Добавить доход
-          </Button>
-          <Button startIcon={<RefreshIcon />} variant="outlined" onClick={() => void loadIncomes()}>
-            Обновить доходы
-          </Button>
-        </Stack>
       </Stack>
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ xs: 'stretch', sm: 'center' }}>
+      <Stack direction="row" spacing={1} alignItems="center" justifyContent="center" flexWrap="wrap" rowGap={1.5}>
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={() => shiftMonth(-1)}
+          aria-label="Предыдущий месяц"
+        >
+          <ArrowBackIosNewIcon fontSize="small" />
+        </Button>
         <TextField
           select
           size="small"
           label="Месяц"
           value={selectedMonth}
           onChange={e => setSelectedMonth(Number(e.target.value))}
-          sx={{ minWidth: 180 }}
+          sx={{ minWidth: { xs: 140, sm: 180 } }}
         >
           {MONTH_OPTIONS.map(m => (
             <MenuItem key={m.value} value={m.value}>
@@ -443,7 +470,7 @@ function TransactionsPage() {
           label="Год"
           value={selectedYear}
           onChange={e => setSelectedYear(Number(e.target.value))}
-          sx={{ minWidth: 140 }}
+          sx={{ minWidth: { xs: 110, sm: 140 } }}
         >
           {availableYears.map(y => (
             <MenuItem key={y} value={y}>
@@ -451,6 +478,33 @@ function TransactionsPage() {
             </MenuItem>
           ))}
         </TextField>
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={() => shiftMonth(1)}
+          aria-label="Следующий месяц"
+        >
+          <ArrowForwardIosIcon fontSize="small" />
+        </Button>
+      </Stack>
+      <Stack direction="row" spacing={1} justifyContent="center" flexWrap="wrap" rowGap={1}>
+        <Button startIcon={<AddIcon />} variant="contained" onClick={() => openIncomeDialog('create')}>
+          Добавить доход
+        </Button>
+        <Button
+          color="error"
+          variant="outlined"
+          disabled={!selectedIncome}
+          onClick={() =>
+            selectedIncome &&
+            setConfirmDialog({ open: true, type: 'income', targetId: selectedIncome.id })
+          }
+        >
+          Удалить доход
+        </Button>
+        <Button startIcon={<RefreshIcon />} variant="outlined" onClick={() => void loadIncomes()}>
+          Обновить доходы
+        </Button>
       </Stack>
 
       <Paper variant="outlined" sx={{ p: 2 }}>
@@ -504,17 +558,6 @@ function TransactionsPage() {
               onClick={() => selectedIncome && openIncomeDialog('edit', selectedIncome)}
             >
               Редактировать доход
-            </Button>
-            <Button
-              color="error"
-              variant="outlined"
-              disabled={!selectedIncome}
-              onClick={() =>
-                selectedIncome &&
-                setConfirmDialog({ open: true, type: 'income', targetId: selectedIncome.id })
-              }
-            >
-              Удалить доход
             </Button>
           </Stack>
           <Stack direction="row" spacing={1} alignItems="center">
