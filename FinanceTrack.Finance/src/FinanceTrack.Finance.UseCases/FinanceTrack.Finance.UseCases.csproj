@@ -10,4 +10,9 @@
     <ProjectReference Include="..\FinanceTrack.Finance.Core\FinanceTrack.Finance.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="FinancialTransactions\Expenses\Update\" />
+    <Folder Include="FinancialTransactions\Expenses\List\" />
+  </ItemGroup>
+
 </Project>

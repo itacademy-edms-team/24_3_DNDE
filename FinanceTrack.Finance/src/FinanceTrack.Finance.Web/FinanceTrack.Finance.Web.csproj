@@ -29,4 +29,8 @@
     <ProjectReference Include="..\FinanceTrack.Finance.UseCases\FinanceTrack.Finance.UseCases.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="FinancialTransactions\Expenses\" />
+  </ItemGroup>
+
 </Project>

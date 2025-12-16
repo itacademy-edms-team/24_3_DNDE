@@ -38,13 +38,18 @@ namespace FinanceTrack.Finance.Infrastructure.Data.Migrations
             );
 
             migrationBuilder.CreateTable(
-                name: "Transactions",
+                name: "FinancialTransactions",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     UserId = table.Column<string>(
                         type: "character varying(255)",
                         maxLength: 255,
+                        nullable: false
+                    ),
+                    Name = table.Column<string>(
+                        type: "character varying(50)",
+                        maxLength: 50,
                         nullable: false
                     ),
                     IncomeTransactionId = table.Column<Guid>(type: "uuid", nullable: true),
@@ -64,11 +69,11 @@ namespace FinanceTrack.Finance.Infrastructure.Data.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Transactions", x => x.Id);
+                    table.PrimaryKey("PK_FinancialTransactions", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Transactions_Transactions_IncomeTransactionId",
+                        name: "FK_FinancialTransactions_FinancialTransactions_IncomeTransacti~",
                         column: x => x.IncomeTransactionId,
-                        principalTable: "Transactions",
+                        principalTable: "FinancialTransactions",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade
                     );
@@ -76,26 +81,26 @@ namespace FinanceTrack.Finance.Infrastructure.Data.Migrations
             );
 
             migrationBuilder.CreateIndex(
-                name: "IX_Transactions_IncomeTransactionId",
-                table: "Transactions",
+                name: "IX_FinancialTransactions_IncomeTransactionId",
+                table: "FinancialTransactions",
                 column: "IncomeTransactionId"
             );
 
             migrationBuilder.CreateIndex(
-                name: "IX_Transactions_OperationDate",
-                table: "Transactions",
+                name: "IX_FinancialTransactions_OperationDate",
+                table: "FinancialTransactions",
                 column: "OperationDate"
             );
 
             migrationBuilder.CreateIndex(
-                name: "IX_Transactions_TransactionType",
-                table: "Transactions",
+                name: "IX_FinancialTransactions_TransactionType",
+                table: "FinancialTransactions",
                 column: "TransactionType"
             );
 
             migrationBuilder.CreateIndex(
-                name: "IX_Transactions_UserId",
-                table: "Transactions",
+                name: "IX_FinancialTransactions_UserId",
+                table: "FinancialTransactions",
                 column: "UserId"
             );
         }
@@ -105,7 +110,7 @@ namespace FinanceTrack.Finance.Infrastructure.Data.Migrations
         {
             migrationBuilder.DropTable(name: "Contributors");
 
-            migrationBuilder.DropTable(name: "Transactions");
+            migrationBuilder.DropTable(name: "FinancialTransactions");
         }
     }
 }

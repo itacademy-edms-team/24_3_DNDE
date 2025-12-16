@@ -3,6 +3,7 @@ using FinanceTrack.Finance.Core.Services;
 using FinanceTrack.Finance.Infrastructure.Data;
 using FinanceTrack.Finance.Infrastructure.Data.Queries;
 using FinanceTrack.Finance.UseCases.Contributors.List;
+using FinanceTrack.Finance.UseCases.FinancialTransactions.Expenses.List;
 using FinanceTrack.Finance.UseCases.FinancialTransactions.Incomes.List;
 
 namespace FinanceTrack.Finance.Infrastructure;
@@ -28,10 +29,26 @@ public static class InfrastructureServiceExtensions
                 IListUserIncomeFinancialTransactionsQueryService,
                 ListUserIncomeFinancialTransactionsQueryService
             >()
+            .AddScoped<
+                IListUserExpenseFinancialTransactionsQueryService,
+                ListUserExpenseFinancialTransactionsQueryService
+            >()
             .AddScoped<IDeleteContributorService, DeleteContributorService>()
             .AddScoped<
                 IDeleteIncomeFinancialTransactionService,
                 DeleteIncomeFinancialTransactionService
+            >()
+            .AddScoped<
+                ICreateExpenseFinancialTransactionService,
+                CreateExpenseFinancialTransactionService
+            >()
+            .AddScoped<
+                IUpdateExpenseFinancialTransactionService,
+                UpdateExpenseFinancialTransactionService
+            >()
+            .AddScoped<
+                IDeleteExpenseFinancialTransactionService,
+                DeleteExpenseFinancialTransactionService
             >();
 
         logger.LogInformation("{Project} services registered", "Infrastructure");
