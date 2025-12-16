@@ -61,6 +61,14 @@ services:
         sleep 21600;
       done
 
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: FinanceTrack-mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025"   # SMTP
+      - "16020:8025"  # Web UI
+
 volumes:
   FinanceTrack_keycloak_db_data:
   FinanceTrack_keycloak_data:
