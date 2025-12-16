@@ -75,9 +75,11 @@ function TransactionsPage() {
   const [selectedExpenseId, setSelectedExpenseId] = useState<string | null>(null);
   const [loadingIncomes, setLoadingIncomes] = useState(false);
   const [loadingExpenses, setLoadingExpenses] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [expensesError, setExpensesError] = useState<string | null>(null);
   const [filterText, setFilterText] = useState('');
+  const [errorDialog, setErrorDialog] = useState<{ open: boolean; message: string }>({
+    open: false,
+    message: '',
+  });
 
   const [incomeDialogMode, setIncomeDialogMode] = useState<DialogMode>('create');
   const [expenseDialogMode, setExpenseDialogMode] = useState<DialogMode>('create');
@@ -122,6 +124,10 @@ function TransactionsPage() {
     return value;
   };
 
+  const showError = (message: string) => {
+    setErrorDialog({ open: true, message });
+  };
+
   const loadExpenses = useCallback(
     async (incomeId: string, options: { force?: boolean } = {}) => {
       if (!incomeId) return;
@@ -130,7 +136,6 @@ function TransactionsPage() {
         return;
       }
       setLoadingExpenses(true);
-      setExpensesError(null);
       try {
         const data = await fetchExpensesByIncome(incomeId);
         setExpensesByIncome(prev => {
@@ -140,7 +145,7 @@ function TransactionsPage() {
         });
       } catch (e) {
         const err = e as Error;
-        setExpensesError(err.message ?? 'Ошибка загрузки расходов');
+        showError(err.message ?? 'Ошибка загрузки расходов');
       } finally {
         setLoadingExpenses(false);
       }
@@ -151,7 +156,6 @@ function TransactionsPage() {
   const loadIncomes = useCallback(
     async (preferredId?: string) => {
       setLoadingIncomes(true);
-      setError(null);
       try {
         const data = await fetchIncomes();
         setIncomes(data);
@@ -167,7 +171,7 @@ function TransactionsPage() {
         }
       } catch (e) {
         const err = e as Error;
-        setError(err.message ?? 'Ошибка загрузки доходов');
+        showError(err.message ?? 'Ошибка загрузки доходов');
       } finally {
         setLoadingIncomes(false);
       }
@@ -219,7 +223,7 @@ function TransactionsPage() {
   const handleSaveIncome = async () => {
     const amount = validateAmount(incomeForm.amount);
     if (!incomeForm.name.trim() || amount === null || !/^\d{4}-\d{2}-\d{2}$/.test(incomeForm.operationDate)) {
-      setError('Проверьте корректность полей дохода');
+      showError('Проверьте корректность полей дохода');
       return;
     }
 
@@ -242,18 +246,18 @@ function TransactionsPage() {
       setIncomeDialogOpen(false);
     } catch (e) {
       const err = e as Error;
-      setError(err.message ?? 'Не удалось сохранить доход');
+      showError(err.message ?? 'Не удалось сохранить доход');
     }
   };
 
   const handleSaveExpense = async () => {
     if (!selectedIncomeId) {
-      setExpensesError('Сначала выберите доход');
+      showError('Сначала выберите доход');
       return;
     }
     const amount = validateAmount(expenseForm.amount);
     if (!expenseForm.name.trim() || amount === null || !/^\d{4}-\d{2}-\d{2}$/.test(expenseForm.operationDate)) {
-      setExpensesError('Проверьте корректность полей расхода');
+      showError('Проверьте корректность полей расхода');
       return;
     }
 
@@ -277,7 +281,7 @@ function TransactionsPage() {
       setExpenseDialogOpen(false);
     } catch (e) {
       const err = e as Error;
-      setExpensesError(err.message ?? 'Не удалось сохранить расход');
+      showError(err.message ?? 'Не удалось сохранить расход');
     }
   };
 
@@ -294,7 +298,7 @@ function TransactionsPage() {
       await loadIncomes();
     } catch (e) {
       const err = e as Error;
-      setError(err.message ?? 'Не удалось удалить доход');
+      showError(err.message ?? 'Не удалось удалить доход');
     }
   };
 
@@ -308,7 +312,7 @@ function TransactionsPage() {
       await loadExpenses(incomeId, { force: true });
     } catch (e) {
       const err = e as Error;
-      setExpensesError(err.message ?? 'Не удалось удалить расход');
+      showError(err.message ?? 'Не удалось удалить расход');
     }
   };
 
@@ -331,12 +335,6 @@ function TransactionsPage() {
           </Button>
         </Stack>
       </Stack>
-
-      {error && (
-        <Typography color="error" variant="body2">
-          {error}
-        </Typography>
-      )}
 
       <Paper variant="outlined" sx={{ p: 2 }}>
         {loadingIncomes ? (
@@ -437,13 +435,6 @@ function TransactionsPage() {
             ),
           }}
         />
-
-        {expensesError && (
-          <Typography color="error" variant="body2">
-            {expensesError}
-          </Typography>
-        )}
-
         <TableContainer component={Paper} variant="outlined">
           <Table size="small">
             <TableHead>
@@ -553,6 +544,12 @@ function TransactionsPage() {
         onConfirm={
           confirmDialog.type === 'income' ? handleDeleteIncome : handleDeleteExpense
         }
+      />
+
+      <ErrorDialog
+        open={errorDialog.open}
+        message={errorDialog.message}
+        onClose={() => setErrorDialog({ open: false, message: '' })}
       />
     </Box>
   );
@@ -700,6 +697,28 @@ function ConfirmDialog({ open, title, description, onConfirm, onCancel }: Confir
         <Button onClick={onCancel}>Cancel</Button>
         <Button onClick={onConfirm} color="error" variant="contained">
           Delete
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+type ErrorDialogProps = {
+  open: boolean;
+  message: string;
+  onClose: () => void;
+};
+
+function ErrorDialog({ open, message, onClose }: ErrorDialogProps) {
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+      <DialogTitle>Error</DialogTitle>
+      <DialogContent dividers>
+        <Typography variant="body2">{message}</Typography>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} autoFocus>
+          OK
         </Button>
       </DialogActions>
     </Dialog>
