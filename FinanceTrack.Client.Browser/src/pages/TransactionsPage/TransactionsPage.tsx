@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AddIcon from '@mui/icons-material/Add';
-import DeleteIcon from '@mui/icons-material/Delete';
-import EditIcon from '@mui/icons-material/Edit';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import SearchIcon from '@mui/icons-material/Search';
 import {
@@ -12,7 +10,6 @@ import {
   DialogContent,
   DialogTitle,
   FormControlLabel,
-  IconButton,
   InputAdornment,
   Stack,
   Switch,
@@ -310,6 +307,7 @@ function TransactionsPage() {
       await deleteExpense(confirmDialog.targetId);
       setConfirmDialog({ open: false });
       await loadExpenses(incomeId, { force: true });
+      setExpenseDialogOpen(false);
     } catch (e) {
       const err = e as Error;
       showError(err.message ?? 'Не удалось удалить расход');
@@ -382,7 +380,6 @@ function TransactionsPage() {
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }}>
           <Stack direction="row" spacing={1} alignItems="center">
             <Button
-              startIcon={<EditIcon />}
               variant="outlined"
               disabled={!selectedIncome}
               onClick={() => selectedIncome && openIncomeDialog('edit', selectedIncome)}
@@ -390,7 +387,6 @@ function TransactionsPage() {
               Edit income
             </Button>
             <Button
-              startIcon={<DeleteIcon />}
               color="error"
               variant="outlined"
               disabled={!selectedIncome}
@@ -437,17 +433,14 @@ function TransactionsPage() {
         />
         <TableContainer component={Paper} variant="outlined">
           <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Name</TableCell>
-                <TableCell width="130">Amount</TableCell>
-                <TableCell width="130">Date</TableCell>
-                <TableCell width="120">Type</TableCell>
-                <TableCell align="right" width="110">
-                  Actions
-                </TableCell>
-              </TableRow>
-            </TableHead>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Name</TableCell>
+                  <TableCell width="130">Amount</TableCell>
+                  <TableCell width="130">Date</TableCell>
+                  <TableCell width="120">Type</TableCell>
+                </TableRow>
+              </TableHead>
             <TableBody>
               {loadingExpenses ? (
                 <TableRow>
@@ -468,37 +461,20 @@ function TransactionsPage() {
                 </TableRow>
               ) : (
                 filteredExpenses.map(expense => (
-                  <TableRow key={expense.id} hover selected={expense.id === selectedExpenseId}>
+                  <TableRow
+                    key={expense.id}
+                    hover
+                    selected={expense.id === selectedExpenseId}
+                    onClick={() => {
+                      setSelectedExpenseId(expense.id);
+                      openExpenseDialog('edit', expense);
+                    }}
+                    sx={{ cursor: 'pointer' }}
+                  >
                     <TableCell>{expense.name}</TableCell>
                     <TableCell>{expense.amount.toFixed(2)} ₽</TableCell>
                     <TableCell>{formatDate(expense.operationDate)}</TableCell>
                     <TableCell>{expense.isMonthly ? 'Monthly' : 'Single'}</TableCell>
-                    <TableCell align="right">
-                      <IconButton
-                        size="small"
-                        onClick={() => {
-                          setSelectedExpenseId(expense.id);
-                          openExpenseDialog('edit', expense);
-                        }}
-                      >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => {
-                          setSelectedExpenseId(expense.id);
-                          setConfirmDialog({
-                            open: true,
-                            type: 'expense',
-                            targetId: expense.id,
-                            incomeId: selectedIncomeId ?? undefined,
-                          });
-                        }}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -524,6 +500,17 @@ function TransactionsPage() {
         onChange={setExpenseForm}
         onSubmit={handleSaveExpense}
         disabled={!selectedIncomeId}
+        onDelete={
+          expenseDialogMode === 'edit' && selectedExpenseId
+            ? () =>
+                setConfirmDialog({
+                  open: true,
+                  type: 'expense',
+                  targetId: selectedExpenseId,
+                  incomeId: selectedIncomeId ?? undefined,
+                })
+            : undefined
+        }
       />
 
       <ConfirmDialog
@@ -629,7 +616,8 @@ function ExpenseDialog({
   onSubmit,
   onClose,
   disabled,
-}: FormDialogProps<ExpenseFormState>) {
+  onDelete,
+}: FormDialogProps<ExpenseFormState> & { onDelete?: () => void }) {
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
       <DialogTitle>{mode === 'create' ? 'Add expense' : 'Edit expense'}</DialogTitle>
@@ -669,6 +657,11 @@ function ExpenseDialog({
         </Stack>
       </DialogContent>
       <DialogActions>
+        {mode === 'edit' && onDelete && (
+          <Button color="error" onClick={onDelete}>
+            Delete
+          </Button>
+        )}
         <Button onClick={onClose}>Cancel</Button>
         <Button onClick={onSubmit} variant="contained" disabled={disabled}>
           {mode === 'create' ? 'Add' : 'Save'}
