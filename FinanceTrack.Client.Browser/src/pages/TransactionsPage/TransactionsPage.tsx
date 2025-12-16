@@ -1,314 +1,335 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import SearchIcon from '@mui/icons-material/Search';
 import {
   Box,
   Button,
-  Card,
-  CardActionArea,
-  CardContent,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   FormControlLabel,
+  IconButton,
+  InputAdornment,
   Stack,
   Switch,
+  Tab,
+  Tabs,
   TextField,
   Typography,
   Paper,
-  Divider,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  CircularProgress,
 } from '@mui/material';
+import {
+  createExpense,
+  createIncome,
+  deleteExpense,
+  deleteIncome,
+  fetchExpensesByIncome,
+  fetchIncomes,
+  updateExpense,
+  updateIncome,
+} from './api';
+import { ExpenseTransaction, IncomeTransaction } from './types';
 
-type IncomeTransactionRecord = {
-  id: string;
-  name: string;
-  amount: number;
-  operationDate: string; // "YYYY-MM-DD"
-  isMonthly: boolean;
-  type: string; // "Income"
-};
-
-type ListIncomeTransactionsByUserIdResponse = {
-  transactions: IncomeTransactionRecord[];
-};
-
-type AddIncomeFormState = {
+type IncomeFormState = {
   name: string;
   amount: string;
   operationDate: string;
   isMonthly: boolean;
 };
 
-type EditIncomeFormState = {
-  name: string;
-  amount: string;
-  operationDate: string;
-  isMonthly: boolean;
-};
+type ExpenseFormState = IncomeFormState;
+
+type DialogMode = 'create' | 'edit';
+
+type ConfirmDialogState =
+  | { type: 'income'; targetId: string; open: true }
+  | { type: 'expense'; targetId: string; incomeId?: string; open: true }
+  | { open: false; type?: undefined; targetId?: undefined; incomeId?: undefined };
+
+function formatDate(dateStr: string): string {
+  if (!dateStr) return '';
+  const [year, month, day] = dateStr.split('-');
+  if (!year || !month || !day) return dateStr;
+  return `${day}.${month}.${year}`;
+}
 
 function TransactionsPage() {
-  const [transactions, setTransactions] = useState<IncomeTransactionRecord[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [incomes, setIncomes] = useState<IncomeTransaction[]>([]);
+  const [expensesByIncome, setExpensesByIncome] = useState<Record<string, ExpenseTransaction[]>>(
+    {}
+  );
+  const expensesCacheRef = useRef<Record<string, ExpenseTransaction[]>>({});
+  const selectedIncomeRef = useRef<string | null>(null);
+  const [selectedIncomeId, setSelectedIncomeId] = useState<string | null>(null);
+  const [selectedExpenseId, setSelectedExpenseId] = useState<string | null>(null);
+  const [loadingIncomes, setLoadingIncomes] = useState(false);
+  const [loadingExpenses, setLoadingExpenses] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [expensesError, setExpensesError] = useState<string | null>(null);
+  const [filterText, setFilterText] = useState('');
 
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false); // 🔹
+  const [incomeDialogMode, setIncomeDialogMode] = useState<DialogMode>('create');
+  const [expenseDialogMode, setExpenseDialogMode] = useState<DialogMode>('create');
+  const [incomeDialogOpen, setIncomeDialogOpen] = useState(false);
+  const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>({ open: false });
 
-  const [addForm, setAddForm] = useState<AddIncomeFormState>({
+  const [incomeForm, setIncomeForm] = useState<IncomeFormState>({
+    name: '',
+    amount: '',
+    operationDate: '',
+    isMonthly: false,
+  });
+  const [expenseForm, setExpenseForm] = useState<ExpenseFormState>({
     name: '',
     amount: '',
     operationDate: '',
     isMonthly: false,
   });
 
-  const [editForm, setEditForm] = useState<EditIncomeFormState>({
-    name: '',
-    amount: '',
-    operationDate: '',
-    isMonthly: false,
-  });
-
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  const selectedTransaction = useMemo(
-    () => transactions.find(t => t.id === selectedId) ?? null,
-    [transactions, selectedId]
+  const selectedIncome = useMemo(
+    () => incomes.find(i => i.id === selectedIncomeId) ?? null,
+    [incomes, selectedIncomeId]
   );
 
-  const loadIncomes = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const currentExpenses = useMemo(() => {
+    if (!selectedIncomeId) return [];
+    return expensesByIncome[selectedIncomeId] ?? [];
+  }, [expensesByIncome, selectedIncomeId]);
 
-    try {
-      const response = await fetch('/api/finance/transactions/income', {
-        method: 'GET',
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error(`Loading error: ${response.status}`);
-      }
-
-      const data = (await response.json()) as ListIncomeTransactionsByUserIdResponse;
-
-      if (!data || !Array.isArray(data.transactions)) {
-        throw new Error('Invalid server response');
-      }
-
-      setTransactions(data.transactions);
-    } catch (e) {
-      const err = e as Error;
-      setError(err.message ?? 'Unexpected error');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadIncomes();
-  }, [loadIncomes]);
-
-  const handleOpenAddDialog = () => {
-    setAddForm({
-      name: '',
-      amount: '',
-      operationDate: '',
-      isMonthly: false,
-    });
-    setIsAddDialogOpen(true);
-  };
-
-  const handleCloseAddDialog = () => {
-    setIsAddDialogOpen(false);
-  };
-
-  const handleOpenEditDialog = () => {
-    if (!selectedTransaction) return;
-
-    setEditForm({
-      name: selectedTransaction.name,
-      amount: selectedTransaction.amount.toString(),
-      operationDate: selectedTransaction.operationDate,
-      isMonthly: selectedTransaction.isMonthly,
-    });
-
-    setIsEditDialogOpen(true);
-  };
-
-  const handleCloseEditDialog = () => {
-    setIsEditDialogOpen(false);
-  };
-
-  const handleOpenDeleteConfirm = () => {
-    if (!selectedTransaction) return;
-    setIsDeleteConfirmOpen(true);
-  };
-
-  const handleCloseDeleteConfirm = () => {
-    setIsDeleteConfirmOpen(false);
-  };
-
-  const parseAmount = (raw: string): number => {
-    const value = Number(raw.replace(',', '.'));
-    return value;
-  };
+  const filteredExpenses = useMemo(() => {
+    if (!filterText.trim()) return currentExpenses;
+    const query = filterText.trim().toLowerCase();
+    return currentExpenses.filter(e => e.name.toLowerCase().includes(query));
+  }, [currentExpenses, filterText]);
 
   const validateAmount = (raw: string): number | null => {
-    const value = parseAmount(raw);
+    const value = Number(raw.replace(',', '.'));
     if (Number.isNaN(value) || value < 0.01) {
       return null;
     }
     return value;
   };
 
-  const handleAddIncome = async () => {
-    if (!addForm.name.trim()) {
-      alert('Name is required');
+  const loadExpenses = useCallback(
+    async (incomeId: string, options: { force?: boolean } = {}) => {
+      if (!incomeId) return;
+      if (!options.force && expensesCacheRef.current[incomeId]) {
+        setExpensesByIncome(prev => ({ ...prev }));
+        return;
+      }
+      setLoadingExpenses(true);
+      setExpensesError(null);
+      try {
+        const data = await fetchExpensesByIncome(incomeId);
+        setExpensesByIncome(prev => {
+          const next = { ...prev, [incomeId]: data };
+          expensesCacheRef.current = next;
+          return next;
+        });
+      } catch (e) {
+        const err = e as Error;
+        setExpensesError(err.message ?? 'Ошибка загрузки расходов');
+      } finally {
+        setLoadingExpenses(false);
+      }
+    },
+    []
+  );
+
+  const loadIncomes = useCallback(
+    async (preferredId?: string) => {
+      setLoadingIncomes(true);
+      setError(null);
+      try {
+        const data = await fetchIncomes();
+        setIncomes(data);
+        const previousSelected = selectedIncomeRef.current;
+        const nextSelected =
+          preferredId ??
+          (previousSelected && data.some(i => i.id === previousSelected)
+            ? previousSelected
+            : data[0]?.id ?? null);
+        setSelectedIncomeId(nextSelected);
+        if (nextSelected && !expensesCacheRef.current[nextSelected]) {
+          void loadExpenses(nextSelected, { force: false });
+        }
+      } catch (e) {
+        const err = e as Error;
+        setError(err.message ?? 'Ошибка загрузки доходов');
+      } finally {
+        setLoadingIncomes(false);
+      }
+    },
+    [loadExpenses]
+  );
+
+  useEffect(() => {
+    selectedIncomeRef.current = selectedIncomeId;
+  }, [selectedIncomeId]);
+
+  useEffect(() => {
+    setSelectedExpenseId(null);
+  }, [selectedIncomeId]);
+
+  useEffect(() => {
+    void loadIncomes();
+  }, [loadIncomes]);
+
+  useEffect(() => {
+    if (selectedIncomeId) {
+      void loadExpenses(selectedIncomeId);
+    }
+  }, [selectedIncomeId, loadExpenses]);
+
+  const openIncomeDialog = (mode: DialogMode, income?: IncomeTransaction) => {
+    setIncomeDialogMode(mode);
+    setIncomeForm({
+      name: income?.name ?? '',
+      amount: income ? income.amount.toString() : '',
+      operationDate: income?.operationDate ?? '',
+      isMonthly: income?.isMonthly ?? false,
+    });
+    setIncomeDialogOpen(true);
+  };
+
+  const openExpenseDialog = (mode: DialogMode, expense?: ExpenseTransaction) => {
+    setExpenseDialogMode(mode);
+    setExpenseForm({
+      name: expense?.name ?? '',
+      amount: expense ? expense.amount.toString() : '',
+      operationDate: expense?.operationDate ?? '',
+      isMonthly: expense?.isMonthly ?? false,
+    });
+    setSelectedExpenseId(expense?.id ?? null);
+    setExpenseDialogOpen(true);
+  };
+
+  const handleSaveIncome = async () => {
+    const amount = validateAmount(incomeForm.amount);
+    if (!incomeForm.name.trim() || amount === null || !/^\d{4}-\d{2}-\d{2}$/.test(incomeForm.operationDate)) {
+      setError('Проверьте корректность полей дохода');
       return;
     }
 
-    const amount = validateAmount(addForm.amount);
-    if (amount === null) {
-      alert('Incorrect amount. Must be at least 0.01');
-      return;
-    }
-
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(addForm.operationDate)) {
-      alert('Date must be format YYYY-MM-DD');
-      return;
-    }
+    const payload = {
+      name: incomeForm.name.trim(),
+      amount,
+      operationDate: incomeForm.operationDate,
+      isMonthly: incomeForm.isMonthly,
+    };
 
     try {
-      const response = await fetch('/api/finance/transactions/income', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: addForm.name.trim(),
-          amount, // отправляем число, не строку
-          operationDate: addForm.operationDate,
-          isMonthly: addForm.isMonthly,
-        }),
+      if (incomeDialogMode === 'create') {
+        const id = await createIncome(payload);
+        await loadIncomes(id);
+        setSelectedIncomeId(id);
+      } else if (selectedIncome) {
+        await updateIncome(selectedIncome.id, payload);
+        await loadIncomes(selectedIncome.id);
+      }
+      setIncomeDialogOpen(false);
+    } catch (e) {
+      const err = e as Error;
+      setError(err.message ?? 'Не удалось сохранить доход');
+    }
+  };
+
+  const handleSaveExpense = async () => {
+    if (!selectedIncomeId) {
+      setExpensesError('Сначала выберите доход');
+      return;
+    }
+    const amount = validateAmount(expenseForm.amount);
+    if (!expenseForm.name.trim() || amount === null || !/^\d{4}-\d{2}-\d{2}$/.test(expenseForm.operationDate)) {
+      setExpensesError('Проверьте корректность полей расхода');
+      return;
+    }
+
+    const payloadBase = {
+      name: expenseForm.name.trim(),
+      amount,
+      operationDate: expenseForm.operationDate,
+      isMonthly: expenseForm.isMonthly,
+      incomeTransactionId: selectedIncomeId,
+    };
+
+    try {
+      if (expenseDialogMode === 'create') {
+        const id = await createExpense(payloadBase);
+        await loadExpenses(selectedIncomeId, { force: true });
+        setSelectedExpenseId(id);
+      } else if (selectedExpenseId) {
+        await updateExpense({ ...payloadBase, transactionId: selectedExpenseId });
+        await loadExpenses(selectedIncomeId, { force: true });
+      }
+      setExpenseDialogOpen(false);
+    } catch (e) {
+      const err = e as Error;
+      setExpensesError(err.message ?? 'Не удалось сохранить расход');
+    }
+  };
+
+  const handleDeleteIncome = async () => {
+    if (!confirmDialog.open || confirmDialog.type !== 'income') return;
+    try {
+      await deleteIncome(confirmDialog.targetId);
+      setConfirmDialog({ open: false });
+      setExpensesByIncome(prev => {
+        const next = { ...prev };
+        delete next[confirmDialog.targetId];
+        return next;
       });
-
-      if (!response.ok) {
-        throw new Error(`Create error: ${response.status}`);
-      }
-
       await loadIncomes();
-      setIsAddDialogOpen(false);
     } catch (e) {
       const err = e as Error;
-      alert(err.message ?? 'Error when creating income');
+      setError(err.message ?? 'Не удалось удалить доход');
     }
   };
 
-  const handleSaveEdit = async () => {
-    if (!selectedTransaction) return;
-
-    if (!editForm.name.trim()) {
-      alert('Name is required');
-      return;
-    }
-
-    const amount = validateAmount(editForm.amount);
-    if (amount === null) {
-      alert('Incorrect amount. Must be at least 0.01');
-      return;
-    }
-
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(editForm.operationDate)) {
-      alert('Date must be format YYYY-MM-DD');
-      return;
-    }
-
+  const handleDeleteExpense = async () => {
+    if (!confirmDialog.open || confirmDialog.type !== 'expense' || !confirmDialog.targetId) return;
+    const incomeId = confirmDialog.incomeId ?? selectedIncomeId;
+    if (!incomeId) return;
     try {
-      const response = await fetch(
-        `/api/finance/transactions/income/${encodeURIComponent(selectedTransaction.id)}`,
-        {
-          method: 'PUT',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            name: editForm.name.trim(),
-            amount,
-            operationDate: editForm.operationDate,
-            isMonthly: editForm.isMonthly,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`Update error: ${response.status}`);
-      }
-
-      await loadIncomes();
-      setIsEditDialogOpen(false);
+      await deleteExpense(confirmDialog.targetId);
+      setConfirmDialog({ open: false });
+      await loadExpenses(incomeId, { force: true });
     } catch (e) {
       const err = e as Error;
-      alert(err.message ?? 'Error when updating income');
+      setExpensesError(err.message ?? 'Не удалось удалить расход');
     }
   };
 
-  const handleConfirmDelete = async () => {        // 🔹
-    if (!selectedTransaction) return;
-
-    try {
-      const response = await fetch(
-        `/api/finance/transactions/income/${encodeURIComponent(selectedTransaction.id)}`,
-        {
-          method: 'DELETE',
-          credentials: 'include',
-        }
-      );
-
-      if (response.status !== 204 && !response.ok) {
-        throw new Error(`Delete error: ${response.status}`);
-      }
-
-      setIsDeleteConfirmOpen(false);
-      setIsEditDialogOpen(false);
-      setSelectedId(null);
-      await loadIncomes();
-    } catch (e) {
-      const err = e as Error;
-      alert(err.message ?? 'Error when deleting income');
+  const handleRefreshExpenses = () => {
+    if (selectedIncomeId) {
+      void loadExpenses(selectedIncomeId, { force: true });
     }
-  };
-
-  const handleSelectTransaction = (id: string) => {
-    setSelectedId(prev => (prev === id ? null : id));
-  };
-
-  const formatOperationDate = (dateStr: string): string => {
-    if (!dateStr) return '';
-    const [year, month, day] = dateStr.split('-');
-    if (!year || !month || !day) return dateStr;
-    return `${day}.${month}.${year}`;
   };
 
   return (
-    <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <Typography variant="h3" gutterBottom>
-        Incomes
-      </Typography>
-
-      <Stack direction="row" spacing={2} alignItems="center">
-        <Button variant="contained" onClick={handleOpenAddDialog}>
-          Add income
-        </Button>
-        <Button variant="outlined" onClick={() => void loadIncomes()}>
-          Refresh incomes
-        </Button>
-        {loading && (
-          <Typography variant="body2" color="text.secondary">
-            Loading...
-          </Typography>
-        )}
+    <Box sx={{ maxWidth: 1100, mx: 'auto', px: { xs: 2, sm: 3 }, py: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1.5}>
+        <Typography variant="h4">Transactions</Typography>
+        <Stack direction="row" spacing={1}>
+          <Button startIcon={<AddIcon />} variant="contained" onClick={() => openIncomeDialog('create')}>
+            Add income
+          </Button>
+          <Button startIcon={<RefreshIcon />} variant="outlined" onClick={() => void loadIncomes()}>
+            Refresh incomes
+          </Button>
+        </Stack>
       </Stack>
 
       {error && (
@@ -317,267 +338,371 @@ function TransactionsPage() {
         </Typography>
       )}
 
-      {/* Лента доходов */}
-      <Paper
-        elevation={2}
-        sx={{
-          p: 2,
-          maxHeight: 360,
-          overflowY: 'auto',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 1.5,
-        }}
-      >
-        {transactions.length === 0 && !loading && (
-          <Typography variant="body2" color="text.secondary">
-            No incomes yet. Press &quot;Add income&quot; to create the first one.
+      <Paper variant="outlined" sx={{ p: 2 }}>
+        {loadingIncomes ? (
+          <Stack alignItems="center" justifyContent="center" sx={{ py: 3 }}>
+            <CircularProgress size={26} />
+          </Stack>
+        ) : incomes.length === 0 ? (
+          <Stack alignItems="center" spacing={1} sx={{ py: 3 }}>
+            <Typography variant="body2" color="text.secondary">
+              Нет доходов. Добавьте первый, чтобы видеть связанные расходы.
+            </Typography>
+            <Button startIcon={<AddIcon />} variant="contained" onClick={() => openIncomeDialog('create')}>
+              Add income
+            </Button>
+          </Stack>
+        ) : (
+          <Tabs
+            value={selectedIncomeId}
+            onChange={(_, v) => setSelectedIncomeId(v)}
+            variant="scrollable"
+            scrollButtons="auto"
+            allowScrollButtonsMobile
+          >
+            {incomes.map(income => (
+              <Tab
+                key={income.id}
+                value={income.id}
+                label={
+                  <Box sx={{ textTransform: 'none' }}>
+                    <Typography variant="body2" fontWeight={600}>
+                      {income.name}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {income.amount.toFixed(2)} ₽ • {formatDate(income.operationDate)}
+                    </Typography>
+                  </Box>
+                }
+              />
+            ))}
+          </Tabs>
+        )}
+      </Paper>
+
+      <Paper variant="outlined" sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Button
+              startIcon={<EditIcon />}
+              variant="outlined"
+              disabled={!selectedIncome}
+              onClick={() => selectedIncome && openIncomeDialog('edit', selectedIncome)}
+            >
+              Edit income
+            </Button>
+            <Button
+              startIcon={<DeleteIcon />}
+              color="error"
+              variant="outlined"
+              disabled={!selectedIncome}
+              onClick={() =>
+                selectedIncome &&
+                setConfirmDialog({ open: true, type: 'income', targetId: selectedIncome.id })
+              }
+            >
+              Delete income
+            </Button>
+          </Stack>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Button
+              startIcon={<AddIcon />}
+              variant="contained"
+              disabled={!selectedIncome}
+              onClick={() => openExpenseDialog('create')}
+            >
+              Add expense
+            </Button>
+            <Button
+              startIcon={<RefreshIcon />}
+              variant="outlined"
+              disabled={!selectedIncome}
+              onClick={handleRefreshExpenses}
+            >
+              Refresh expenses
+            </Button>
+          </Stack>
+        </Stack>
+
+        <TextField
+          placeholder="Search expenses by name"
+          value={filterText}
+          onChange={e => setFilterText(e.target.value)}
+          size="small"
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" />
+              </InputAdornment>
+            ),
+          }}
+        />
+
+        {expensesError && (
+          <Typography color="error" variant="body2">
+            {expensesError}
           </Typography>
         )}
 
-        {transactions.map(tx => {
-          const isSelected = tx.id === selectedId;
-          return (
-            <Card
-              key={tx.id}
-              variant={isSelected ? 'elevation' : 'outlined'}
-              sx={{
-                transition: 'all 0.15s ease',
-                borderColor: isSelected ? 'primary.main' : 'divider',
-                bgcolor: isSelected ? 'action.hover' : 'background.paper',
-              }}
-            >
-              <CardActionArea onClick={() => handleSelectTransaction(tx.id)}>
-                <CardContent
-                  sx={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}
-                >
-                  <Box>
-                    <Typography variant="subtitle1">{tx.name}</Typography>
+        <TableContainer component={Paper} variant="outlined">
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Name</TableCell>
+                <TableCell width="130">Amount</TableCell>
+                <TableCell width="130">Date</TableCell>
+                <TableCell width="120">Type</TableCell>
+                <TableCell align="right" width="110">
+                  Actions
+                </TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {loadingExpenses ? (
+                <TableRow>
+                  <TableCell colSpan={5} align="center">
+                    <Stack direction="row" spacing={1} justifyContent="center" alignItems="center">
+                      <CircularProgress size={20} />
+                      <Typography variant="body2">Loading expenses...</Typography>
+                    </Stack>
+                  </TableCell>
+                </TableRow>
+              ) : filteredExpenses.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} align="center">
                     <Typography variant="body2" color="text.secondary">
-                      Date: {formatOperationDate(tx.operationDate)}
+                      {selectedIncome ? 'No expenses for this income yet' : 'Select an income to see expenses'}
                     </Typography>
-                  </Box>
-                  <Box sx={{ textAlign: 'right' }}>
-                    <Typography variant="subtitle1">
-                      {tx.amount.toFixed(2)} ₽
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {tx.isMonthly ? 'Monthly' : 'Single'}
-                    </Typography>
-                  </Box>
-                </CardContent>
-              </CardActionArea>
-            </Card>
-          );
-        })}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredExpenses.map(expense => (
+                  <TableRow key={expense.id} hover selected={expense.id === selectedExpenseId}>
+                    <TableCell>{expense.name}</TableCell>
+                    <TableCell>{expense.amount.toFixed(2)} ₽</TableCell>
+                    <TableCell>{formatDate(expense.operationDate)}</TableCell>
+                    <TableCell>{expense.isMonthly ? 'Monthly' : 'Single'}</TableCell>
+                    <TableCell align="right">
+                      <IconButton
+                        size="small"
+                        onClick={() => {
+                          setSelectedExpenseId(expense.id);
+                          openExpenseDialog('edit', expense);
+                        }}
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => {
+                          setSelectedExpenseId(expense.id);
+                          setConfirmDialog({
+                            open: true,
+                            type: 'expense',
+                            targetId: expense.id,
+                            incomeId: selectedIncomeId ?? undefined,
+                          });
+                        }}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
       </Paper>
 
-      {/* Карточка с деталями выбранного дохода */}
-      {selectedTransaction && (
-        <Box>
-          <Typography variant="h6" gutterBottom>
-            Income details
-          </Typography>
-          <Card
-            variant="outlined"
-            sx={{
-              maxWidth: 420,
-              cursor: 'pointer',
-              '&:hover': { boxShadow: 4 },
-            }}
-            onClick={handleOpenEditDialog}
-          >
-            <CardContent>
-              <Typography variant="subtitle1" gutterBottom>
-                {selectedTransaction.name}
-              </Typography>
-              <Typography variant="body2">
-                Amount: {selectedTransaction.amount.toFixed(2)} ₽
-              </Typography>
-              <Typography variant="body2">
-                Income date: {formatOperationDate(selectedTransaction.operationDate)}
-              </Typography>
-              <Typography variant="body2">
-                Type: {selectedTransaction.isMonthly ? 'Monthly' : 'Single'}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Press to edit
-              </Typography>
-            </CardContent>
-          </Card>
-        </Box>
-      )}
+      <IncomeDialog
+        open={incomeDialogOpen}
+        mode={incomeDialogMode}
+        form={incomeForm}
+        onClose={() => setIncomeDialogOpen(false)}
+        onChange={setIncomeForm}
+        onSubmit={handleSaveIncome}
+      />
 
-      {/* Диалог добавления дохода */}
-      <Dialog open={isAddDialogOpen} onClose={handleCloseAddDialog} maxWidth="xs" fullWidth>
-        <DialogTitle>Add income</DialogTitle>
-        <DialogContent dividers>
-          <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField
-              label="Name"
-              type="text"
-              fullWidth
-              value={addForm.name}
-              onChange={e =>
-                setAddForm(prev => ({ ...prev, name: e.target.value }))
-              }
-            />
-            <TextField
-              label="Amount"
-              type="number"
-              fullWidth
-              value={addForm.amount}
-              onChange={e =>
-                setAddForm(prev => ({ ...prev, amount: e.target.value }))
-              }
-            />
-            <TextField
-              label="Operation date"
-              type="date"
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-              value={addForm.operationDate}
-              onChange={e =>
-                setAddForm(prev => ({ ...prev, operationDate: e.target.value }))
-              }
-            />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={addForm.isMonthly}
-                  onChange={e =>
-                    setAddForm(prev => ({ ...prev, isMonthly: e.target.checked }))
-                  }
-                />
-              }
-              label="Is monthly?"
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseAddDialog}>Back</Button>
-          <Button onClick={handleAddIncome} variant="contained">
-            Add
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <ExpenseDialog
+        open={expenseDialogOpen}
+        mode={expenseDialogMode}
+        form={expenseForm}
+        onClose={() => setExpenseDialogOpen(false)}
+        onChange={setExpenseForm}
+        onSubmit={handleSaveExpense}
+        disabled={!selectedIncomeId}
+      />
 
-      {/* Диалог редактирования дохода */}
-      <Dialog open={isEditDialogOpen} onClose={handleCloseEditDialog} maxWidth="xs" fullWidth>
-        <DialogTitle>Edit income</DialogTitle>
-        <DialogContent dividers>
-          {selectedTransaction ? (
-            <Stack spacing={2} sx={{ mt: 1 }}>
-              <Box>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Current
-                </Typography>
-                <Typography variant="body2">{selectedTransaction.name}</Typography>
-                <Typography variant="body2">
-                  Amount: {selectedTransaction.amount.toFixed(2)} ₽
-                </Typography>
-              </Box>
-              <Divider />
-              <TextField
-                label="Name"
-                type="text"
-                fullWidth
-                value={editForm.name}
-                onChange={e =>
-                  setEditForm(prev => ({ ...prev, name: e.target.value }))
-                }
-              />
-              <TextField
-                label="Amount"
-                type="number"
-                inputProps={{ step: '0.01', min: '0.01' }}
-                fullWidth
-                value={editForm.amount}
-                onChange={e =>
-                  setEditForm(prev => ({ ...prev, amount: e.target.value }))
-                }
-              />
-              <TextField
-                label="Operation date"
-                type="date"
-                fullWidth
-                InputLabelProps={{ shrink: true }}
-                value={editForm.operationDate}
-                onChange={e =>
-                  setEditForm(prev => ({
-                    ...prev,
-                    operationDate: e.target.value,
-                  }))
-                }
-              />
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={editForm.isMonthly}
-                    onChange={e =>
-                      setEditForm(prev => ({
-                        ...prev,
-                        isMonthly: e.target.checked,
-                      }))
-                    }
-                  />
-                }
-                label="Is monthly?"
-              />
-            </Stack>
-          ) : (
-            <Typography>No selected income</Typography>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseEditDialog}>Back</Button>
-          <Button
-            color="error"
-            onClick={handleOpenDeleteConfirm}
-            disabled={!selectedTransaction}
-          >
-            Delete
-          </Button>
-          <Button
-            onClick={handleSaveEdit}
-            variant="contained"
-            disabled={!selectedTransaction}
-          >
-            Save
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Диалог подтверждения удаления */}
-      <Dialog
-        open={isDeleteConfirmOpen}
-        onClose={handleCloseDeleteConfirm}
-        maxWidth="xs"
-        fullWidth
-      >
-        <DialogTitle>Delete income</DialogTitle>
-        <DialogContent dividers>
-          <Typography>
-            Are you sure you want to delete this income?
-          </Typography>
-          {selectedTransaction && (
-            <Typography sx={{ mt: 1 }} color="text.secondary" variant="body2">
-              {selectedTransaction.name} — {selectedTransaction.amount.toFixed(2)} ₽
-            </Typography>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDeleteConfirm}>Cancel</Button>
-          <Button color="error" variant="contained" onClick={handleConfirmDelete}>
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <ConfirmDialog
+        open={confirmDialog.open}
+        title={
+          confirmDialog.type === 'income'
+            ? 'Delete income'
+            : confirmDialog.type === 'expense'
+              ? 'Delete expense'
+              : ''
+        }
+        description={
+          confirmDialog.type === 'income'
+            ? 'Удалить выбранный доход и связанные расходы?'
+            : 'Удалить выбранный расход?'
+        }
+        onCancel={() => setConfirmDialog({ open: false })}
+        onConfirm={
+          confirmDialog.type === 'income' ? handleDeleteIncome : handleDeleteExpense
+        }
+      />
     </Box>
+  );
+}
+
+type FormDialogProps<TForm> = {
+  open: boolean;
+  mode: DialogMode;
+  form: TForm;
+  onChange: (form: TForm) => void;
+  onSubmit: () => void;
+  onClose: () => void;
+  disabled?: boolean;
+};
+
+function IncomeDialog({
+  open,
+  mode,
+  form,
+  onChange,
+  onSubmit,
+  onClose,
+}: FormDialogProps<IncomeFormState>) {
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+      <DialogTitle>{mode === 'create' ? 'Add income' : 'Edit income'}</DialogTitle>
+      <DialogContent dividers>
+        <Stack spacing={2} sx={{ mt: 1 }}>
+          <TextField
+            label="Name"
+            value={form.name}
+            onChange={e => onChange({ ...form, name: e.target.value })}
+            fullWidth
+          />
+          <TextField
+            label="Amount"
+            type="number"
+            inputProps={{ step: '0.01', min: '0.01' }}
+            value={form.amount}
+            onChange={e => onChange({ ...form, amount: e.target.value })}
+            fullWidth
+          />
+          <TextField
+            label="Operation date"
+            type="date"
+            InputLabelProps={{ shrink: true }}
+            value={form.operationDate}
+            onChange={e => onChange({ ...form, operationDate: e.target.value })}
+            fullWidth
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={form.isMonthly}
+                onChange={e => onChange({ ...form, isMonthly: e.target.checked })}
+              />
+            }
+            label="Is monthly?"
+          />
+        </Stack>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Cancel</Button>
+        <Button onClick={onSubmit} variant="contained">
+          {mode === 'create' ? 'Add' : 'Save'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+function ExpenseDialog({
+  open,
+  mode,
+  form,
+  onChange,
+  onSubmit,
+  onClose,
+  disabled,
+}: FormDialogProps<ExpenseFormState>) {
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+      <DialogTitle>{mode === 'create' ? 'Add expense' : 'Edit expense'}</DialogTitle>
+      <DialogContent dividers>
+        <Stack spacing={2} sx={{ mt: 1 }}>
+          <TextField
+            label="Name"
+            value={form.name}
+            onChange={e => onChange({ ...form, name: e.target.value })}
+            fullWidth
+          />
+          <TextField
+            label="Amount"
+            type="number"
+            inputProps={{ step: '0.01', min: '0.01' }}
+            value={form.amount}
+            onChange={e => onChange({ ...form, amount: e.target.value })}
+            fullWidth
+          />
+          <TextField
+            label="Operation date"
+            type="date"
+            InputLabelProps={{ shrink: true }}
+            value={form.operationDate}
+            onChange={e => onChange({ ...form, operationDate: e.target.value })}
+            fullWidth
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={form.isMonthly}
+                onChange={e => onChange({ ...form, isMonthly: e.target.checked })}
+              />
+            }
+            label="Is monthly?"
+          />
+        </Stack>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Cancel</Button>
+        <Button onClick={onSubmit} variant="contained" disabled={disabled}>
+          {mode === 'create' ? 'Add' : 'Save'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+type ConfirmDialogProps = {
+  open: boolean;
+  title: string;
+  description: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+};
+
+function ConfirmDialog({ open, title, description, onConfirm, onCancel }: ConfirmDialogProps) {
+  return (
+    <Dialog open={open} onClose={onCancel} maxWidth="xs" fullWidth>
+      <DialogTitle>{title}</DialogTitle>
+      <DialogContent dividers>
+        <Typography variant="body2">{description}</Typography>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onCancel}>Cancel</Button>
+        <Button onClick={onConfirm} color="error" variant="contained">
+          Delete
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }
 
