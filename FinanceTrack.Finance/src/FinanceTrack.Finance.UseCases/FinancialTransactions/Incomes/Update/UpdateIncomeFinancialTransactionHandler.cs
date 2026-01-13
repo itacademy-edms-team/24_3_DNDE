@@ -1,9 +1,10 @@
 ﻿using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
+using FinanceTrack.Finance.Core.Interfaces;
 
 namespace FinanceTrack.Finance.UseCases.FinancialTransactions.Incomes.Update;
 
 public sealed class UpdateIncomeFinancialTransactionHandler(
-    IRepository<FinancialTransaction> _repository
+    IUpdateIncomeFinancialTransactionService _service
 ) : ICommandHandler<UpdateIncomeFinancialTransactionCommand, Result<FinancialTransactionDto>>
 {
     public async Task<Result<FinancialTransactionDto>> Handle(
@@ -11,23 +12,28 @@ public sealed class UpdateIncomeFinancialTransactionHandler(
         CancellationToken cancellationToken
     )
     {
-        var transaction = await _repository.GetByIdAsync(request.TransactionId, cancellationToken);
-        if (transaction is null)
-            return Result.NotFound();
+        var coreRequest = new UpdateIncomeFinancialTransactionRequest(
+            TransactionId: request.TransactionId,
+            UserId: request.UserId,
+            Name: request.Name,
+            Amount: request.Amount,
+            OperationDate: request.OperationDate,
+            IsMonthly: request.IsMonthly
+        );
 
-        if (!string.Equals(transaction.UserId, request.UserId, StringComparison.Ordinal))
-            return Result.Forbidden();
+        var result = await _service.UpdateIncome(coreRequest, cancellationToken);
 
-        if (transaction.TransactionType != FinancialTransactionType.Income)
-            return Result.Error("Only income transactions can be updated with this operation.");
+        if (!result.IsSuccess)
+        {
+            return result.Status switch
+            {
+                ResultStatus.NotFound => Result.NotFound(),
+                ResultStatus.Forbidden => Result.Forbidden(),
+                _ => Result.Error(new ErrorList(result.Errors)),
+            };
+        }
 
-        transaction
-            .UpdateName(request.Name)
-            .UpdateAmount(request.Amount)
-            .SetOperationDate(request.OperationDate)
-            .SetMonthly(request.IsMonthly);
-        await _repository.UpdateAsync(transaction, cancellationToken);
-
+        var transaction = result.Value;
         var dto = new FinancialTransactionDto(
             transaction.Id,
             transaction.Name,

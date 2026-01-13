@@ -29,6 +29,13 @@ public class CreateExpenseFinancialTransactionService(IRepository<FinancialTrans
                 "Expense operation date must be greater or equal than income operation date."
             );
 
+        if (!incomeTransaction.IsMonthly && request.IsMonthly)
+        {
+            return Result.Error(
+                "Cannot create monthly expense for non-monthly income. Expense must be non-monthly when income is non-monthly."
+            );
+        }
+
         var expenseTransaction = FinancialTransaction.CreateExpense(
             request.UserId,
             request.Name,

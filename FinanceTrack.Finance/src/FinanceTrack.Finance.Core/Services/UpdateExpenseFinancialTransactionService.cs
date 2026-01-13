@@ -27,6 +27,13 @@ public class UpdateExpenseFinancialTransactionService(IRepository<FinancialTrans
                 "Expense operation date must be greater or equal than income operation date."
             );
 
+        if (!income.IsMonthly && request.IsMonthly)
+        {
+            return Result.Error(
+                "Cannot set expense to monthly when parent income is non-monthly. Expense must be non-monthly when income is non-monthly."
+            );
+        }
+
         var expense = await _repo.GetByIdAsync(request.TransactionId, cancellationToken);
 
         if (expense is null)

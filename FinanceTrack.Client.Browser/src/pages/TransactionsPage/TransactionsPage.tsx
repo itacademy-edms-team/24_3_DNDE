@@ -55,6 +55,7 @@ type DialogMode = 'create' | 'edit';
 type ConfirmDialogState =
   | { type: 'income'; targetId: string; open: true }
   | { type: 'expense'; targetId: string; incomeId?: string; open: true }
+  | { type: 'incomeMonthlyIsFalse'; targetId: string; open: true }
   | { open: false; type?: undefined; targetId?: undefined; incomeId?: undefined };
 
 function formatDate(dateStr: string): string {
@@ -319,11 +320,13 @@ function TransactionsPage() {
 
   const openExpenseDialog = (mode: DialogMode, expense?: ExpenseTransaction) => {
     setExpenseDialogMode(mode);
+    // Если доход одноразовый, принудительно устанавливаем isMonthly в false
+    const defaultIsMonthly = selectedIncome?.isMonthly ? (expense?.isMonthly ?? false) : false;
     setExpenseForm({
       name: expense?.name ?? '',
       amount: expense ? expense.amount.toString() : '',
       operationDate: expense?.operationDate ?? '',
-      isMonthly: expense?.isMonthly ?? false,
+      isMonthly: defaultIsMonthly,
     });
     setSelectedExpenseId(expense?.id ?? null);
     setExpenseDialogOpen(true);
@@ -334,6 +337,19 @@ function TransactionsPage() {
     if (!incomeForm.name.trim() || amount === null || !/^\d{4}-\d{2}-\d{2}$/.test(incomeForm.operationDate)) {
       showError('Проверьте корректность полей дохода');
       return;
+    }
+
+    // Проверка изменения isMonthly с true на false
+    if (incomeDialogMode === 'edit' && selectedIncome) {
+      if (selectedIncome.isMonthly && !incomeForm.isMonthly) {
+        // Показываем предупреждение
+        setConfirmDialog({
+          open: true,
+          type: 'incomeMonthlyIsFalse',
+          targetId: selectedIncome.id,
+        });
+        return;
+      }
     }
 
     const payload = {
@@ -359,6 +375,60 @@ function TransactionsPage() {
     }
   };
 
+  const handleUpdateIncomeIsMonthly = async () => {
+    if (!confirmDialog.open || confirmDialog.type !== 'incomeMonthlyIsFalse') return;
+    if (!selectedIncome) return;
+
+    const amount = validateAmount(incomeForm.amount);
+    if (!incomeForm.name.trim() || amount === null || !/^\d{4}-\d{2}-\d{2}$/.test(incomeForm.operationDate)) {
+      showError('Проверьте корректность полей дохода');
+      setConfirmDialog({ open: false });
+      return;
+    }
+
+    const payload = {
+      name: incomeForm.name.trim(),
+      amount,
+      operationDate: incomeForm.operationDate,
+      isMonthly: incomeForm.isMonthly,
+    };
+
+    try {
+      await updateIncome(selectedIncome.id, payload);
+      setConfirmDialog({ open: false });
+      
+      // Обновляем связанные расходы - устанавливаем isMonthly в false
+      const expenses = expensesByIncome[selectedIncome.id] ?? [];
+      const monthlyExpenses = expenses.filter(e => e.isMonthly);
+      
+      if (monthlyExpenses.length > 0) {
+        // Обновляем каждый помесячный расход
+        for (const expense of monthlyExpenses) {
+          try {
+            await updateExpense({
+              name: expense.name,
+              amount: expense.amount,
+              operationDate: expense.operationDate,
+              isMonthly: false, // Устанавливаем в false
+              incomeTransactionId: selectedIncome.id,
+              transactionId: expense.id,
+            });
+          } catch (e) {
+            console.error(`Не удалось обновить расход ${expense.id}:`, e);
+          }
+        }
+        // Перезагружаем расходы
+        await loadExpenses(selectedIncome.id, { force: true });
+      }
+      
+      await loadIncomes(selectedIncome.id);
+      setIncomeDialogOpen(false);
+    } catch (e) {
+      const err = e as Error;
+      showError(err.message ?? 'Не удалось обновить доход');
+    }
+  };
+
   const handleSaveExpense = async () => {
     if (!selectedIncomeId || !selectedIncome) {
       showError('Сначала выберите доход');
@@ -371,6 +441,12 @@ function TransactionsPage() {
     }
     if (isDateBefore(expenseForm.operationDate, selectedIncome.operationDate)) {
       showError('Дата расхода не может быть раньше даты дохода');
+      return;
+    }
+    
+    // Запрещаем создавать/обновлять помесячные расходы для одноразовых доходов
+    if (!selectedIncome.isMonthly && expenseForm.isMonthly) {
+      showError('Нельзя создавать помесячные расходы для одноразового дохода');
       return;
     }
 
@@ -674,6 +750,7 @@ function TransactionsPage() {
         onChange={setExpenseForm}
         onSubmit={handleSaveExpense}
         disabled={!selectedIncomeId}
+        selectedIncome={selectedIncome}
         onDelete={
           expenseDialogMode === 'edit' && selectedExpenseId
             ? () =>
@@ -691,19 +768,37 @@ function TransactionsPage() {
         open={confirmDialog.open}
         title={
           confirmDialog.type === 'income'
-            ? 'Delete income'
+            ? 'Удалить доход'
             : confirmDialog.type === 'expense'
-              ? 'Delete expense'
-              : ''
+              ? 'Удалить Расход'
+              : confirmDialog.type === 'incomeMonthlyIsFalse'
+                ? 'Подтвердите Обновление'
+                : ''
         }
         description={
           confirmDialog.type === 'income'
             ? 'Удалить выбранный доход и связанные расходы?'
-            : 'Удалить выбранный расход?'
+            : confirmDialog.type === 'expense'
+              ? 'Удалить выбранный расход?'
+              : confirmDialog.type === 'incomeMonthlyIsFalse'
+                ? 'Изменение типа дохода с помесячного на одноразовый изменит у всех связанных расходов тип дохода на одноразовый. Вы уверены?'
+                : ''
         }
         onCancel={() => setConfirmDialog({ open: false })}
         onConfirm={
-          confirmDialog.type === 'income' ? handleDeleteIncome : handleDeleteExpense
+          confirmDialog.type === 'income' 
+          ? handleDeleteIncome 
+          : confirmDialog.type === 'expense'
+            ? handleDeleteExpense
+            : confirmDialog.type === 'incomeMonthlyIsFalse'
+              ? handleUpdateIncomeIsMonthly
+              : () => {}
+        }
+        confirmButtonText={
+          confirmDialog.type === 'incomeMonthlyIsFalse' ? 'Подтвердить' : 'Удалить'
+        }
+        confirmButtonColor={
+          confirmDialog.type === 'incomeMonthlyIsFalse' ? 'primary' : 'error'
         }
       />
 
@@ -791,7 +886,21 @@ function ExpenseDialog({
   onClose,
   disabled,
   onDelete,
-}: FormDialogProps<ExpenseFormState> & { onDelete?: () => void }) {
+  selectedIncome,
+}: FormDialogProps<ExpenseFormState> & { onDelete?: () => void; selectedIncome?: IncomeTransaction | null }) {
+  // Блокируем isMonthly для одноразовых доходов
+  const isMonthlyDisabled = selectedIncome ? !selectedIncome.isMonthly : false;
+  const effectiveIsMonthly = isMonthlyDisabled ? false : form.isMonthly;
+
+  // При изменении isMonthly, если доход одноразовый, принудительно устанавливаем false
+  const handleIsMonthlyChange = (checked: boolean) => {
+    if (isMonthlyDisabled) {
+      onChange({ ...form, isMonthly: false });
+    } else {
+      onChange({ ...form, isMonthly: checked });
+    }
+  };
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
       <DialogTitle>{mode === 'create' ? 'Добавить расход' : 'Редактировать расход'}</DialogTitle>
@@ -822,12 +931,18 @@ function ExpenseDialog({
           <FormControlLabel
             control={
               <Switch
-                checked={form.isMonthly}
-                onChange={e => onChange({ ...form, isMonthly: e.target.checked })}
+                checked={effectiveIsMonthly}
+                onChange={e => handleIsMonthlyChange(e.target.checked)}
+                disabled={isMonthlyDisabled}
               />
             }
             label="Ежемесячный платеж"
           />
+          {isMonthlyDisabled && (
+            <Typography variant="caption" color="text.secondary" sx={{ mt: -1 }}>
+              Для одноразового дохода нельзя создать помесячный расход
+            </Typography>
+          )}
         </Stack>
       </DialogContent>
       <DialogActions>
@@ -845,15 +960,26 @@ function ExpenseDialog({
   );
 }
 
+
 type ConfirmDialogProps = {
   open: boolean;
   title: string;
   description: string;
   onConfirm: () => void;
   onCancel: () => void;
+  confirmButtonText?: string;
+  confirmButtonColor?: 'error' | 'primary' | 'secondary' | 'success' | 'info' | 'warning';
 };
 
-function ConfirmDialog({ open, title, description, onConfirm, onCancel }: ConfirmDialogProps) {
+function ConfirmDialog({ 
+  open, 
+  title, 
+  description, 
+  onConfirm, 
+  onCancel,
+  confirmButtonText = 'Удалить',
+  confirmButtonColor = 'error',
+}: ConfirmDialogProps) {
   return (
     <Dialog open={open} onClose={onCancel} maxWidth="xs" fullWidth>
       <DialogTitle>{title}</DialogTitle>
@@ -862,8 +988,8 @@ function ConfirmDialog({ open, title, description, onConfirm, onCancel }: Confir
       </DialogContent>
       <DialogActions>
         <Button onClick={onCancel}>Отмена</Button>
-        <Button onClick={onConfirm} color="error" variant="contained">
-          Удалить
+        <Button onClick={onConfirm} color={confirmButtonColor} variant="contained">
+          {confirmButtonText}
         </Button>
       </DialogActions>
     </Dialog>

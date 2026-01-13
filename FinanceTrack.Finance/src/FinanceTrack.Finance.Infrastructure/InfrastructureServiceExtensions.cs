@@ -35,6 +35,14 @@ public static class InfrastructureServiceExtensions
             >()
             .AddScoped<IDeleteContributorService, DeleteContributorService>()
             .AddScoped<
+                ICreateIncomeFinancialTransactionService,
+                CreateIncomeFinancialTransactionService
+            >()
+            .AddScoped<
+                IUpdateIncomeFinancialTransactionService,
+                UpdateIncomeFinancialTransactionService
+            >()
+            .AddScoped<
                 IDeleteIncomeFinancialTransactionService,
                 DeleteIncomeFinancialTransactionService
             >()
