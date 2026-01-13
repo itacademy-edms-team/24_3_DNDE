@@ -1,4 +1,4 @@
-using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
+﻿using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
 using FinanceTrack.Finance.Core.Interfaces;
 using FinanceTrack.Finance.Core.Services;
 
@@ -22,7 +22,9 @@ public class UpdateExpenseFinancialTransactionServiceTests
     [Fact]
     public async Task ReturnsNotFoundWhenExpenseMissing()
     {
-        _repo.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((FinancialTransaction?)null);
+        _repo
+            .GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns((FinancialTransaction?)null);
 
         var request = new UpdateExpenseFinancialTransactionRequest(
             TransactionId: Guid.NewGuid(),
@@ -34,7 +36,10 @@ public class UpdateExpenseFinancialTransactionServiceTests
             IncomeTransactionId: Guid.NewGuid()
         );
 
-        var result = await _service.UpdateExpenseFinancialTransaction(request, CancellationToken.None);
+        var result = await _service.UpdateExpenseFinancialTransaction(
+            request,
+            CancellationToken.None
+        );
 
         result.Status.ShouldBe(ResultStatus.NotFound);
     }
@@ -62,7 +67,10 @@ public class UpdateExpenseFinancialTransactionServiceTests
             IncomeTransactionId: expense.IncomeTransactionId!.Value
         );
 
-        var result = await _service.UpdateExpenseFinancialTransaction(request, CancellationToken.None);
+        var result = await _service.UpdateExpenseFinancialTransaction(
+            request,
+            CancellationToken.None
+        );
 
         result.Status.ShouldBe(ResultStatus.Forbidden);
         await _repo.DidNotReceiveWithAnyArgs().UpdateAsync(default!, default);
@@ -84,7 +92,10 @@ public class UpdateExpenseFinancialTransactionServiceTests
             IncomeTransactionId: Guid.NewGuid()
         );
 
-        var result = await _service.UpdateExpenseFinancialTransaction(request, CancellationToken.None);
+        var result = await _service.UpdateExpenseFinancialTransaction(
+            request,
+            CancellationToken.None
+        );
 
         result.Status.ShouldBe(ResultStatus.Error);
         await _repo.DidNotReceiveWithAnyArgs().UpdateAsync(default!, default);
@@ -114,7 +125,10 @@ public class UpdateExpenseFinancialTransactionServiceTests
             IncomeTransactionId: Guid.NewGuid()
         );
 
-        var result = await _service.UpdateExpenseFinancialTransaction(request, CancellationToken.None);
+        var result = await _service.UpdateExpenseFinancialTransaction(
+            request,
+            CancellationToken.None
+        );
 
         result.Status.ShouldBe(ResultStatus.Error);
         await _repo.DidNotReceiveWithAnyArgs().UpdateAsync(default!, default);
@@ -144,7 +158,10 @@ public class UpdateExpenseFinancialTransactionServiceTests
             IncomeTransactionId: incomeId
         );
 
-        var result = await _service.UpdateExpenseFinancialTransaction(request, CancellationToken.None);
+        var result = await _service.UpdateExpenseFinancialTransaction(
+            request,
+            CancellationToken.None
+        );
 
         result.Status.ShouldBe(ResultStatus.Ok);
         expense.Name.ShouldBe("New");
@@ -154,4 +171,3 @@ public class UpdateExpenseFinancialTransactionServiceTests
         await _repo.Received(1).UpdateAsync(expense, Arg.Any<CancellationToken>());
     }
 }
-

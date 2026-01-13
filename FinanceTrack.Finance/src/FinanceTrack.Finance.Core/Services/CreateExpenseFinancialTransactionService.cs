@@ -24,6 +24,11 @@ public class CreateExpenseFinancialTransactionService(IRepository<FinancialTrans
         if (!incomeTransaction.TransactionType.Equals(FinancialTransactionType.Income))
             return Result.Error("Transaction with incomeTransactionId must be Income type.");
 
+        if (incomeTransaction.OperationDate > request.OperationDate)
+            return Result.Error(
+                "Expense operation date must be greater or equal than income operation date."
+            );
+
         var expenseTransaction = FinancialTransaction.CreateExpense(
             request.UserId,
             request.Name,

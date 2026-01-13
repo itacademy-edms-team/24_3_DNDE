@@ -139,7 +139,7 @@ function TransactionsPage() {
     operationDate: '',
     isMonthly: false,
   });
-  const now = new Date();
+  const now = useMemo(() => new Date(), []);
   const [selectedYear, setSelectedYear] = useState<number>(now.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState<number>(now.getMonth() + 1);
 

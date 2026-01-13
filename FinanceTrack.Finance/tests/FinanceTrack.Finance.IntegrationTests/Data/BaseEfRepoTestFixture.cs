@@ -1,4 +1,5 @@
 ﻿using FinanceTrack.Finance.Core.ContributorAggregate;
+using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
 using FinanceTrack.Finance.Infrastructure.Data;
 
 namespace FinanceTrack.Finance.IntegrationTests.Data;
@@ -27,7 +28,7 @@ public abstract class BaseEfRepoTestFixture
         // InMemory database and the new service provider.
         var builder = new DbContextOptionsBuilder<AppDbContext>();
         builder
-            .UseInMemoryDatabase("cleanarchitecture")
+            .UseInMemoryDatabase("ft-int-tests-" + Guid.NewGuid().ToString())
             .UseInternalServiceProvider(serviceProvider);
 
         return builder.Options;
@@ -36,5 +37,10 @@ public abstract class BaseEfRepoTestFixture
     protected EfRepository<Contributor> GetRepository()
     {
         return new EfRepository<Contributor>(_dbContext);
+    }
+
+    protected EfRepository<FinancialTransaction> GetFinancialTransactionRepository()
+    {
+        return new EfRepository<FinancialTransaction>(_dbContext);
     }
 }

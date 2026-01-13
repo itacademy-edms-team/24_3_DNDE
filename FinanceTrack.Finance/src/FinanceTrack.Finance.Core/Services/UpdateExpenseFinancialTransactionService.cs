@@ -11,11 +11,30 @@ public class UpdateExpenseFinancialTransactionService(IRepository<FinancialTrans
         CancellationToken cancellationToken = default
     )
     {
+        var income = await _repo.GetByIdAsync(request.IncomeTransactionId, cancellationToken);
+
+        if (income == null)
+            return Result.NotFound();
+
+        if (!income.UserId.Equals(request.UserId, StringComparison.Ordinal))
+            return Result.Forbidden();
+
+        if (!income.TransactionType.Equals(FinancialTransactionType.Income))
+            return Result.Error("Transaction with incomeTransactionId must be Income type.");
+
+        if (income.OperationDate > request.OperationDate)
+            return Result.Error(
+                "Expense operation date must be greater or equal than income operation date."
+            );
+
         var expense = await _repo.GetByIdAsync(request.TransactionId, cancellationToken);
+
         if (expense is null)
             return Result.NotFound();
+
         if (!string.Equals(expense.UserId, request.UserId, StringComparison.Ordinal))
             return Result.Forbidden();
+
         if (expense.TransactionType != FinancialTransactionType.Expense)
             return Result.Error("The specified transaction is not an expense.");
 

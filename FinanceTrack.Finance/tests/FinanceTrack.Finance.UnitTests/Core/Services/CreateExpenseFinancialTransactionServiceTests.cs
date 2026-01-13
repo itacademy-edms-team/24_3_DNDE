@@ -1,4 +1,4 @@
-using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
+﻿using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
 using FinanceTrack.Finance.Core.Interfaces;
 using FinanceTrack.Finance.Core.Services;
 
@@ -24,7 +24,9 @@ public class CreateExpenseFinancialTransactionServiceTests
     public async Task ReturnsNotFoundWhenIncomeMissing()
     {
         var incomeId = Guid.NewGuid();
-        _repo.GetByIdAsync(incomeId, Arg.Any<CancellationToken>()).Returns((FinancialTransaction?)null);
+        _repo
+            .GetByIdAsync(incomeId, Arg.Any<CancellationToken>())
+            .Returns((FinancialTransaction?)null);
 
         var request = new CreateExpenseFinancialTransactionRequest(
             UserId: User,
@@ -35,7 +37,10 @@ public class CreateExpenseFinancialTransactionServiceTests
             IncomeTransactionId: incomeId
         );
 
-        var result = await _service.CreateExpenseFinancialTransaction(request, CancellationToken.None);
+        var result = await _service.CreateExpenseFinancialTransaction(
+            request,
+            CancellationToken.None
+        );
 
         result.Status.ShouldBe(ResultStatus.NotFound);
         await _repo.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
@@ -63,7 +68,10 @@ public class CreateExpenseFinancialTransactionServiceTests
             IncomeTransactionId: incomeId
         );
 
-        var result = await _service.CreateExpenseFinancialTransaction(request, CancellationToken.None);
+        var result = await _service.CreateExpenseFinancialTransaction(
+            request,
+            CancellationToken.None
+        );
 
         result.Status.ShouldBe(ResultStatus.Forbidden);
         await _repo.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
@@ -92,7 +100,10 @@ public class CreateExpenseFinancialTransactionServiceTests
             IncomeTransactionId: incomeId
         );
 
-        var result = await _service.CreateExpenseFinancialTransaction(request, CancellationToken.None);
+        var result = await _service.CreateExpenseFinancialTransaction(
+            request,
+            CancellationToken.None
+        );
 
         result.Status.ShouldBe(ResultStatus.Error);
         await _repo.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
@@ -125,7 +136,10 @@ public class CreateExpenseFinancialTransactionServiceTests
             IncomeTransactionId: incomeId
         );
 
-        var result = await _service.CreateExpenseFinancialTransaction(request, CancellationToken.None);
+        var result = await _service.CreateExpenseFinancialTransaction(
+            request,
+            CancellationToken.None
+        );
 
         result.Status.ShouldBe(ResultStatus.Ok);
         result.Value.ShouldBe(added!.Id);
@@ -138,5 +152,95 @@ public class CreateExpenseFinancialTransactionServiceTests
         added.OperationDate.ShouldBe(_today);
         await _repo.Received(1).AddAsync(added, Arg.Any<CancellationToken>());
     }
-}
 
+    [Fact]
+    public async Task ReturnsErrorWhenExpenseDateIsBeforeIncomeDate()
+    {
+        var incomeId = Guid.NewGuid();
+        var income = FinancialTransaction.CreateIncome(
+            userId: User,
+            name: "Good income",
+            amount: 10,
+            operationDate: _today.AddDays(1),
+            true
+        );
+        _repo.GetByIdAsync(incomeId, Arg.Any<CancellationToken>()).Returns(income);
+
+        var request = new CreateExpenseFinancialTransactionRequest(
+            UserId: User,
+            Name: "Expense with bad date",
+            Amount: 10m,
+            OperationDate: _today,
+            IsMonthly: false,
+            IncomeTransactionId: incomeId
+        );
+        var result = await _service.CreateExpenseFinancialTransaction(
+            request,
+            CancellationToken.None
+        );
+
+        result.Status.ShouldBe(ResultStatus.Error);
+        result.Errors.ShouldContain(
+            "Expense operation date must be greater or equal than income operation date."
+        );
+        await _repo.DidNotReceiveWithAnyArgs().AddAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task ReturnsOkWhenExpenseDateIsEqualIncomeDate()
+    {
+        var incomeId = Guid.NewGuid();
+        var income = FinancialTransaction.CreateIncome(
+            userId: User,
+            name: "Good income",
+            amount: 10,
+            operationDate: _today,
+            true
+        );
+        _repo.GetByIdAsync(incomeId, Arg.Any<CancellationToken>()).Returns(income);
+
+        var request = new CreateExpenseFinancialTransactionRequest(
+            UserId: User,
+            Name: "Good expense",
+            Amount: 10m,
+            OperationDate: _today,
+            IsMonthly: false,
+            IncomeTransactionId: incomeId
+        );
+        var result = await _service.CreateExpenseFinancialTransaction(
+            request,
+            CancellationToken.None
+        );
+
+        result.Status.ShouldBe(ResultStatus.Ok);
+    }
+
+    [Fact]
+    public async Task ReturnsOkWhenExpenseDateIsGreaterIncomeDate()
+    {
+        var incomeId = Guid.NewGuid();
+        var income = FinancialTransaction.CreateIncome(
+            userId: User,
+            name: "Good income",
+            amount: 10,
+            operationDate: _today,
+            true
+        );
+        _repo.GetByIdAsync(incomeId, Arg.Any<CancellationToken>()).Returns(income);
+
+        var request = new CreateExpenseFinancialTransactionRequest(
+            UserId: User,
+            Name: "Good expense",
+            Amount: 10m,
+            OperationDate: _today.AddDays(1),
+            IsMonthly: false,
+            IncomeTransactionId: incomeId
+        );
+        var result = await _service.CreateExpenseFinancialTransaction(
+            request,
+            CancellationToken.None
+        );
+
+        result.Status.ShouldBe(ResultStatus.Ok);
+    }
+}
