@@ -159,7 +159,7 @@ public class UpdateExpenseFinancialTransactionServiceTests
     public async Task UpdatesExpenseFieldsAndCallsUpdate()
     {
         var incomeId = Guid.NewGuid();
-        var income = FinancialTransaction.CreateIncome(User, "Income", 100m, _today, false);
+        var income = FinancialTransaction.CreateIncome(User, "Income", 100m, _today, true);
 
         var expense = FinancialTransaction.CreateExpense(
             userId: "user",

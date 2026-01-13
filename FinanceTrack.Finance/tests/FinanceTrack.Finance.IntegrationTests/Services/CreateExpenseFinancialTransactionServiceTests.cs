@@ -31,7 +31,6 @@ public class CreateExpenseFinancialTransactionServiceTests : BaseEfRepoTestFixtu
             isMonthly: false
         );
         await repo.AddAsync(income);
-        await repo.SaveChangesAsync();
 
         var request = new CreateExpenseFinancialTransactionRequest(
             UserId: UserId,
@@ -68,7 +67,6 @@ public class CreateExpenseFinancialTransactionServiceTests : BaseEfRepoTestFixtu
             isMonthly: false
         );
         await repo.AddAsync(income);
-        await repo.SaveChangesAsync();
 
         var request = new CreateExpenseFinancialTransactionRequest(
             UserId: UserId,
@@ -105,7 +103,6 @@ public class CreateExpenseFinancialTransactionServiceTests : BaseEfRepoTestFixtu
             isMonthly: false
         );
         await repo.AddAsync(income);
-        await repo.SaveChangesAsync();
 
         var request = new CreateExpenseFinancialTransactionRequest(
             UserId: UserId,
@@ -140,7 +137,6 @@ public class CreateExpenseFinancialTransactionServiceTests : BaseEfRepoTestFixtu
             isMonthly: false
         );
         await repo.AddAsync(income);
-        await repo.SaveChangesAsync();
 
         var request = new CreateExpenseFinancialTransactionRequest(
             UserId: UserId,
@@ -178,7 +174,6 @@ public class CreateExpenseFinancialTransactionServiceTests : BaseEfRepoTestFixtu
             isMonthly: false
         );
         await repo.AddAsync(income);
-        await repo.SaveChangesAsync();
 
         var request = new CreateExpenseFinancialTransactionRequest(
             UserId: UserId,
@@ -215,7 +210,6 @@ public class CreateExpenseFinancialTransactionServiceTests : BaseEfRepoTestFixtu
             isMonthly: true
         );
         await repo.AddAsync(income);
-        await repo.SaveChangesAsync();
 
         var request = new CreateExpenseFinancialTransactionRequest(
             UserId: UserId,
@@ -251,7 +245,6 @@ public class CreateExpenseFinancialTransactionServiceTests : BaseEfRepoTestFixtu
             isMonthly: true
         );
         await repo.AddAsync(income);
-        await repo.SaveChangesAsync();
 
         var request = new CreateExpenseFinancialTransactionRequest(
             UserId: UserId,

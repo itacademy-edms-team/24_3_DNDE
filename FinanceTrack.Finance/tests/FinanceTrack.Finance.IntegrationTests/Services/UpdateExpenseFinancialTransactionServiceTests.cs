@@ -41,7 +41,6 @@ public class UpdateExpenseFinancialTransactionServiceTests : BaseEfRepoTestFixtu
             incomeTransactionId: income.Id
         );
         await repo.AddAsync(expense);
-        await repo.SaveChangesAsync();
 
         var request = new UpdateExpenseFinancialTransactionRequest(
             TransactionId: expense.Id,
@@ -91,7 +90,6 @@ public class UpdateExpenseFinancialTransactionServiceTests : BaseEfRepoTestFixtu
             incomeTransactionId: income.Id
         );
         await repo.AddAsync(expense);
-        await repo.SaveChangesAsync();
 
         var request = new UpdateExpenseFinancialTransactionRequest(
             TransactionId: expense.Id,
@@ -137,7 +135,6 @@ public class UpdateExpenseFinancialTransactionServiceTests : BaseEfRepoTestFixtu
             incomeTransactionId: income.Id
         );
         await repo.AddAsync(expense);
-        await repo.SaveChangesAsync();
 
         var request = new UpdateExpenseFinancialTransactionRequest(
             TransactionId: expense.Id,
@@ -183,7 +180,6 @@ public class UpdateExpenseFinancialTransactionServiceTests : BaseEfRepoTestFixtu
             incomeTransactionId: income.Id
         );
         await repo.AddAsync(expense);
-        await repo.SaveChangesAsync();
 
         var request = new UpdateExpenseFinancialTransactionRequest(
             TransactionId: expense.Id,
@@ -233,7 +229,6 @@ public class UpdateExpenseFinancialTransactionServiceTests : BaseEfRepoTestFixtu
             incomeTransactionId: income.Id
         );
         await repo.AddAsync(expense);
-        await repo.SaveChangesAsync();
 
         var request = new UpdateExpenseFinancialTransactionRequest(
             TransactionId: expense.Id,
@@ -278,7 +273,6 @@ public class UpdateExpenseFinancialTransactionServiceTests : BaseEfRepoTestFixtu
             incomeTransactionId: income.Id
         );
         await repo.AddAsync(expense);
-        await repo.SaveChangesAsync();
 
         var request = new UpdateExpenseFinancialTransactionRequest(
             TransactionId: expense.Id,
@@ -323,7 +317,6 @@ public class UpdateExpenseFinancialTransactionServiceTests : BaseEfRepoTestFixtu
             incomeTransactionId: income.Id
         );
         await repo.AddAsync(expense);
-        await repo.SaveChangesAsync();
 
         var request = new UpdateExpenseFinancialTransactionRequest(
             TransactionId: expense.Id,

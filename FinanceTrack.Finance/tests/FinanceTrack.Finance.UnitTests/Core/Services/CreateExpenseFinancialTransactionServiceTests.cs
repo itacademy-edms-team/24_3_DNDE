@@ -118,7 +118,7 @@ public class CreateExpenseFinancialTransactionServiceTests
             name: "Income",
             amount: 100m,
             operationDate: _today,
-            isMonthly: false
+            isMonthly: true
         );
         _repo.GetByIdAsync(incomeId, Arg.Any<CancellationToken>()).Returns(income);
 

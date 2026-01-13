@@ -48,7 +48,6 @@ public class UpdateIncomeFinancialTransactionServiceTests : BaseEfRepoTestFixtur
             isMonthly: false
         );
         await repo.AddAsync(income);
-        await repo.SaveChangesAsync();
 
         var request = new UpdateIncomeFinancialTransactionRequest(
             TransactionId: income.Id,
@@ -92,7 +91,6 @@ public class UpdateIncomeFinancialTransactionServiceTests : BaseEfRepoTestFixtur
             incomeTransactionId: income.Id
         );
         await repo.AddAsync(expense);
-        await repo.SaveChangesAsync();
 
         var request = new UpdateIncomeFinancialTransactionRequest(
             TransactionId: expense.Id,
@@ -127,7 +125,6 @@ public class UpdateIncomeFinancialTransactionServiceTests : BaseEfRepoTestFixtur
             isMonthly: false
         );
         await repo.AddAsync(income);
-        await repo.SaveChangesAsync();
 
         var request = new UpdateIncomeFinancialTransactionRequest(
             TransactionId: income.Id,
@@ -169,7 +166,6 @@ public class UpdateIncomeFinancialTransactionServiceTests : BaseEfRepoTestFixtur
             isMonthly: false
         );
         await repo.AddAsync(income);
-        await repo.SaveChangesAsync();
 
         var request = new UpdateIncomeFinancialTransactionRequest(
             TransactionId: income.Id,
@@ -202,7 +198,6 @@ public class UpdateIncomeFinancialTransactionServiceTests : BaseEfRepoTestFixtur
             isMonthly: true
         );
         await repo.AddAsync(income);
-        await repo.SaveChangesAsync();
 
         var expense1 = FinancialTransaction.CreateExpense(
             userId: UserId,
@@ -222,7 +217,6 @@ public class UpdateIncomeFinancialTransactionServiceTests : BaseEfRepoTestFixtur
         );
         await repo.AddAsync(expense1);
         await repo.AddAsync(expense2);
-        await repo.SaveChangesAsync();
 
         var request = new UpdateIncomeFinancialTransactionRequest(
             TransactionId: income.Id,
@@ -264,7 +258,6 @@ public class UpdateIncomeFinancialTransactionServiceTests : BaseEfRepoTestFixtur
             isMonthly: true
         );
         await repo.AddAsync(income);
-        await repo.SaveChangesAsync();
 
         var request = new UpdateIncomeFinancialTransactionRequest(
             TransactionId: income.Id,
@@ -298,7 +291,6 @@ public class UpdateIncomeFinancialTransactionServiceTests : BaseEfRepoTestFixtur
             isMonthly: false
         );
         await repo.AddAsync(income);
-        await repo.SaveChangesAsync();
 
         var expense = FinancialTransaction.CreateExpense(
             userId: UserId,
@@ -309,7 +301,6 @@ public class UpdateIncomeFinancialTransactionServiceTests : BaseEfRepoTestFixtur
             incomeTransactionId: income.Id
         );
         await repo.AddAsync(expense);
-        await repo.SaveChangesAsync();
 
         var request = new UpdateIncomeFinancialTransactionRequest(
             TransactionId: income.Id,
