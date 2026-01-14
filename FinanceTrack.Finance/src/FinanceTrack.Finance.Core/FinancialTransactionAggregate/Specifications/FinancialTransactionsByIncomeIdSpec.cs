@@ -10,6 +10,6 @@ public class FinancialTransactionsByIncomeIdSpec : Specification<FinancialTransa
 {
     public FinancialTransactionsByIncomeIdSpec(Guid incomeId)
     {
-        Query.Where(e => e.IncomeTransactionId.Equals(incomeId));
+        Query.Where(e => e.IncomeTransactionId == incomeId);
     }
 }
