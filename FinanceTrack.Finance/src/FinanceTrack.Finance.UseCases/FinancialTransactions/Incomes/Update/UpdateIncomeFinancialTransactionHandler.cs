@@ -23,26 +23,13 @@ public sealed class UpdateIncomeFinancialTransactionHandler(
 
         var result = await _service.UpdateIncome(coreRequest, cancellationToken);
 
-        if (!result.IsSuccess)
-        {
-            return result.Status switch
-            {
-                ResultStatus.NotFound => Result.NotFound(),
-                ResultStatus.Forbidden => Result.Forbidden(),
-                _ => Result.Error(new ErrorList(result.Errors)),
-            };
-        }
-
-        var transaction = result.Value;
-        var dto = new FinancialTransactionDto(
+        return result.Map(transaction => new FinancialTransactionDto(
             transaction.Id,
             transaction.Name,
             transaction.Amount,
             transaction.OperationDate,
             transaction.IsMonthly,
             transaction.TransactionType.Name
-        );
-
-        return Result.Success(dto);
+        ));
     }
 }
