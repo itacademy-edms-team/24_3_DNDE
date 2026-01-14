@@ -19,7 +19,7 @@ public class CreateExpenseFinancialTransactionServiceTests : BaseEfRepoTestFixtu
     }
 
     [Fact]
-    public async Task ReturnsErrorWhenExpenseDateIsBeforeIncomeDate()
+    public async Task CreateExpenseFinancialTransaction_ExpenseDateIsBeforeIncomeDate_ReturnsError()
     {
         var repo = GetFinancialTransactionRepository();
 
@@ -56,7 +56,7 @@ public class CreateExpenseFinancialTransactionServiceTests : BaseEfRepoTestFixtu
     }
 
     [Fact]
-    public async Task CreatesExpenseWhenDateIsEqualToIncomeDate()
+    public async Task CreateExpenseFinancialTransaction_DateIsEqualToIncomeDate_CreatesExpense()
     {
         var repo = GetFinancialTransactionRepository();
         var income = FinancialTransaction.CreateIncome(
@@ -92,7 +92,7 @@ public class CreateExpenseFinancialTransactionServiceTests : BaseEfRepoTestFixtu
     }
 
     [Fact]
-    public async Task CreatesExpenseWhenDateIsAfterIncomeDate()
+    public async Task CreateExpenseFinancialTransaction_DateIsAfterIncomeDate_CreatesExpense()
     {
         var repo = GetFinancialTransactionRepository();
         var income = FinancialTransaction.CreateIncome(
@@ -125,7 +125,7 @@ public class CreateExpenseFinancialTransactionServiceTests : BaseEfRepoTestFixtu
     }
 
     [Fact]
-    public async Task ReturnsErrorWhenCreatingMonthlyExpenseForNonMonthlyIncome()
+    public async Task CreateExpenseFinancialTransaction_CreatingMonthlyExpenseForNonMonthlyIncome_ReturnsError()
     {
         var repo = GetFinancialTransactionRepository();
 
@@ -162,7 +162,7 @@ public class CreateExpenseFinancialTransactionServiceTests : BaseEfRepoTestFixtu
     }
 
     [Fact]
-    public async Task CreatesNonMonthlyExpenseForNonMonthlyIncome()
+    public async Task CreateExpenseFinancialTransaction_NonMonthlyExpenseForNonMonthlyIncome_CreatesExpense()
     {
         var repo = GetFinancialTransactionRepository();
 
@@ -198,7 +198,7 @@ public class CreateExpenseFinancialTransactionServiceTests : BaseEfRepoTestFixtu
     }
 
     [Fact]
-    public async Task CreatesMonthlyExpenseForMonthlyIncome()
+    public async Task CreateExpenseFinancialTransaction_MonthlyExpenseForMonthlyIncome_CreatesExpense()
     {
         var repo = GetFinancialTransactionRepository();
 
@@ -233,7 +233,7 @@ public class CreateExpenseFinancialTransactionServiceTests : BaseEfRepoTestFixtu
     }
 
     [Fact]
-    public async Task CreatesNonMonthlyExpenseForMonthlyIncome()
+    public async Task CreateExpenseFinancialTransaction_NonMonthlyExpenseForMonthlyIncome_CreatesExpense()
     {
         var repo = GetFinancialTransactionRepository();
 

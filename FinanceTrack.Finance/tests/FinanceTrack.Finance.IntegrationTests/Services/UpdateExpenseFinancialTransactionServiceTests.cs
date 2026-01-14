@@ -19,7 +19,7 @@ public class UpdateExpenseFinancialTransactionServiceTests : BaseEfRepoTestFixtu
     }
 
     [Fact]
-    public async Task ReturnsErrorWhenExpenseDateIsBeforeIncomeDate()
+    public async Task UpdateExpenseFinancialTransaction_ExpenseDateIsBeforeIncomeDate_ReturnsError()
     {
         var repo = GetFinancialTransactionRepository();
 
@@ -69,7 +69,7 @@ public class UpdateExpenseFinancialTransactionServiceTests : BaseEfRepoTestFixtu
     }
 
     [Fact]
-    public async Task UpdatesExpenseWhenDateIsEqualToIncomeDate()
+    public async Task UpdateExpenseFinancialTransaction_DateIsEqualToIncomeDate_UpdatesExpense()
     {
         var repo = GetFinancialTransactionRepository();
         var income = FinancialTransaction.CreateIncome(
@@ -114,7 +114,7 @@ public class UpdateExpenseFinancialTransactionServiceTests : BaseEfRepoTestFixtu
     }
 
     [Fact]
-    public async Task UpdatesExpenseWhenDateIsAfterIncomeDate()
+    public async Task UpdateExpenseFinancialTransaction_DateIsAfterIncomeDate_UpdatesExpense()
     {
         var repo = GetFinancialTransactionRepository();
         var income = FinancialTransaction.CreateIncome(
@@ -159,7 +159,7 @@ public class UpdateExpenseFinancialTransactionServiceTests : BaseEfRepoTestFixtu
     }
 
     [Fact]
-    public async Task ReturnsErrorWhenSettingExpenseToMonthlyForNonMonthlyIncome()
+    public async Task UpdateExpenseFinancialTransaction_SettingExpenseToMonthlyForNonMonthlyIncome_ReturnsError()
     {
         var repo = GetFinancialTransactionRepository();
         var income = FinancialTransaction.CreateIncome(
@@ -208,7 +208,7 @@ public class UpdateExpenseFinancialTransactionServiceTests : BaseEfRepoTestFixtu
     }
 
     [Fact]
-    public async Task UpdatesExpenseToNonMonthlyForNonMonthlyIncome()
+    public async Task UpdateExpenseFinancialTransaction_ExpenseToNonMonthlyForNonMonthlyIncome_UpdatesExpense()
     {
         var repo = GetFinancialTransactionRepository();
         var income = FinancialTransaction.CreateIncome(
@@ -252,7 +252,7 @@ public class UpdateExpenseFinancialTransactionServiceTests : BaseEfRepoTestFixtu
     }
 
     [Fact]
-    public async Task UpdatesExpenseToMonthlyForMonthlyIncome()
+    public async Task UpdateExpenseFinancialTransaction_ExpenseToMonthlyForMonthlyIncome_UpdatesExpense()
     {
         var repo = GetFinancialTransactionRepository();
         var income = FinancialTransaction.CreateIncome(
@@ -296,7 +296,7 @@ public class UpdateExpenseFinancialTransactionServiceTests : BaseEfRepoTestFixtu
     }
 
     [Fact]
-    public async Task UpdatesExpenseToNonMonthlyForMonthlyIncome()
+    public async Task UpdateExpenseFinancialTransaction_ExpenseToNonMonthlyForMonthlyIncome_UpdatesExpense()
     {
         var repo = GetFinancialTransactionRepository();
         var income = FinancialTransaction.CreateIncome(

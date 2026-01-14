@@ -19,7 +19,7 @@ public class UpdateIncomeFinancialTransactionServiceTests : BaseEfRepoTestFixtur
     }
 
     [Fact]
-    public async Task ReturnsNotFoundWhenIncomeIsNotExist()
+    public async Task UpdateIncomeFinancialTransaction_IncomeIsNotExist_ReturnsNotFound()
     {
         var missingIncome = new UpdateIncomeFinancialTransactionRequest(
             TransactionId: Guid.NewGuid(),
@@ -36,7 +36,7 @@ public class UpdateIncomeFinancialTransactionServiceTests : BaseEfRepoTestFixtur
     }
 
     [Fact]
-    public async Task ReturnsForbiddenWhenUserMismatch()
+    public async Task UpdateIncomeFinancialTransaction_UserMismatch_ReturnsForbidden()
     {
         var repo = GetFinancialTransactionRepository();
 
@@ -69,7 +69,7 @@ public class UpdateIncomeFinancialTransactionServiceTests : BaseEfRepoTestFixtur
     }
 
     [Fact]
-    public async Task ReturnsErrorWhenTransactionNotIncome()
+    public async Task UpdateIncomeFinancialTransaction_TransactionNotIncome_ReturnsError()
     {
         var repo = GetFinancialTransactionRepository();
 
@@ -113,7 +113,7 @@ public class UpdateIncomeFinancialTransactionServiceTests : BaseEfRepoTestFixtur
     }
 
     [Fact]
-    public async Task UpdatesIncomeFieldsSuccessfully()
+    public async Task UpdateIncomeFinancialTransaction_ValidRequest_UpdatesIncomeFieldsSuccessfully()
     {
         var repo = GetFinancialTransactionRepository();
 
@@ -153,7 +153,7 @@ public class UpdateIncomeFinancialTransactionServiceTests : BaseEfRepoTestFixtur
     }
 
     [Fact]
-    public async Task UpdatesOnlyNameAndAmount()
+    public async Task UpdateIncomeFinancialTransaction_OnlyNameAndAmountChanged_UpdatesOnlyNameAndAmount()
     {
         var repo = GetFinancialTransactionRepository();
 
@@ -186,7 +186,7 @@ public class UpdateIncomeFinancialTransactionServiceTests : BaseEfRepoTestFixtur
     }
 
     [Fact]
-    public async Task SetsExpensesToNonMonthlyWhenIncomeChangesFromMonthlyToNonMonthly()
+    public async Task UpdateIncomeFinancialTransaction_IncomeChangesFromMonthlyToNonMonthly_SetsExpensesToNonMonthly()
     {
         var repo = GetFinancialTransactionRepository();
 
@@ -246,7 +246,7 @@ public class UpdateIncomeFinancialTransactionServiceTests : BaseEfRepoTestFixtur
     }
 
     [Fact]
-    public async Task UpdatesIncomeWhenNoExpensesExist()
+    public async Task UpdateIncomeFinancialTransaction_NoExpensesExist_UpdatesIncome()
     {
         var repo = GetFinancialTransactionRepository();
 
@@ -279,7 +279,7 @@ public class UpdateIncomeFinancialTransactionServiceTests : BaseEfRepoTestFixtur
     }
 
     [Fact]
-    public async Task DoesNotChangeExpensesWhenIncomeWasAlreadyNonMonthly()
+    public async Task UpdateIncomeFinancialTransaction_IncomeWasAlreadyNonMonthly_DoesNotChangeExpenses()
     {
         var repo = GetFinancialTransactionRepository();
 
