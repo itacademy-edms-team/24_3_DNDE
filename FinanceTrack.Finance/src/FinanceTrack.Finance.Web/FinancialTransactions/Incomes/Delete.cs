@@ -27,27 +27,9 @@ public class Delete(IMediator mediator) : Endpoint<DeleteIncomeTransactionReques
 
         var result = await mediator.Send(command, ct);
 
-        switch (result.Status)
-        {
-            case ResultStatus.NotFound:
-                await SendNotFoundAsync(ct);
-                return;
+        if (await this.SendResultIfNotOk(result, ct))
+            return;
 
-            case ResultStatus.Forbidden:
-                await SendForbiddenAsync(ct);
-                return;
-
-            case ResultStatus.Error:
-            case ResultStatus.Invalid:
-                if (result.Errors.Any())
-                    AddError(result.Errors.First());
-                await SendErrorsAsync(cancellation: ct);
-                return;
-
-            case ResultStatus.Ok:
-            default:
-                await SendNoContentAsync(ct);
-                return;
-        }
+        await SendNoContentAsync(ct);
     }
 }
