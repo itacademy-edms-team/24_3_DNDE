@@ -1,10 +1,11 @@
 ﻿using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
 using FinanceTrack.Finance.Core.Interfaces;
+using FinanceTrack.Finance.Core.Services;
 
 namespace FinanceTrack.Finance.UseCases.FinancialTransactions.Incomes.Update;
 
 public sealed class UpdateIncomeFinancialTransactionHandler(
-    IUpdateIncomeFinancialTransactionService _service
+    UpdateIncomeFinancialTransactionService _service
 ) : ICommandHandler<UpdateIncomeFinancialTransactionCommand, Result<FinancialTransactionDto>>
 {
     public async Task<Result<FinancialTransactionDto>> Handle(

@@ -1,10 +1,11 @@
 ﻿using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
 using FinanceTrack.Finance.Core.Interfaces;
+using FinanceTrack.Finance.Core.Services;
 
 namespace FinanceTrack.Finance.UseCases.FinancialTransactions.Incomes.Create;
 
 public sealed class CreateIncomeFinancialTransactionHandler(
-    ICreateIncomeFinancialTransactionService _service
+    CreateIncomeFinancialTransactionService _service
 ) : ICommandHandler<CreateIncomeFinancialTransactionCommand, Result<Guid>>
 {
     public async Task<Result<Guid>> Handle(

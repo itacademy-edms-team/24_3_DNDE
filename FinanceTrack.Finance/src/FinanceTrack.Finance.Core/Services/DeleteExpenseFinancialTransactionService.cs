@@ -4,7 +4,6 @@ using FinanceTrack.Finance.Core.Interfaces;
 namespace FinanceTrack.Finance.Core.Services;
 
 public class DeleteExpenseFinancialTransactionService(IRepository<FinancialTransaction> _repo)
-    : IDeleteExpenseFinancialTransactionService
 {
     public async Task<Result> DeleteExpenseFinancialTransaction(
         DeleteExpenseFinancialTransactionRequest request,

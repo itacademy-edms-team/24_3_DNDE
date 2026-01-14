@@ -1,9 +1,10 @@
 ﻿using FinanceTrack.Finance.Core.Interfaces;
+using FinanceTrack.Finance.Core.Services;
 
 namespace FinanceTrack.Finance.UseCases.FinancialTransactions.Expenses.Create;
 
 public sealed class CreateExpenseFinancialTransactionHandler(
-    ICreateExpenseFinancialTransactionService _service
+    CreateExpenseFinancialTransactionService _service
 ) : ICommandHandler<CreateExpenseFinancialTransactionCommand, Result<Guid>>
 {
     public async Task<Result<Guid>> Handle(

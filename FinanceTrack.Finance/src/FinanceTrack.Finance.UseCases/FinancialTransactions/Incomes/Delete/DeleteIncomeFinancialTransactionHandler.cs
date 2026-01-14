@@ -1,9 +1,10 @@
 ﻿using FinanceTrack.Finance.Core.Interfaces;
+using FinanceTrack.Finance.Core.Services;
 
 namespace FinanceTrack.Finance.UseCases.FinancialTransactions.Delete;
 
 public sealed class DeleteIncomeFinancialTransactionHandler(
-    IDeleteIncomeFinancialTransactionService _service
+    DeleteIncomeFinancialTransactionService _service
 ) : ICommandHandler<DeleteIncomeFinancialTransactionCommand, Result>
 {
     public async Task<Result> Handle(

@@ -4,7 +4,6 @@ using FinanceTrack.Finance.Core.Interfaces;
 namespace FinanceTrack.Finance.Core.Services;
 
 public class CreateExpenseFinancialTransactionService(IRepository<FinancialTransaction> _repo)
-    : ICreateExpenseFinancialTransactionService
 {
     public async Task<Result<Guid>> CreateExpenseFinancialTransaction(
         CreateExpenseFinancialTransactionRequest request,
