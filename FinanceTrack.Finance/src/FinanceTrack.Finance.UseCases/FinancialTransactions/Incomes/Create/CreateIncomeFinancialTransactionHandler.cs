@@ -1,17 +1,19 @@
 ﻿using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
+using FinanceTrack.Finance.Core.Interfaces;
+using FinanceTrack.Finance.Core.Services;
 
 namespace FinanceTrack.Finance.UseCases.FinancialTransactions.Incomes.Create;
 
 public sealed class CreateIncomeFinancialTransactionHandler(
-    IRepository<FinancialTransaction> transactionRepository
+    CreateIncomeFinancialTransactionService _service
 ) : ICommandHandler<CreateIncomeFinancialTransactionCommand, Result<Guid>>
 {
     public async Task<Result<Guid>> Handle(
         CreateIncomeFinancialTransactionCommand request,
-        CancellationToken cancellationToken
+        CancellationToken ct
     )
     {
-        var income = FinancialTransaction.CreateIncome(
+        var coreRequest = new CreateIncomeFinancialTransactionRequest(
             userId: request.UserId,
             name: request.Name,
             amount: request.Amount,
@@ -19,8 +21,6 @@ public sealed class CreateIncomeFinancialTransactionHandler(
             isMonthly: request.IsMonthly
         );
 
-        await transactionRepository.AddAsync(income, cancellationToken);
-
-        return income.Id;
+        return await _service.AddIncome(coreRequest, ct);
     }
 }

@@ -6,7 +6,7 @@ namespace FinanceTrack.Finance.Core.Services;
 public class DeleteIncomeFinancialTransactionService(
     IRepository<FinancialTransaction> _repository,
     ILogger<DeleteIncomeFinancialTransactionService> _logger
-) : IDeleteIncomeFinancialTransactionService
+)
 {
     public async Task<Result> DeleteIncomeTransaction(
         Guid transactionId,

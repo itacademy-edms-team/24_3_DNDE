@@ -29,23 +29,8 @@ public class ListUserExpenses(IMediator mediator)
             ct
         );
 
-        if (!expenses.IsSuccess)
-        {
-            switch (expenses.Status)
-            {
-                case ResultStatus.NotFound:
-                    await SendNotFoundAsync(ct);
-                    return;
-                case ResultStatus.Forbidden:
-                    await SendForbiddenAsync(ct);
-                    return;
-                default:
-                    if (expenses.Errors.Any())
-                        AddError(expenses.Errors.First());
-                    await SendErrorsAsync(cancellation: ct);
-                    return;
-            }
-        }
+        if (await this.SendResultIfNotOk(expenses, ct))
+            return;
 
         Response = new ListExpensesByIncomeIdResponse
         {

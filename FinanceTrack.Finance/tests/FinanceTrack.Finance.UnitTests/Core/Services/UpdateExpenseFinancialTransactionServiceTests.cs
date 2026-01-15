@@ -1,4 +1,4 @@
-using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
+﻿using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
 using FinanceTrack.Finance.Core.Interfaces;
 using FinanceTrack.Finance.Core.Services;
 
@@ -22,7 +22,9 @@ public class UpdateExpenseFinancialTransactionServiceTests
     [Fact]
     public async Task ReturnsNotFoundWhenExpenseMissing()
     {
-        _repo.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((FinancialTransaction?)null);
+        _repo
+            .GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns((FinancialTransaction?)null);
 
         var request = new UpdateExpenseFinancialTransactionRequest(
             TransactionId: Guid.NewGuid(),
@@ -34,7 +36,10 @@ public class UpdateExpenseFinancialTransactionServiceTests
             IncomeTransactionId: Guid.NewGuid()
         );
 
-        var result = await _service.UpdateExpenseFinancialTransaction(request, CancellationToken.None);
+        var result = await _service.UpdateExpenseFinancialTransaction(
+            request,
+            CancellationToken.None
+        );
 
         result.Status.ShouldBe(ResultStatus.NotFound);
     }
@@ -42,14 +47,25 @@ public class UpdateExpenseFinancialTransactionServiceTests
     [Fact]
     public async Task ReturnsForbiddenWhenUserMismatch()
     {
+        var incomeId = Guid.NewGuid();
+        var income = FinancialTransaction.CreateIncome(
+            userId: User,
+            name: "Income",
+            amount: 100m,
+            operationDate: _today,
+            isMonthly: false
+        );
+
         var expense = FinancialTransaction.CreateExpense(
             userId: "other",
             name: "Expense",
             amount: 5m,
             operationDate: _today,
             isMonthly: false,
-            incomeTransactionId: Guid.NewGuid()
+            incomeTransactionId: incomeId
         );
+
+        _repo.GetByIdAsync(incomeId, Arg.Any<CancellationToken>()).Returns(income);
         _repo.GetByIdAsync(expense.Id, Arg.Any<CancellationToken>()).Returns(expense);
 
         var request = new UpdateExpenseFinancialTransactionRequest(
@@ -59,10 +75,13 @@ public class UpdateExpenseFinancialTransactionServiceTests
             Amount: 10m,
             OperationDate: _today,
             IsMonthly: false,
-            IncomeTransactionId: expense.IncomeTransactionId!.Value
+            IncomeTransactionId: incomeId
         );
 
-        var result = await _service.UpdateExpenseFinancialTransaction(request, CancellationToken.None);
+        var result = await _service.UpdateExpenseFinancialTransaction(
+            request,
+            CancellationToken.None
+        );
 
         result.Status.ShouldBe(ResultStatus.Forbidden);
         await _repo.DidNotReceiveWithAnyArgs().UpdateAsync(default!, default);
@@ -71,7 +90,10 @@ public class UpdateExpenseFinancialTransactionServiceTests
     [Fact]
     public async Task ReturnsErrorWhenTransactionNotExpense()
     {
+        var incomeId = Guid.NewGuid();
         var income = FinancialTransaction.CreateIncome(User, "Income", 100m, _today, false);
+
+        _repo.GetByIdAsync(incomeId, Arg.Any<CancellationToken>()).Returns(income);
         _repo.GetByIdAsync(income.Id, Arg.Any<CancellationToken>()).Returns(income);
 
         var request = new UpdateExpenseFinancialTransactionRequest(
@@ -81,10 +103,13 @@ public class UpdateExpenseFinancialTransactionServiceTests
             Amount: 10m,
             OperationDate: _today,
             IsMonthly: false,
-            IncomeTransactionId: Guid.NewGuid()
+            IncomeTransactionId: incomeId
         );
 
-        var result = await _service.UpdateExpenseFinancialTransaction(request, CancellationToken.None);
+        var result = await _service.UpdateExpenseFinancialTransaction(
+            request,
+            CancellationToken.None
+        );
 
         result.Status.ShouldBe(ResultStatus.Error);
         await _repo.DidNotReceiveWithAnyArgs().UpdateAsync(default!, default);
@@ -94,6 +119,11 @@ public class UpdateExpenseFinancialTransactionServiceTests
     public async Task ReturnsErrorWhenChangingParentIncome()
     {
         var originalIncomeId = Guid.NewGuid();
+        var newIncomeId = Guid.NewGuid();
+
+        var originalIncome = FinancialTransaction.CreateIncome(User, "Income", 100m, _today, false);
+        originalIncome.Id = originalIncomeId;
+
         var expense = FinancialTransaction.CreateExpense(
             userId: "user",
             name: "Expense",
@@ -102,6 +132,8 @@ public class UpdateExpenseFinancialTransactionServiceTests
             isMonthly: false,
             incomeTransactionId: originalIncomeId
         );
+
+        _repo.GetByIdAsync(newIncomeId, Arg.Any<CancellationToken>()).Returns(originalIncome);
         _repo.GetByIdAsync(expense.Id, Arg.Any<CancellationToken>()).Returns(expense);
 
         var request = new UpdateExpenseFinancialTransactionRequest(
@@ -111,10 +143,13 @@ public class UpdateExpenseFinancialTransactionServiceTests
             Amount: 10m,
             OperationDate: _today,
             IsMonthly: false,
-            IncomeTransactionId: Guid.NewGuid()
+            IncomeTransactionId: newIncomeId
         );
 
-        var result = await _service.UpdateExpenseFinancialTransaction(request, CancellationToken.None);
+        var result = await _service.UpdateExpenseFinancialTransaction(
+            request,
+            CancellationToken.None
+        );
 
         result.Status.ShouldBe(ResultStatus.Error);
         await _repo.DidNotReceiveWithAnyArgs().UpdateAsync(default!, default);
@@ -124,6 +159,8 @@ public class UpdateExpenseFinancialTransactionServiceTests
     public async Task UpdatesExpenseFieldsAndCallsUpdate()
     {
         var incomeId = Guid.NewGuid();
+        var income = FinancialTransaction.CreateIncome(User, "Income", 100m, _today, true);
+
         var expense = FinancialTransaction.CreateExpense(
             userId: "user",
             name: "Old",
@@ -132,6 +169,8 @@ public class UpdateExpenseFinancialTransactionServiceTests
             isMonthly: false,
             incomeTransactionId: incomeId
         );
+
+        _repo.GetByIdAsync(incomeId, Arg.Any<CancellationToken>()).Returns(income);
         _repo.GetByIdAsync(expense.Id, Arg.Any<CancellationToken>()).Returns(expense);
 
         var request = new UpdateExpenseFinancialTransactionRequest(
@@ -144,7 +183,10 @@ public class UpdateExpenseFinancialTransactionServiceTests
             IncomeTransactionId: incomeId
         );
 
-        var result = await _service.UpdateExpenseFinancialTransaction(request, CancellationToken.None);
+        var result = await _service.UpdateExpenseFinancialTransaction(
+            request,
+            CancellationToken.None
+        );
 
         result.Status.ShouldBe(ResultStatus.Ok);
         expense.Name.ShouldBe("New");
@@ -154,4 +196,3 @@ public class UpdateExpenseFinancialTransactionServiceTests
         await _repo.Received(1).UpdateAsync(expense, Arg.Any<CancellationToken>());
     }
 }
-

@@ -4,7 +4,6 @@ using FinanceTrack.Finance.Core.Interfaces;
 namespace FinanceTrack.Finance.Core.Services;
 
 public class CreateExpenseFinancialTransactionService(IRepository<FinancialTransaction> _repo)
-    : ICreateExpenseFinancialTransactionService
 {
     public async Task<Result<Guid>> CreateExpenseFinancialTransaction(
         CreateExpenseFinancialTransactionRequest request,
@@ -23,6 +22,18 @@ public class CreateExpenseFinancialTransactionService(IRepository<FinancialTrans
 
         if (!incomeTransaction.TransactionType.Equals(FinancialTransactionType.Income))
             return Result.Error("Transaction with incomeTransactionId must be Income type.");
+
+        if (incomeTransaction.OperationDate > request.OperationDate)
+            return Result.Error(
+                "Expense operation date must be greater or equal than income operation date."
+            );
+
+        if (!incomeTransaction.IsMonthly && request.IsMonthly)
+        {
+            return Result.Error(
+                "Cannot create monthly expense for non-monthly income. Expense must be non-monthly when income is non-monthly."
+            );
+        }
 
         var expenseTransaction = FinancialTransaction.CreateExpense(
             request.UserId,

@@ -33,23 +33,13 @@ public static class InfrastructureServiceExtensions
                 IListUserExpenseFinancialTransactionsQueryService,
                 ListUserExpenseFinancialTransactionsQueryService
             >()
-            .AddScoped<IDeleteContributorService, DeleteContributorService>()
-            .AddScoped<
-                IDeleteIncomeFinancialTransactionService,
-                DeleteIncomeFinancialTransactionService
-            >()
-            .AddScoped<
-                ICreateExpenseFinancialTransactionService,
-                CreateExpenseFinancialTransactionService
-            >()
-            .AddScoped<
-                IUpdateExpenseFinancialTransactionService,
-                UpdateExpenseFinancialTransactionService
-            >()
-            .AddScoped<
-                IDeleteExpenseFinancialTransactionService,
-                DeleteExpenseFinancialTransactionService
-            >();
+            .AddScoped<DeleteContributorService>()
+            .AddScoped<CreateIncomeFinancialTransactionService>()
+            .AddScoped<UpdateIncomeFinancialTransactionService>()
+            .AddScoped<DeleteIncomeFinancialTransactionService>()
+            .AddScoped<CreateExpenseFinancialTransactionService>()
+            .AddScoped<UpdateExpenseFinancialTransactionService>()
+            .AddScoped<DeleteExpenseFinancialTransactionService>();
 
         logger.LogInformation("{Project} services registered", "Infrastructure");
 

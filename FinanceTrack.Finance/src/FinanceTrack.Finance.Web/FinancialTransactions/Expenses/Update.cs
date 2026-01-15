@@ -36,36 +36,18 @@ public class Update(IMediator mediator)
 
         var result = await mediator.Send(command, ct);
 
-        switch (result.Status)
-        {
-            case ResultStatus.NotFound:
-                await SendNotFoundAsync(ct);
-                return;
+        if (await this.SendResultIfNotOk(result, ct))
+            return;
 
-            case ResultStatus.Forbidden:
-                await SendForbiddenAsync(ct);
-                return;
-
-            case ResultStatus.Invalid:
-            case ResultStatus.Error:
-                if (result.Errors.Any())
-                    AddError(result.Errors.First());
-                await SendErrorsAsync(cancellation: ct);
-                return;
-
-            case ResultStatus.Ok:
-            default:
-                var dto = result.Value;
-                Response = new FinancialTransactionRecord(
-                    dto.Id,
-                    dto.Name,
-                    dto.Amount,
-                    dto.OperationDate,
-                    dto.IsMonthly,
-                    dto.Type
-                );
-                return;
-        }
+        var dto = result.Value;
+        Response = new FinancialTransactionRecord(
+            dto.Id,
+            dto.Name,
+            dto.Amount,
+            dto.OperationDate,
+            dto.IsMonthly,
+            dto.Type
+        );
     }
 }
 
