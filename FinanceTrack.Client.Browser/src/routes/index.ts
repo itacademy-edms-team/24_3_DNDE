@@ -37,12 +37,6 @@ const routes: Routes = [
     protected: true,
   },
   {
-    component: asyncComponentLoader(() => import('@/pages/Page4')),
-    path: '/page-4',
-    title: 'Page 4',
-    icon: BugReportIcon,
-  },
-  {
     component: asyncComponentLoader(() => import('@/pages/NotFound')),
     path: '*',
   },
