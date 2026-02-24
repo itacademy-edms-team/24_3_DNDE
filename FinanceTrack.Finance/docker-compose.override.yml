@@ -10,6 +10,11 @@ services:
       - "15950:5432"
     networks:
       - default
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
   
   financetrack.finance.web:
     environment:
@@ -28,10 +33,10 @@ services:
       - default
       - finance_track_network
 
-
 volumes:
   FinanceTrack_financeservice_pgdata:
-
+    name: financetrack-finance-dev_FinanceTrack_financeservice_pgdata
+    external: true
 
 networks:
   finance_track_network:

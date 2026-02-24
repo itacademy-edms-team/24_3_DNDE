@@ -1,0 +1,29 @@
+name: financetrack-dev
+
+include:
+  - path:
+      - ./FinanceTrack.Traefik/docker-compose.yml
+      - ./FinanceTrack.Traefik/docker-compose.override.yml
+
+  - path:
+      - ./FinanceTrack.KeyCloak/docker-compose.yml
+      - ./FinanceTrack.KeyCloak/docker-compose.override.yml
+    env_file: ./FinanceTrack.KeyCloak/.env.development
+
+  - path:
+      - ./FinanceTrack.Gateway/docker-compose.yml
+      - ./FinanceTrack.Gateway/docker-compose.override.yml
+    env_file: ./FinanceTrack.Gateway/.env.development
+
+  - path:
+      - ./FinanceTrack.Client.Browser/docker-compose.yml
+      - ./FinanceTrack.Client.Browser/docker-compose.override.yml
+
+  - path:
+      - ./FinanceTrack.Finance/docker-compose.yml
+      - ./FinanceTrack.Finance/docker-compose.override.yml
+    env_file: ./FinanceTrack.Finance/.env.development
+
+  - path:
+      - ./FinanceTrack.Mail/docker-compose.yml
+      - ./FinanceTrack.Mail/docker-compose.override.yml

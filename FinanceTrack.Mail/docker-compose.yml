@@ -1,18 +1,10 @@
-name: financetrack-mail-dev
-
+name: ft-mail-dev
 
 services:
   mailpit:
     image: axllent/mailpit:latest
-    container_name: FinanceTrack-mailpit
+    container_name: ft-mailpit
     restart: unless-stopped
-    ports:
-      - "16010:1025"
-      - "16011:8025"
-    networks:
-      - default
-      - finance_track_network
-
 
 networks:
   finance_track_network:

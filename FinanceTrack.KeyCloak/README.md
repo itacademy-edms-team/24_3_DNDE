@@ -25,7 +25,7 @@ mkdir exports
 ### Run containers
 
 ```bash
-docker compose --env-file .env.development -f docker-compose.development.yml up -d
+docker compose --env-file .env.development up -d
 ```
 
 Check admin panel at `http://localhost:${KC_PUBLIC_PORT}`
@@ -33,13 +33,13 @@ Check admin panel at `http://localhost:${KC_PUBLIC_PORT}`
 ### Stop containers
 
 ```bash
-docker compose --env-file .env.development -f docker-compose.development.yml stop
+docker compose --env-file .env.development stop
 ```
 
 ### Stop and Delete containers
 
 ```bash
-docker compose --env-file .env.development -f docker-compose.development.yml down
+docker compose --env-file .env.development down
 ```
 
 ## Export Realms
@@ -50,7 +50,7 @@ docker stop FinanceTrack-keycloak
 ```
 2. Run command
 ```bash
-docker compose --env-file .env.development -f docker-compose.development.yml run --rm keycloak export --dir=/temp/exports
+docker compose --env-file .env.development run --rm keycloak export --dir=/temp/exports
 ```
 3. Files appear in `exports` folder
 4. Run KeyCloak container
@@ -66,7 +66,7 @@ docker stop FinanceTrack-keycloak
 ```
 2. Run command
 ```bash
-docker compose --env-file .env.development -f docker-compose.development.yml run --rm keycloak import --dir=/temp/exports
+docker compose --env-file .env.development run --rm keycloak import --dir=/temp/exports
 ```
 3. Run KeyCloak container
 ```bash

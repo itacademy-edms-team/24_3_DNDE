@@ -1,10 +1,5 @@
-name: financetrack-keycloak-dev
-
 services:
   keycloak-db:
-    image: postgres:16
-    container_name: financetrack-keycloak-db
-    restart: unless-stopped
     environment:
       POSTGRES_DB: ${KC_DB_NAME}
       POSTGRES_USER: ${KC_DB_USER}
@@ -22,15 +17,6 @@ services:
       retries: 5
 
   keycloak:
-    image: quay.io/keycloak/keycloak:26.4.4
-    container_name: financetrack-keycloak
-    command: >
-      start-dev
-      --http-port=${KC_HTTP_PORT}
-    depends_on:
-      keycloak-db:
-        condition: service_healthy
-    restart: unless-stopped
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_ADMIN_USERNAME}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD}
@@ -57,7 +43,11 @@ services:
 
 volumes:
   FinanceTrack_keycloak_db_data:
+    name: financetrack-keycloak-dev_FinanceTrack_keycloak_db_data
+    external: true
   FinanceTrack_keycloak_data:
+    name: financetrack-keycloak-dev_FinanceTrack_keycloak_data
+    external: true
 
 networks:
   finance_track_network:

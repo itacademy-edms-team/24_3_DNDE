@@ -1,7 +1,8 @@
-name: financetrack-client-browser-dev
+name: ft-client-browser-dev
 services:
   client.browser:
     image: ${DOCKER_REGISTRY-}financetrack-client-browser
+    container_name: ft-client-browser
     build:
       context: .
       dockerfile: Dockerfile.development

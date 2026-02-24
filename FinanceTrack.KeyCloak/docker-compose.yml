@@ -1,0 +1,18 @@
+name: financetrack-keycloak-dev
+
+services:
+  keycloak-db:
+    image: postgres:16
+    container_name: ft-keycloak-db
+    restart: unless-stopped
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4.4
+    container_name: ft-keycloak
+    command: >
+      start-dev
+      --http-port=${KC_HTTP_PORT}
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+    restart: unless-stopped
