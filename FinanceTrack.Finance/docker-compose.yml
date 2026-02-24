@@ -11,4 +11,3 @@
         BUILD_CONFIGURATION: Debug
       context: .
       dockerfile: src/FinanceTrack.Finance.Web/Dockerfile
-    restart: always

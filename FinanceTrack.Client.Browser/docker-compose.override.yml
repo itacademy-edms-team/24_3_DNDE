@@ -1,7 +1,5 @@
 services:
   client.browser:
-    ports:
-      - "16050:5173"
     volumes:
       - ./env:/app/env:ro
     networks:
