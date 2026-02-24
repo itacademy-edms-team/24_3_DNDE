@@ -1,4 +1,5 @@
-﻿services:
+﻿# name: see .env
+services:
   financetrack.gateway:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development

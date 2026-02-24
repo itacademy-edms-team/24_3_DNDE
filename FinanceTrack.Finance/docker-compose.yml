@@ -1,8 +1,14 @@
-﻿services:
+﻿# name: see .env
+services:
   finance-db:
     image: postgres:16
     container_name: FinanceTrack-financeservice-postgres
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
   
   financetrack.finance.web:
     image: ${DOCKER_REGISTRY-}financetrack-finance
@@ -11,3 +17,6 @@
         BUILD_CONFIGURATION: Debug
       context: .
       dockerfile: src/FinanceTrack.Finance.Web/Dockerfile
+    depends_on:
+      finance-db:
+        condition: service_healthy
