@@ -46,5 +46,12 @@ public class ConfigureOidcOptions : IConfigureNamedOptions<OpenIdConnectOptions>
         options.CallbackPath = "/signin-oidc";
         options.SignedOutCallbackPath = "/signout-callback-oidc";
         options.SignedOutRedirectUri = "/";
+
+        // http bypass section (dev only)
+        options.NonceCookie.SameSite = SameSiteMode.Unspecified;
+        options.NonceCookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+
+        options.CorrelationCookie.SameSite = SameSiteMode.Lax;
+        options.CorrelationCookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
     }
 }

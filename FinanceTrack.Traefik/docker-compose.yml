@@ -1,0 +1,25 @@
+name: financetrack-traefik-dev
+
+services:
+  traefik:
+    image: traefik:v3.4
+    container_name: ft-traefik
+    command:
+      - "--api.insecure=true"
+      - "--providers.file.filename=/etc/traefik/dynamic.yml"
+      - "--providers.file.watch=true"
+      - "--entrypoints.web.address=:80"
+      - "--log.level=DEBUG"
+      - "--accesslog=true"
+    ports:
+      - "80:80"
+      - "9090:8080"
+    volumes:
+      - ./dynamic.yml:/etc/traefik/dynamic.yml:ro
+    networks:
+      - finance_track_network
+    restart: unless-stopped
+
+networks:
+  finance_track_network:
+    external: true

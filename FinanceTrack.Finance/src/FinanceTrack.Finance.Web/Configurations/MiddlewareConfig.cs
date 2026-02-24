@@ -21,6 +21,8 @@ public static class MiddlewareConfig
             app.UseHsts();
         }
 
+        app.MapHealthChecks("/healthz");
+
         app.UseFastEndpoints().UseSwaggerGen(); // Includes AddFileServer and static files middleware
 
         app.UseHttpsRedirection(); // Note this will drop Authorization headers

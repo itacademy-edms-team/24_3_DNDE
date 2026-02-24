@@ -1,0 +1,29 @@
+services:
+  client.browser:
+    ports:
+      - "16050:5173"
+    volumes:
+      - ./env:/app/env:ro
+    networks:
+      - default
+      - finance_track_network
+    develop:
+      watch:
+        - action: sync
+          path: .
+          target: /app
+          ignore:
+            - node_modules/
+            - dist/
+            - .git/
+            - coverage/
+            - test-results/
+            - playwright-report/
+            - .vscode/
+            - .idea/
+            - env/
+
+
+networks:
+  finance_track_network:
+    external: true

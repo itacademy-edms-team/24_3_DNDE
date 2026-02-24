@@ -1,21 +1,18 @@
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 import manifest from './manifest.json';
 
 // https://vite.dev/config/
-export default defineConfig(({ mode }) => {
-  const envDir = path.resolve(process.cwd(), 'env'); // Folder where .env files placed
-
-  const env = loadEnv(mode, envDir, ''); // Load internal Vite env variables
-
-  const port = Number(env.VITE_PORT) || 5173;
-
+export default defineConfig(() => {
   return {
     server: {
-      port,
+      host: true,
+      port: 5173,
+      strictPort: true,
+      allowedHosts: ['client.browser', 'app.ft.localhost'],
     },
     plugins: [
       react(),

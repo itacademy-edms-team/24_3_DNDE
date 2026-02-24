@@ -1,0 +1,19 @@
+name: financetrack-mail-dev
+
+
+services:
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: FinanceTrack-mailpit
+    restart: unless-stopped
+    ports:
+      - "${MAILPIT_PORT_SMTP_EXTERNAL}:${MAILPIT_PORT_SMTP_INTERNAL}"
+      - "${MAILPIT_PORT_WEBUI_EXTERNAL}:${MAILPIT_PORT_WEBUI_INTERNAL}"
+    networks:
+      - default
+      - finance_track_network
+
+
+networks:
+  finance_track_network:
+    external: true
