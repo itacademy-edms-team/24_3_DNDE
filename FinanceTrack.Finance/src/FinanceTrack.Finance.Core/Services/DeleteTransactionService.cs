@@ -1,4 +1,4 @@
-using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
+﻿using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
 using FinanceTrack.Finance.Core.FinancialTransactionAggregate.Specifications;
 using FinanceTrack.Finance.Core.WalletAggregate;
 
@@ -31,8 +31,16 @@ public class DeleteTransactionService(
             || transaction.TransactionType == FinancialTransactionType.TransferIn
         )
         {
-            // Was a credit, so debit to reverse. Force-allow negative since we're reverting.
-            wallet.Debit(transaction.Amount);
+            // Was a credit, so debit to reverse
+            try
+            {
+                wallet.Debit(transaction.Amount);
+            }
+            // Catch errors related to negative balance restrictions. Example: delete transaction -> balance still negative
+            catch (InvalidOperationException ex)
+            {
+                return Result.Error(ex.Message);
+            }
         }
         else if (
             transaction.TransactionType == FinancialTransactionType.Expense
@@ -59,7 +67,14 @@ public class DeleteTransactionService(
                         || related.TransactionType == FinancialTransactionType.TransferIn
                     )
                     {
-                        relatedWallet.Debit(related.Amount);
+                        try
+                        {
+                            relatedWallet.Debit(related.Amount);
+                        }
+                        catch (InvalidOperationException ex)
+                        {
+                            return Result.Error(ex.Message);
+                        }
                     }
                     else
                     {
