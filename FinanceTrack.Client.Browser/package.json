@@ -32,6 +32,8 @@
     "@mui/icons-material": "^6.4.6",
     "@mui/material": "^6.4.6",
     "@react-keycloak/web": "^3.4.0",
+    "@tanstack/react-query": "^5.90.21",
+    "@tanstack/react-query-devtools": "^5.91.3",
     "@toolpad/core": "^0.12.1",
     "jotai": "^2.12.1",
     "keycloak-js": "^26.2.1",

@@ -24,13 +24,13 @@ const Unauthorized: FC<UnauthorizedProps> = ({ message }) => {
       }}
     >
       <Typography variant="h4" gutterBottom>
-        Unauthorized
+        Не выполнен вход в аккаунт
       </Typography>
       <Typography variant="body1" color="text.secondary">
-        {message ?? 'You must be signed in to view this page.'}
+        {message ?? 'Войдите в аккаунт, чтобы увидеть содержимое'}
       </Typography>
       <Button variant="contained" onClick={handleLogin}>
-        Sign in
+        Войти
       </Button>
     </Box>
   );

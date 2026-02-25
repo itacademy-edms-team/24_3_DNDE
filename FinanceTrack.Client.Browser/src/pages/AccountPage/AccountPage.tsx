@@ -1,39 +1,42 @@
 import { FullSizeCentered } from '@/components/styled';
 import { Button, Typography } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+
+import Loading from '@/components/Loading';
 
 type UserInfo = {
   name: string;
   claims: { type: string; value: string }[];
 };
 
-function LoginPage() {
-  const [user, setUser] = useState<UserInfo | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const loadUser = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/bff/user', {
-        credentials: 'include', // Include cookies
-      });
-      if (res.status === 401) {
-        setUser(null);
-      } else {
-        const data = await res.json();
-        setUser(data);
-      }
-    } catch (e) {
-      console.error(e);
-      setUser(null);
-    } finally {
-      setLoading(false);
+const fetchUser = async (): Promise<UserInfo | null> => {
+  try {
+    const res = await fetch('/bff/user', {
+      credentials: 'include', // Include cookies
+    });
+    if (res.status === 401) {
+      return null;
     }
-  };
+    if (!res.ok) {
+      throw new Error(`HTTP error! status: ${res.status}`);
+    }
+    return await res.json();
+  } catch (e) {
+    console.error('Failed to fetch user:', e);
+    return null;
+  }
+};
 
-  useEffect(() => {
-    loadUser();
-  }, []);
+function AccountPage() {
+  const { data: user, isLoading, isPending, error } = useQuery({
+    queryKey: ['user'],
+    queryFn: fetchUser,
+    retry: false,
+  });
+
+  if (error) {
+    console.error('Query error:', error);
+  }
 
   const handleLogin = () => {
     window.location.href = '/bff/login';
@@ -43,8 +46,8 @@ function LoginPage() {
     window.location.href = '/bff/logout';
   };
 
-  if (loading) {
-    return <Typography>Loading...</Typography>;
+  if (isLoading || isPending) {
+    return <Loading />;
   }
 
   const isAuth = !!user;
@@ -53,16 +56,16 @@ function LoginPage() {
     <>
       <meta name="title" content="Account" />
       {!isAuth && (
-        <Button onClick={handleLogin}>Sign In</Button>
+        <Button onClick={handleLogin}>Войти</Button>
       )}
       {isAuth && (
         <FullSizeCentered>
-          <Typography variant="h3">Account</Typography>
+          <Typography variant="h3">Аккаунт</Typography>
           <Typography variant="body1">
-            Hello, {user.name}
+            Здравствуйте, {user.name}
           </Typography>
           <Button onClick={handleLogout}>
-            Sign Out
+            Выйти
           </Button>
         </FullSizeCentered>
       )}
@@ -70,4 +73,4 @@ function LoginPage() {
   );
 }
 
-export default LoginPage;
+export default AccountPage;

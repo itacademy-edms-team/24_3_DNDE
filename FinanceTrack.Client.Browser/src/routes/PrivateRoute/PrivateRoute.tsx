@@ -74,6 +74,6 @@ export function PrivateRoute({ children }: PrivateRouteProps) {
 
   // status === 'error'
   return (
-    <Unauthorized message="Authorization check failed. Try signing in again." />
+    <Unauthorized message="Ошибка аутентификации. Войдите в аккаунт" />
   );
 }
