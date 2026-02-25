@@ -60,12 +60,16 @@ type UpdateWalletPayload = {
   targetDate?: string;
 };
 
+const getErrorMessage = (operation: string, status: number): string => {
+  return `Ошибка ${operation}: ${status}`;
+};
+
 const fetchWallet = async (walletId: string): Promise<Wallet> => {
   const res = await fetch(`/api/finance/Wallets/${walletId}`, {
     credentials: 'include',
   });
   if (!res.ok) {
-    throw new Error(`HTTP error! status: ${res.status}`);
+    throw new Error(getErrorMessage('загрузки кошелька', res.status));
   }
   return await res.json();
 };
@@ -81,8 +85,7 @@ const updateWallet = async (walletId: string, payload: UpdateWalletPayload): Pro
   });
 
   if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(errorText || `HTTP error! status: ${res.status}`);
+    throw new Error(getErrorMessage('обновления кошелька', res.status));
   }
 
   return await res.json();
@@ -99,8 +102,7 @@ const archiveWallet = async (walletId: string): Promise<void> => {
   });
 
   if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(errorText || `HTTP error! status: ${res.status}`);
+    throw new Error(getErrorMessage('архивации кошелька', res.status));
   }
 };
 
@@ -137,7 +139,7 @@ const fetchTransactions = async (walletId: string): Promise<Transaction[]> => {
     credentials: 'include',
   });
   if (!res.ok) {
-    throw new Error(`HTTP error! status: ${res.status}`);
+    throw new Error(getErrorMessage('загрузки транзакций', res.status));
   }
   const data: TransactionsResponse = await res.json();
   return data.transactions;
@@ -148,7 +150,7 @@ const fetchCategories = async (type: 'Income' | 'Expense'): Promise<Category[]> 
     credentials: 'include',
   });
   if (!res.ok) {
-    throw new Error(`HTTP error! status: ${res.status}`);
+    throw new Error(getErrorMessage('загрузки категорий', res.status));
   }
   const data: CategoriesResponse = await res.json();
   return data.categories.filter((cat) => cat.type === type);
@@ -165,8 +167,7 @@ const createIncome = async (payload: CreateIncomePayload): Promise<{ id: string 
   });
 
   if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(errorText || `HTTP error! status: ${res.status}`);
+    throw new Error(getErrorMessage('создания дохода', res.status));
   }
 
   return await res.json();
@@ -183,8 +184,7 @@ const createExpense = async (payload: CreateExpensePayload): Promise<{ id: strin
   });
 
   if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(errorText || `HTTP error! status: ${res.status}`);
+    throw new Error(getErrorMessage('создания расхода', res.status));
   }
 
   return await res.json();
@@ -197,8 +197,7 @@ const deleteTransaction = async (transactionId: string): Promise<void> => {
   });
 
   if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(errorText || `HTTP error! status: ${res.status}`);
+    throw new Error(getErrorMessage('удаления транзакции', res.status));
   }
 };
 
@@ -220,8 +219,7 @@ const updateTransaction = async (transactionId: string, payload: UpdateTransacti
   });
 
   if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(errorText || `HTTP error! status: ${res.status}`);
+    throw new Error(getErrorMessage('обновления транзакции', res.status));
   }
 };
 
@@ -295,6 +293,7 @@ function WalletPage() {
   const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
+  const [errorDialog, setErrorDialog] = useState({ open: false, message: '' });
   const [formState, setFormState] = useState<WalletFormState>({
     name: '',
     allowNegativeBalance: true,
@@ -345,7 +344,7 @@ function WalletPage() {
     },
     onError: (error: Error) => {
       console.error('Failed to update wallet:', error);
-      alert(`Ошибка обновления кошелька: ${error.message}`);
+      setErrorDialog({ open: true, message: `Ошибка обновления кошелька: ${error.message}` });
     },
   });
 
@@ -359,7 +358,7 @@ function WalletPage() {
     },
     onError: (error: Error) => {
       console.error('Failed to archive wallet:', error);
-      alert(`Ошибка архивации кошелька: ${error.message}`);
+      setErrorDialog({ open: true, message: `Ошибка архивации кошелька: ${error.message}` });
     },
   });
 
@@ -382,7 +381,7 @@ function WalletPage() {
     },
     onError: (error: Error) => {
       console.error('Failed to create transaction:', error);
-      alert(`Ошибка создания транзакции: ${error.message}`);
+      setErrorDialog({ open: true, message: error.message || 'Ошибка создания транзакции' });
     },
   });
 
@@ -405,7 +404,7 @@ function WalletPage() {
     },
     onError: (error: Error) => {
       console.error('Failed to update transaction:', error);
-      alert(`Ошибка обновления транзакции: ${error.message}`);
+      setErrorDialog({ open: true, message: error.message || 'Ошибка обновления транзакции' });
     },
   });
 
@@ -420,7 +419,7 @@ function WalletPage() {
     },
     onError: (error: Error) => {
       console.error('Failed to delete transaction:', error);
-      alert(`Ошибка удаления транзакции: ${error.message}`);
+      setErrorDialog({ open: true, message: error.message || 'Ошибка удаления транзакции' });
     },
   });
 
@@ -444,7 +443,7 @@ function WalletPage() {
     if (!wallet) return;
 
     if (!formState.name.trim()) {
-      alert('Введите название кошелька');
+      setErrorDialog({ open: true, message: 'Введите название кошелька' });
       return;
     }
 
@@ -457,7 +456,7 @@ function WalletPage() {
     } else {
       const targetAmount = parseFloat(formState.targetAmount);
       if (!formState.targetAmount || isNaN(targetAmount) || targetAmount <= 0) {
-        alert('Для накопительного кошелька необходимо указать целевую сумму больше 0');
+        setErrorDialog({ open: true, message: 'Для накопительного кошелька необходимо указать целевую сумму больше 0' });
         return;
       }
       payload.targetAmount = targetAmount;
@@ -496,7 +495,7 @@ function WalletPage() {
 
   const handleEditTransaction = (transaction: Transaction) => {
     if (transaction.type === 'TransferIn' || transaction.type === 'TransferOut') {
-      alert('Переводы нельзя редактировать');
+      setErrorDialog({ open: true, message: 'Переводы нельзя редактировать' });
       return;
     }
     setTransactionType(transaction.type);
@@ -527,18 +526,18 @@ function WalletPage() {
     if (!wallet) return;
 
     if (!transactionForm.name.trim()) {
-      alert('Введите название транзакции');
+      setErrorDialog({ open: true, message: 'Введите название транзакции' });
       return;
     }
 
     const amount = parseFloat(transactionForm.amount);
     if (!transactionForm.amount || isNaN(amount) || amount <= 0) {
-      alert('Введите корректную сумму (больше 0)');
+      setErrorDialog({ open: true, message: 'Введите корректную сумму (больше 0)' });
       return;
     }
 
     if (!transactionForm.operationDate) {
-      alert('Выберите дату операции');
+      setErrorDialog({ open: true, message: 'Выберите дату операции' });
       return;
     }
 
@@ -1016,7 +1015,38 @@ function WalletPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Error Dialog */}
+      <ErrorDialog
+        open={errorDialog.open}
+        message={errorDialog.message}
+        onClose={() => setErrorDialog({ open: false, message: '' })}
+      />
     </Box>
+  );
+}
+
+type ErrorDialogProps = {
+  open: boolean;
+  message: string;
+  onClose: () => void;
+};
+
+function ErrorDialog({ open, message, onClose }: ErrorDialogProps) {
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+      <DialogTitle>Ошибка</DialogTitle>
+      <DialogContent dividers>
+        <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+          {message}
+        </Typography>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} autoFocus>
+          Ок
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }
 
