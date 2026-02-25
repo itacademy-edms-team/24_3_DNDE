@@ -1,5 +1,8 @@
 ﻿using FinanceTrack.Finance.Core.ContributorAggregate;
 using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
+using FinanceTrack.Finance.Core.WalletAggregate;
+using FinanceTrack.Finance.Core.CategoryAggregate;
+using FinanceTrack.Finance.Core.RecurringTransactionAggregate;
 using FinanceTrack.Finance.Infrastructure.Data;
 
 namespace FinanceTrack.Finance.IntegrationTests.Data;
@@ -11,21 +14,17 @@ public abstract class BaseEfRepoTestFixture
     protected BaseEfRepoTestFixture()
     {
         var options = CreateNewContextOptions();
-        var _fakeEventDispatcher = Substitute.For<IDomainEventDispatcher>();
+        var fakeEventDispatcher = Substitute.For<IDomainEventDispatcher>();
 
-        _dbContext = new AppDbContext(options, _fakeEventDispatcher);
+        _dbContext = new AppDbContext(options, fakeEventDispatcher);
     }
 
     protected static DbContextOptions<AppDbContext> CreateNewContextOptions()
     {
-        // Create a fresh service provider, and therefore a fresh
-        // InMemory database instance.
         var serviceProvider = new ServiceCollection()
             .AddEntityFrameworkInMemoryDatabase()
             .BuildServiceProvider();
 
-        // Create a new options instance telling the context to use an
-        // InMemory database and the new service provider.
         var builder = new DbContextOptionsBuilder<AppDbContext>();
         builder
             .UseInMemoryDatabase("ft-int-tests-" + Guid.NewGuid().ToString())
@@ -34,7 +33,7 @@ public abstract class BaseEfRepoTestFixture
         return builder.Options;
     }
 
-    protected EfRepository<Contributor> GetRepository()
+    protected EfRepository<Contributor> GetContributorRepository()
     {
         return new EfRepository<Contributor>(_dbContext);
     }
@@ -42,5 +41,20 @@ public abstract class BaseEfRepoTestFixture
     protected EfRepository<FinancialTransaction> GetFinancialTransactionRepository()
     {
         return new EfRepository<FinancialTransaction>(_dbContext);
+    }
+
+    protected EfRepository<Wallet> GetWalletRepository()
+    {
+        return new EfRepository<Wallet>(_dbContext);
+    }
+
+    protected EfRepository<Category> GetCategoryRepository()
+    {
+        return new EfRepository<Category>(_dbContext);
+    }
+
+    protected EfRepository<RecurringTransaction> GetRecurringTransactionRepository()
+    {
+        return new EfRepository<RecurringTransaction>(_dbContext);
     }
 }

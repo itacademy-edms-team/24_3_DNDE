@@ -5,10 +5,10 @@ namespace FinanceTrack.Finance.IntegrationTests.Data;
 public class EfRepositoryUpdate : BaseEfRepoTestFixture
 {
     [Fact]
-    public async Task UpdatesItemAfterAddingIt()
+    public async Task UpdateAsync_ExistingItem_PersistsChanges()
     {
         // add a Contributor
-        var repository = GetRepository();
+        var repository = GetContributorRepository();
         var initialName = Guid.NewGuid().ToString();
         var Contributor = new Contributor(initialName);
 

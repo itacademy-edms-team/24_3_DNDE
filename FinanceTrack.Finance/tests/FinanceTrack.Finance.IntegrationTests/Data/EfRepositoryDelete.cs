@@ -5,10 +5,10 @@ namespace FinanceTrack.Finance.IntegrationTests.Data;
 public class EfRepositoryDelete : BaseEfRepoTestFixture
 {
     [Fact]
-    public async Task DeletesItemAfterAddingIt()
+    public async Task DeleteAsync_ExistingItem_RemovesFromRepository()
     {
         // add a Contributor
-        var repository = GetRepository();
+        var repository = GetContributorRepository();
         var initialName = Guid.NewGuid().ToString();
         var Contributor = new Contributor(initialName);
         await repository.AddAsync(Contributor);

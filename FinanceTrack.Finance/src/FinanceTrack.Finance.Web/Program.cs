@@ -1,4 +1,5 @@
 ﻿using FinanceTrack.Finance.UseCases.Contributors.Create;
+using FinanceTrack.Finance.Web.BackgroundServices;
 using FinanceTrack.Finance.Web.Configurations;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -25,8 +26,8 @@ builder
         c.Register(typeof(CommandLogger<,>));
     });
 
-// wire up commands
-//builder.Services.AddTransient<ICommandHandler<CreateContributorCommand2,Result<int>>, CreateContributorCommandHandler2>();
+// Background services
+builder.Services.AddHostedService<RecurringTransactionBackgroundService>();
 
 var app = builder.Build();
 

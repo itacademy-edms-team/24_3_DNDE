@@ -11,7 +11,7 @@ public class ContributorConstructor
     }
 
     [Fact]
-    public void InitializesName()
+    public void Constructor_ValidName_InitializesName()
     {
         _testContributor = CreateContributor();
 

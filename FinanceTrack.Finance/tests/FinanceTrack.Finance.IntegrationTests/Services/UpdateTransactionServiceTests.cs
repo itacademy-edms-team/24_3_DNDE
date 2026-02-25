@@ -1,0 +1,91 @@
+using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
+using FinanceTrack.Finance.Core.Interfaces;
+using FinanceTrack.Finance.Core.Services;
+using FinanceTrack.Finance.Core.WalletAggregate;
+using FinanceTrack.Finance.IntegrationTests.Data;
+
+namespace FinanceTrack.Finance.IntegrationTests.Services;
+
+public class UpdateTransactionServiceTests : BaseEfRepoTestFixture
+{
+    private const string UserId = "user-1";
+    private static readonly DateOnly Today = new(2026, 2, 25);
+
+    [Fact]
+    public async Task Execute_IncreaseIncomeAmount_AdjustsWalletBalance()
+    {
+        var walletRepo = GetWalletRepository();
+        var transactionRepo = GetFinancialTransactionRepository();
+
+        // Setup: wallet with income
+        var wallet = Wallet.CreateChecking(UserId, "Checking");
+        await walletRepo.AddAsync(wallet);
+
+        var tx = FinancialTransaction.CreateIncome(UserId, wallet.Id, "Salary", 500m, Today);
+        await transactionRepo.AddAsync(tx);
+        wallet.Credit(500m);
+        await walletRepo.UpdateAsync(wallet);
+
+        // Act: increase income to 800
+        var service = new UpdateTransactionService(transactionRepo, walletRepo);
+        var request = new UpdateTransactionRequest(tx.Id, UserId, "Updated Salary", 800m, Today, null);
+        var result = await service.Execute(request);
+
+        // Assert
+        result.IsSuccess.ShouldBeTrue();
+        result.Value.Amount.ShouldBe(800m);
+        result.Value.Name.ShouldBe("Updated Salary");
+
+        var updatedWallet = await walletRepo.GetByIdAsync(wallet.Id);
+        updatedWallet!.Balance.ShouldBe(800m); // 500 + 300
+    }
+
+    [Fact]
+    public async Task Execute_DecreaseExpenseAmount_AdjustsWalletBalance()
+    {
+        var walletRepo = GetWalletRepository();
+        var transactionRepo = GetFinancialTransactionRepository();
+
+        // Setup: wallet=1000, expense=300 => wallet=700
+        var wallet = Wallet.CreateChecking(UserId, "Checking");
+        wallet.Credit(1000m);
+        await walletRepo.AddAsync(wallet);
+
+        var tx = FinancialTransaction.CreateExpense(UserId, wallet.Id, "Groceries", 300m, Today);
+        await transactionRepo.AddAsync(tx);
+        wallet.Debit(300m);
+        await walletRepo.UpdateAsync(wallet);
+
+        // Act: decrease expense to 100
+        var service = new UpdateTransactionService(transactionRepo, walletRepo);
+        var request = new UpdateTransactionRequest(tx.Id, UserId, "Less Groceries", 100m, Today, null);
+        var result = await service.Execute(request);
+
+        // Assert: wallet should gain back 200 (from 700 to 900)
+        result.IsSuccess.ShouldBeTrue();
+
+        var updatedWallet = await walletRepo.GetByIdAsync(wallet.Id);
+        updatedWallet!.Balance.ShouldBe(900m);
+    }
+
+    [Fact]
+    public async Task Execute_TransferTransaction_ReturnsError()
+    {
+        var walletRepo = GetWalletRepository();
+        var transactionRepo = GetFinancialTransactionRepository();
+
+        var wallet = Wallet.CreateChecking(UserId, "Checking");
+        await walletRepo.AddAsync(wallet);
+
+        var tx = FinancialTransaction.CreateTransferOut(
+            UserId, wallet.Id, "Transfer", 100m, Today, Guid.NewGuid()
+        );
+        await transactionRepo.AddAsync(tx);
+
+        var service = new UpdateTransactionService(transactionRepo, walletRepo);
+        var request = new UpdateTransactionRequest(tx.Id, UserId, "Updated", 200m, Today, null);
+        var result = await service.Execute(request);
+
+        result.Status.ShouldBe(Ardalis.Result.ResultStatus.Error);
+    }
+}

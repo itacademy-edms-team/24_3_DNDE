@@ -1,0 +1,50 @@
+using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
+using FinanceTrack.Finance.Core.Interfaces;
+using FinanceTrack.Finance.Core.WalletAggregate;
+
+namespace FinanceTrack.Finance.Core.Services;
+
+public class CreateExpenseService(
+    IRepository<FinancialTransaction> _transactionRepo,
+    IRepository<Wallet> _walletRepo
+)
+{
+    public async Task<Result<Guid>> Execute(
+        CreateExpenseRequest request,
+        CancellationToken ct = default
+    )
+    {
+        var wallet = await _walletRepo.GetByIdAsync(request.WalletId, ct);
+        if (wallet is null)
+            return Result.NotFound("Wallet not found.");
+        if (!string.Equals(wallet.UserId, request.UserId, StringComparison.Ordinal))
+            return Result.Forbidden();
+        if (wallet.IsArchived)
+            return Result.Error("Cannot add expense to an archived wallet.");
+
+        // Debit will throw if insufficient funds and AllowNegativeBalance is false
+        try
+        {
+            wallet.Debit(request.Amount);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Result.Error(ex.Message);
+        }
+
+        var transaction = FinancialTransaction.CreateExpense(
+            request.UserId,
+            request.WalletId,
+            request.Name,
+            request.Amount,
+            request.OperationDate,
+            request.CategoryId,
+            request.RecurringTransactionId
+        );
+
+        await _transactionRepo.AddAsync(transaction, ct);
+        await _walletRepo.UpdateAsync(wallet, ct);
+
+        return Result.Success(transaction.Id);
+    }
+}
