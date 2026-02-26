@@ -2,6 +2,7 @@ import AddTaskIcon from '@mui/icons-material/AddTask';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import HomeIcon from '@mui/icons-material/Home';
 import TerrainIcon from '@mui/icons-material/Terrain';
+import CategoryIcon from '@mui/icons-material/Category';
 
 import asyncComponentLoader from '@/utils/loader';
 
@@ -46,6 +47,13 @@ const routes: Routes = [
     path: '/analytics',
     title: 'Аналитика',
     icon: TerrainIcon,
+    protected: true,
+  },
+  {
+    component: asyncComponentLoader(() => import('@/pages/CategoriesPage')),
+    path: '/categories',
+    title: 'Категории',
+    icon: CategoryIcon,
     protected: true,
   },
   {

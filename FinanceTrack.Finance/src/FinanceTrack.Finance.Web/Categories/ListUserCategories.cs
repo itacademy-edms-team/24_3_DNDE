@@ -1,7 +1,13 @@
-using FinanceTrack.Finance.UseCases.Categories.List;
+﻿using FinanceTrack.Finance.UseCases.Categories.List;
 using FinanceTrack.Finance.Web.Extensions;
 
 namespace FinanceTrack.Finance.Web.Categories;
+
+public class ListUserCategoriesRequest
+{
+    [QueryParam]
+    public string? Type { get; set; }
+}
 
 public class ListUserCategoriesResponse
 {
@@ -9,7 +15,7 @@ public class ListUserCategoriesResponse
 }
 
 public class ListUserCategories(IMediator mediator)
-    : EndpointWithoutRequest<ListUserCategoriesResponse>
+    : Endpoint<ListUserCategoriesRequest, ListUserCategoriesResponse>
 {
     public override void Configure()
     {
@@ -17,7 +23,7 @@ public class ListUserCategories(IMediator mediator)
         Roles("user");
     }
 
-    public override async Task HandleAsync(CancellationToken ct)
+    public override async Task HandleAsync(ListUserCategoriesRequest req, CancellationToken ct)
     {
         var userId = User.GetUserId();
         if (string.IsNullOrWhiteSpace(userId))
@@ -26,7 +32,7 @@ public class ListUserCategories(IMediator mediator)
             return;
         }
 
-        var categories = await mediator.Send(new ListUserCategoriesQuery(userId), ct);
+        var categories = await mediator.Send(new ListUserCategoriesQuery(userId, req.Type), ct);
 
         Response = new ListUserCategoriesResponse
         {
