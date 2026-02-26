@@ -170,15 +170,30 @@ function AnalyticsPage() {
     retry: false,
   });
 
-  // Форматируем данные для Bar Chart
+  // Форматируем данные для Bar Chart (overlapping bars - оба положительные, наложение)
   const cashFlowChartData = useMemo(() => {
     if (!cashFlow?.periods) return [];
-    return cashFlow.periods.map((period) => ({
-      name: `${MONTH_OPTIONS[period.month - 1]?.label || period.month} ${period.year}`,
-      Доходы: period.income,
-      Расходы: period.expense,
-      Чистый: period.net,
-    }));
+    return cashFlow.periods.map((period) => {
+      const income = period.income;
+      const expense = period.expense;
+      // Определяем, какой больше, чтобы правильно наложить
+      const max = Math.max(income, expense);
+      const min = Math.min(income, expense);
+      const isIncomeBigger = income >= expense;
+      
+      return {
+        name: `${MONTH_OPTIONS[period.month - 1]?.label || period.month} ${period.year}`,
+        income: income,
+        expense: expense,
+        // Для наложения: больший сзади, меньший спереди
+        bigger: max,
+        smaller: min,
+        biggerLabel: isIncomeBigger ? 'Доходы' : 'Расходы',
+        smallerLabel: isIncomeBigger ? 'Расходы' : 'Доходы',
+        biggerColor: isIncomeBigger ? '#4caf50' : '#f44336',
+        smallerColor: isIncomeBigger ? '#f44336' : '#4caf50',
+      };
+    });
   }, [cashFlow]);
 
   // Форматируем данные для Pie Chart доходов
@@ -385,17 +400,93 @@ function AnalyticsPage() {
               Денежный поток по месяцам
             </Typography>
             <ResponsiveContainer width="100%" height={400}>
-              <BarChart data={cashFlowChartData}>
+              <BarChart data={cashFlowChartData} barCategoryGap="30%" barGap={-50}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
                 <YAxis tickFormatter={(value) => formatMoney(value ?? 0)} />
-                <Tooltip formatter={(value: number | undefined) => formatMoney(value ?? 0)} />
-                <Legend />
-                <Bar dataKey="Доходы" fill="#4caf50" />
-                <Bar dataKey="Расходы" fill="#f44336" />
-                <Bar dataKey="Чистый" fill="#2196f3" />
+                <Tooltip 
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length > 0) {
+                      const data = payload[0].payload;
+                      return (
+                        <Paper sx={{ p: 1.5, bgcolor: 'background.paper', boxShadow: 2 }}>
+                          <Typography variant="body2" fontWeight="bold" sx={{ mb: 1 }}>
+                            {data.name}
+                          </Typography>
+                          {payload.map((entry, index) => {
+                            const isBigger = entry.dataKey === 'bigger';
+                            const label = isBigger ? data.biggerLabel : data.smallerLabel;
+                            const color = isBigger ? data.biggerColor : data.smallerColor;
+                            return (
+                              <Typography key={index} variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Box
+                                  sx={{
+                                    width: 12,
+                                    height: 12,
+                                    borderRadius: '50%',
+                                    bgcolor: color,
+                                  }}
+                                />
+                                {label}: {formatMoney(entry.value as number ?? 0)}
+                              </Typography>
+                            );
+                          })}
+                        </Paper>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+                <Legend 
+                  formatter={() => null}
+                />
+                {/* Сначала рисуем больший столбец (сзади) */}
+                <Bar 
+                  dataKey="bigger" 
+                  fill="#888888"
+                >
+                  {cashFlowChartData.map((entry, index) => (
+                    <Cell key={`cell-bigger-${index}`} fill={entry.biggerColor} />
+                  ))}
+                </Bar>
+                {/* Затем меньший столбец (спереди, поверх большего) */}
+                <Bar 
+                  dataKey="smaller" 
+                  fill="#888888"
+                >
+                  {cashFlowChartData.map((entry, index) => (
+                    <Cell key={`cell-smaller-${index}`} fill={entry.smallerColor} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
+            {/* Кастомная легенда */}
+            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3, mt: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box
+                  sx={{
+                    width: 16,
+                    height: 16,
+                    borderRadius: '4px',
+                    bgcolor: '#4caf50',
+                    opacity: 0.8,
+                  }}
+                />
+                <Typography variant="body2">Доходы</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box
+                  sx={{
+                    width: 16,
+                    height: 16,
+                    borderRadius: '4px',
+                    bgcolor: '#f44336',
+                    opacity: 0.8,
+                  }}
+                />
+                <Typography variant="body2">Расходы</Typography>
+              </Box>
+            </Box>
           </CardContent>
         </Card>
       )}
