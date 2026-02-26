@@ -40,6 +40,9 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
+import RepeatIcon from '@mui/icons-material/Repeat';
+import ToggleOnIcon from '@mui/icons-material/ToggleOn';
+import ToggleOffIcon from '@mui/icons-material/ToggleOff';
 
 import Loading from '@/components/Loading';
 
@@ -209,6 +212,85 @@ const createTransfer = async (payload: CreateTransferPayload): Promise<{ id: str
   return await res.json();
 };
 
+const fetchRecurringTransactions = async (): Promise<RecurringTransaction[]> => {
+  const res = await fetch('/api/finance/RecurringTransactions', {
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    throw new Error(getErrorMessage('загрузки рекуррентных транзакций', res.status));
+  }
+  const data: RecurringTransactionsResponse = await res.json();
+  return data.recurringTransactions;
+};
+
+const createRecurringTransaction = async (
+  payload: CreateRecurringTransactionPayload
+): Promise<{ id: string }> => {
+  const res = await fetch('/api/finance/RecurringTransactions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    throw new Error(getErrorMessage('создания рекуррентной транзакции', res.status));
+  }
+
+  return await res.json();
+};
+
+const updateRecurringTransaction = async (
+  recurringId: string,
+  payload: UpdateRecurringTransactionPayload
+): Promise<RecurringTransaction> => {
+  const res = await fetch(`/api/finance/RecurringTransactions/${recurringId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    throw new Error(getErrorMessage('обновления рекуррентной транзакции', res.status));
+  }
+
+  return await res.json();
+};
+
+const toggleRecurringTransaction = async (
+  recurringId: string,
+  isActive: boolean
+): Promise<void> => {
+  const res = await fetch(`/api/finance/RecurringTransactions/${recurringId}/toggle`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify({ isActive }),
+  });
+
+  if (!res.ok) {
+    throw new Error(getErrorMessage('переключения рекуррентной транзакции', res.status));
+  }
+};
+
+const deleteRecurringTransaction = async (recurringId: string): Promise<void> => {
+  const res = await fetch(`/api/finance/RecurringTransactions/${recurringId}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    throw new Error(getErrorMessage('удаления рекуррентной транзакции', res.status));
+  }
+};
+
 const createIncome = async (payload: CreateIncomePayload): Promise<{ id: string }> => {
   const res = await fetch('/api/finance/Transactions/Income', {
     method: 'POST',
@@ -356,6 +438,54 @@ type TransferFormState = {
   operationDate: string;
 };
 
+type RecurringTransaction = {
+  id: string;
+  walletId: string;
+  categoryId: string | null;
+  name: string;
+  type: 'Income' | 'Expense';
+  amount: number;
+  dayOfMonth: number;
+  startDate: string;
+  endDate: string | null;
+  isActive: boolean;
+  lastProcessedDate: string | null;
+};
+
+type RecurringTransactionsResponse = {
+  recurringTransactions: RecurringTransaction[];
+};
+
+type CreateRecurringTransactionPayload = {
+  walletId: string;
+  categoryId?: string | null;
+  name: string;
+  type: 'Income' | 'Expense';
+  amount: number;
+  dayOfMonth: number;
+  startDate: string;
+  endDate?: string | null;
+};
+
+type UpdateRecurringTransactionPayload = {
+  name: string;
+  amount: number;
+  dayOfMonth: number;
+  endDate: string | null;
+  categoryId: string | null;
+};
+
+type RecurringTransactionFormState = {
+  name: string;
+  type: 'Income' | 'Expense';
+  amount: string;
+  dayOfMonth: string;
+  startDate: string;
+  endDate: string;
+  categoryId: string;
+  hasEndDate: boolean;
+};
+
 function WalletPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -396,6 +526,23 @@ function WalletPage() {
     amount: '',
     operationDate: new Date().toISOString().split('T')[0],
     categoryId: '',
+  });
+
+  // Состояние для рекуррентных транзакций
+  const [recurringDialogOpen, setRecurringDialogOpen] = useState(false);
+  const [recurringEditMode, setRecurringEditMode] = useState<'create' | 'edit'>('create');
+  const [recurringToEdit, setRecurringToEdit] = useState<RecurringTransaction | null>(null);
+  const [recurringDeleteConfirmOpen, setRecurringDeleteConfirmOpen] = useState(false);
+  const [recurringToDelete, setRecurringToDelete] = useState<string | null>(null);
+  const [recurringForm, setRecurringForm] = useState<RecurringTransactionFormState>({
+    name: '',
+    type: 'Income',
+    amount: '',
+    dayOfMonth: '15',
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: '',
+    categoryId: '',
+    hasEndDate: false,
   });
 
   const { data: wallet, isLoading, isPending, error } = useQuery({
@@ -495,16 +642,18 @@ function WalletPage() {
   const { data: incomeCategories = [] } = useQuery({
     queryKey: ['categories', 'Income'],
     queryFn: () => fetchCategories('Income'),
-    enabled: transactionDialogOpen && transactionType === 'Income',
+    enabled: (transactionDialogOpen && transactionType === 'Income') || (recurringDialogOpen && recurringForm.type === 'Income'),
     retry: false,
   });
 
   const { data: expenseCategories = [] } = useQuery({
     queryKey: ['categories', 'Expense'],
     queryFn: () => fetchCategories('Expense'),
-    enabled: transactionDialogOpen && transactionType === 'Expense',
+    enabled: (transactionDialogOpen && transactionType === 'Expense') || (recurringDialogOpen && recurringForm.type === 'Expense'),
     retry: false,
   });
+
+  // Используем те же категории для рекуррентных транзакций
 
   const { data: allWallets = [] } = useQuery({
     queryKey: ['wallets'],
@@ -512,6 +661,19 @@ function WalletPage() {
     enabled: transferDialogOpen,
     retry: false,
   });
+
+  // Загружаем рекуррентные транзакции
+  const { data: allRecurringTransactions = [] } = useQuery({
+    queryKey: ['recurring-transactions'],
+    queryFn: fetchRecurringTransactions,
+    enabled: !!walletId && !wallet?.isArchived,
+    retry: false,
+  });
+
+  // Фильтруем рекуррентные транзакции для текущего кошелька
+  const walletRecurringTransactions = useMemo(() => {
+    return allRecurringTransactions.filter((rt) => rt.walletId === walletId);
+  }, [allRecurringTransactions, walletId]);
 
   const updateWalletMutation = useMutation({
     mutationFn: (payload: UpdateWalletPayload) => updateWallet(walletId!, payload),
@@ -621,6 +783,81 @@ function WalletPage() {
     onError: (error: Error) => {
       console.error('Failed to create transfer:', error);
       setErrorDialog({ open: true, message: error.message || 'Ошибка создания перевода' });
+    },
+  });
+
+  // Мутации для рекуррентных транзакций
+  const createRecurringTransactionMutation = useMutation({
+    mutationFn: (payload: CreateRecurringTransactionPayload) => createRecurringTransaction(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['recurring-transactions'] });
+      setRecurringDialogOpen(false);
+      setRecurringForm({
+        name: '',
+        type: 'Income',
+        amount: '',
+        dayOfMonth: '15',
+        startDate: new Date().toISOString().split('T')[0],
+        endDate: '',
+        categoryId: '',
+        hasEndDate: false,
+      });
+      setRecurringEditMode('create');
+      setRecurringToEdit(null);
+    },
+    onError: (error: Error) => {
+      console.error('Failed to create recurring transaction:', error);
+      setErrorDialog({ open: true, message: error.message || 'Ошибка создания рекуррентной транзакции' });
+    },
+  });
+
+  const updateRecurringTransactionMutation = useMutation({
+    mutationFn: ({ recurringId, payload }: { recurringId: string; payload: UpdateRecurringTransactionPayload }) =>
+      updateRecurringTransaction(recurringId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['recurring-transactions'] });
+      setRecurringDialogOpen(false);
+      setRecurringForm({
+        name: '',
+        type: 'Income',
+        amount: '',
+        dayOfMonth: '15',
+        startDate: new Date().toISOString().split('T')[0],
+        endDate: '',
+        categoryId: '',
+        hasEndDate: false,
+      });
+      setRecurringEditMode('create');
+      setRecurringToEdit(null);
+    },
+    onError: (error: Error) => {
+      console.error('Failed to update recurring transaction:', error);
+      setErrorDialog({ open: true, message: error.message || 'Ошибка обновления рекуррентной транзакции' });
+    },
+  });
+
+  const toggleRecurringTransactionMutation = useMutation({
+    mutationFn: ({ recurringId, isActive }: { recurringId: string; isActive: boolean }) =>
+      toggleRecurringTransaction(recurringId, isActive),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['recurring-transactions'] });
+    },
+    onError: (error: Error) => {
+      console.error('Failed to toggle recurring transaction:', error);
+      setErrorDialog({ open: true, message: error.message || 'Ошибка переключения рекуррентной транзакции' });
+    },
+  });
+
+  const deleteRecurringTransactionMutation = useMutation({
+    mutationFn: deleteRecurringTransaction,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['recurring-transactions'] });
+      setRecurringDeleteConfirmOpen(false);
+      setRecurringToDelete(null);
+    },
+    onError: (error: Error) => {
+      console.error('Failed to delete recurring transaction:', error);
+      setErrorDialog({ open: true, message: error.message || 'Ошибка удаления рекуррентной транзакции' });
     },
   });
 
@@ -842,6 +1079,120 @@ function WalletPage() {
   const fromWallets = availableWallets.filter((w) => w.id !== transferForm.toWalletId);
   const toWallets = availableWallets.filter((w) => w.id !== transferForm.fromWalletId);
 
+  // Обработчики для рекуррентных транзакций
+  const handleOpenRecurringDialog = (type: 'Income' | 'Expense' = 'Income') => {
+    setRecurringForm({
+      name: '',
+      type,
+      amount: '',
+      dayOfMonth: '15',
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: '',
+      categoryId: '',
+      hasEndDate: false,
+    });
+    setRecurringEditMode('create');
+    setRecurringToEdit(null);
+    setRecurringDialogOpen(true);
+  };
+
+  const handleCloseRecurringDialog = () => {
+    setRecurringDialogOpen(false);
+    setRecurringForm({
+      name: '',
+      type: 'Income',
+      amount: '',
+      dayOfMonth: '15',
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: '',
+      categoryId: '',
+      hasEndDate: false,
+    });
+    setRecurringEditMode('create');
+    setRecurringToEdit(null);
+  };
+
+  const handleEditRecurring = (recurring: RecurringTransaction) => {
+    setRecurringToEdit(recurring);
+    setRecurringForm({
+      name: recurring.name,
+      type: recurring.type,
+      amount: recurring.amount.toString(),
+      dayOfMonth: recurring.dayOfMonth.toString(),
+      startDate: recurring.startDate,
+      endDate: recurring.endDate || '',
+      categoryId: recurring.categoryId || '',
+      hasEndDate: !!recurring.endDate,
+    });
+    setRecurringEditMode('edit');
+    setRecurringDialogOpen(true);
+  };
+
+  const handleSaveRecurring = () => {
+    if (!recurringForm.name.trim()) {
+      setErrorDialog({ open: true, message: 'Введите название' });
+      return;
+    }
+
+    const amount = parseFloat(recurringForm.amount);
+    if (!recurringForm.amount || isNaN(amount) || amount <= 0) {
+      setErrorDialog({ open: true, message: 'Введите корректную сумму (больше 0)' });
+      return;
+    }
+
+    const dayOfMonth = parseInt(recurringForm.dayOfMonth);
+    if (!recurringForm.dayOfMonth || isNaN(dayOfMonth) || dayOfMonth < 1 || dayOfMonth > 28) {
+      setErrorDialog({ open: true, message: 'День месяца должен быть от 1 до 28' });
+      return;
+    }
+
+    if (!recurringForm.startDate) {
+      setErrorDialog({ open: true, message: 'Выберите дату начала' });
+      return;
+    }
+
+    if (recurringEditMode === 'create') {
+      const payload: CreateRecurringTransactionPayload = {
+        walletId: walletId!,
+        name: recurringForm.name.trim(),
+        type: recurringForm.type,
+        amount,
+        dayOfMonth,
+        startDate: recurringForm.startDate,
+        categoryId: recurringForm.categoryId || null,
+        endDate: recurringForm.hasEndDate && recurringForm.endDate ? recurringForm.endDate : null,
+      };
+      createRecurringTransactionMutation.mutate(payload);
+    } else if (recurringToEdit) {
+      const payload: UpdateRecurringTransactionPayload = {
+        name: recurringForm.name.trim(),
+        amount,
+        dayOfMonth,
+        endDate: recurringForm.hasEndDate && recurringForm.endDate ? recurringForm.endDate : null,
+        categoryId: recurringForm.categoryId || null,
+      };
+      updateRecurringTransactionMutation.mutate({ recurringId: recurringToEdit.id, payload });
+    }
+  };
+
+  const handleToggleRecurring = (recurring: RecurringTransaction) => {
+    toggleRecurringTransactionMutation.mutate({
+      recurringId: recurring.id,
+      isActive: !recurring.isActive,
+    });
+  };
+
+  const handleDeleteRecurringClick = (recurringId: string) => {
+    setRecurringToDelete(recurringId);
+    setRecurringDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteRecurringConfirm = () => {
+    if (recurringToDelete) {
+      deleteRecurringTransactionMutation.mutate(recurringToDelete);
+    }
+  };
+
   if (isLoading || isPending) {
     return <Loading />;
   }
@@ -971,6 +1322,154 @@ function WalletPage() {
           </Stack>
         </CardContent>
       </Card>
+
+      {/* Секция рекуррентных транзакций */}
+      {!wallet.isArchived && (
+        <Card variant="outlined" sx={{ mb: 3 }}>
+          <CardContent>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6">Ежемесячные транзакции</Typography>
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button
+                  variant="outlined"
+                  color="success"
+                  startIcon={<TrendingUpIcon />}
+                  onClick={() => handleOpenRecurringDialog('Income')}
+                  size="small"
+                >
+                  Доход
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  startIcon={<TrendingDownIcon />}
+                  onClick={() => handleOpenRecurringDialog('Expense')}
+                  size="small"
+                >
+                  Расход
+                </Button>
+              </Box>
+            </Box>
+
+            {walletRecurringTransactions.length === 0 ? (
+              <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
+                Нет ежемесячных транзакций. Добавьте регулярный доход или расход.
+              </Typography>
+            ) : (
+              <TableContainer component={Paper} variant="outlined">
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Название</TableCell>
+                      <TableCell>Тип</TableCell>
+                      <TableCell align="right">Сумма</TableCell>
+                      <TableCell>День месяца</TableCell>
+                      <TableCell>Период</TableCell>
+                      <TableCell>Статус</TableCell>
+                      <TableCell align="right">Действия</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {walletRecurringTransactions.map((recurring) => {
+                      // Используем все категории для поиска, так как они уже загружены
+                      const allCategories = [...incomeCategories, ...expenseCategories];
+                      const category = allCategories.find((c) => c.id === recurring.categoryId);
+                      const isExpired = recurring.endDate && new Date(recurring.endDate) < new Date();
+
+                      return (
+                        <TableRow key={recurring.id}>
+                          <TableCell>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <RepeatIcon fontSize="small" color="action" />
+                              {recurring.name}
+                              {category && (
+                                <Chip
+                                  label={category.icon ? `${category.icon} ${category.name}` : category.name}
+                                  size="small"
+                                  sx={{ ml: 1 }}
+                                  variant="outlined"
+                                />
+                              )}
+                            </Box>
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              label={recurring.type === 'Income' ? 'Доход' : 'Расход'}
+                              size="small"
+                              color={recurring.type === 'Income' ? 'success' : 'error'}
+                            />
+                          </TableCell>
+                          <TableCell align="right">
+                            <Typography
+                              color={recurring.type === 'Income' ? 'success.main' : 'error.main'}
+                              fontWeight="bold"
+                            >
+                              {recurring.type === 'Income' ? '+' : '-'}
+                              {formatMoney(recurring.amount)}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>{recurring.dayOfMonth}</TableCell>
+                          <TableCell>
+                            <Typography variant="body2">
+                              {formatDateShort(recurring.startDate)}
+                              {recurring.endDate ? ` — ${formatDateShort(recurring.endDate)}` : ' — бессрочно'}
+                            </Typography>
+                            {recurring.lastProcessedDate && (
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                                Последнее: {formatDateShort(recurring.lastProcessedDate)}
+                              </Typography>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {isExpired ? (
+                              <Chip label="Завершено" size="small" color="default" />
+                            ) : recurring.isActive ? (
+                              <Chip label="Активно" size="small" color="success" />
+                            ) : (
+                              <Chip label="Неактивно" size="small" color="default" />
+                            )}
+                          </TableCell>
+                          <TableCell align="right">
+                            <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
+                              <IconButton
+                                size="small"
+                                color={recurring.isActive ? 'success' : 'default'}
+                                onClick={() => handleToggleRecurring(recurring)}
+                                disabled={toggleRecurringTransactionMutation.isPending}
+                                title={recurring.isActive ? 'Деактивировать' : 'Активировать'}
+                              >
+                                {recurring.isActive ? (
+                                  <ToggleOnIcon fontSize="small" />
+                                ) : (
+                                  <ToggleOffIcon fontSize="small" />
+                                )}
+                              </IconButton>
+                              <IconButton
+                                size="small"
+                                color="primary"
+                                onClick={() => handleEditRecurring(recurring)}
+                              >
+                                <EditIcon fontSize="small" />
+                              </IconButton>
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => handleDeleteRecurringClick(recurring.id)}
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Секция транзакций */}
       {!wallet.isArchived && (
@@ -1481,6 +1980,158 @@ function WalletPage() {
             startIcon={<SwapHorizIcon />}
           >
             {createTransferMutation.isPending ? 'Создание...' : 'Создать перевод'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog создания/редактирования рекуррентной транзакции */}
+      <Dialog open={recurringDialogOpen} onClose={handleCloseRecurringDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          {recurringEditMode === 'edit'
+            ? recurringForm.type === 'Income'
+              ? 'Редактировать ежемесячный доход'
+              : 'Редактировать ежемесячный расход'
+            : recurringForm.type === 'Income'
+              ? 'Добавить ежемесячный доход'
+              : 'Добавить ежемесячный расход'}
+        </DialogTitle>
+        <DialogContent>
+          <Stack spacing={3} sx={{ mt: 1 }}>
+            <FormControl fullWidth required>
+              <InputLabel>Тип</InputLabel>
+              <Select
+                value={recurringForm.type}
+                label="Тип"
+                onChange={(e) =>
+                  setRecurringForm({ ...recurringForm, type: e.target.value as 'Income' | 'Expense', categoryId: '' })
+                }
+              >
+                <MenuItem value="Income">Доход</MenuItem>
+                <MenuItem value="Expense">Расход</MenuItem>
+              </Select>
+            </FormControl>
+
+            <TextField
+              label="Название"
+              value={recurringForm.name}
+              onChange={(e) => setRecurringForm({ ...recurringForm, name: e.target.value })}
+              fullWidth
+              required
+              autoFocus
+            />
+
+            <TextField
+              label="Сумма"
+              type="number"
+              value={recurringForm.amount}
+              onChange={(e) => setRecurringForm({ ...recurringForm, amount: e.target.value })}
+              fullWidth
+              required
+              inputProps={{ min: 0.01, step: 0.01 }}
+              InputProps={{
+                endAdornment: <InputAdornment position="end">₽</InputAdornment>,
+              }}
+            />
+
+            <TextField
+              label="День месяца"
+              type="number"
+              value={recurringForm.dayOfMonth}
+              onChange={(e) => setRecurringForm({ ...recurringForm, dayOfMonth: e.target.value })}
+              fullWidth
+              required
+              inputProps={{ min: 1, max: 28 }}
+              helperText="От 1 до 28 (чтобы избежать проблем с разной длиной месяцев)"
+            />
+
+            <TextField
+              label="Дата начала"
+              type="date"
+              value={recurringForm.startDate}
+              onChange={(e) => setRecurringForm({ ...recurringForm, startDate: e.target.value })}
+              fullWidth
+              required
+              InputLabelProps={{ shrink: true }}
+            />
+
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={recurringForm.hasEndDate}
+                  onChange={(e) => setRecurringForm({ ...recurringForm, hasEndDate: e.target.checked })}
+                />
+              }
+              label="Указать дату окончания"
+            />
+
+            {recurringForm.hasEndDate && (
+              <TextField
+                label="Дата окончания"
+                type="date"
+                value={recurringForm.endDate}
+                onChange={(e) => setRecurringForm({ ...recurringForm, endDate: e.target.value })}
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+                inputProps={{ min: recurringForm.startDate }}
+              />
+            )}
+
+            <FormControl fullWidth>
+              <InputLabel>Категория (опционально)</InputLabel>
+              <Select
+                value={recurringForm.categoryId}
+                label="Категория (опционально)"
+                onChange={(e) => setRecurringForm({ ...recurringForm, categoryId: e.target.value })}
+              >
+                <MenuItem value="">Без категории</MenuItem>
+                {(recurringForm.type === 'Income' ? incomeCategories : expenseCategories).map((category) => (
+                  <MenuItem key={category.id} value={category.id}>
+                    {category.icon} {category.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseRecurringDialog}>Отмена</Button>
+          <Button
+            onClick={handleSaveRecurring}
+            variant="contained"
+            color={recurringForm.type === 'Income' ? 'success' : 'error'}
+            disabled={createRecurringTransactionMutation.isPending || updateRecurringTransactionMutation.isPending}
+          >
+            {recurringEditMode === 'edit'
+              ? updateRecurringTransactionMutation.isPending
+                ? 'Сохранение...'
+                : 'Сохранить'
+              : createRecurringTransactionMutation.isPending
+                ? 'Создание...'
+                : 'Создать'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog подтверждения удаления рекуррентной транзакции */}
+      <Dialog open={recurringDeleteConfirmOpen} onClose={() => setRecurringDeleteConfirmOpen(false)}>
+        <DialogTitle>Удалить ежемесячную транзакцию</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Вы уверены, что хотите удалить это правило?
+            <br />
+            Уже созданные транзакции не будут удалены.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRecurringDeleteConfirmOpen(false)}>Отмена</Button>
+          <Button
+            onClick={handleDeleteRecurringConfirm}
+            color="error"
+            variant="contained"
+            disabled={deleteRecurringTransactionMutation.isPending}
+            startIcon={<DeleteIcon />}
+          >
+            {deleteRecurringTransactionMutation.isPending ? 'Удаление...' : 'Удалить'}
           </Button>
         </DialogActions>
       </Dialog>
