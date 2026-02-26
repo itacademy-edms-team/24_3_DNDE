@@ -1,4 +1,5 @@
-using FinanceTrack.Finance.Core.WalletAggregate;
+﻿using FinanceTrack.Finance.Core.WalletAggregate;
+using FinanceTrack.Finance.Core.WalletAggregate.Specifications;
 
 namespace FinanceTrack.Finance.UseCases.Wallets.Get;
 
@@ -7,7 +8,8 @@ public sealed class GetWalletHandler(IReadRepository<Wallet> _repo)
 {
     public async Task<Result<WalletDto>> Handle(GetWalletQuery request, CancellationToken ct)
     {
-        var wallet = await _repo.GetByIdAsync(request.WalletId, ct);
+        var spec = new WalletByIdSpec(request.WalletId);
+        var wallet = await _repo.GetByIdAsync(spec, ct);
         if (wallet is null)
             return Result.NotFound();
         if (!string.Equals(wallet.UserId, request.UserId, StringComparison.Ordinal))
