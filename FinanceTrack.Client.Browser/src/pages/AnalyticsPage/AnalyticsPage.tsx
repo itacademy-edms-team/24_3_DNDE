@@ -1,26 +1,36 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
-import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
+import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Box,
-  Button,
-  CircularProgress,
+  Card,
+  CardContent,
+  FormControl,
+  InputLabel,
   MenuItem,
-  Paper,
-  Stack,
-  TextField,
+  Select,
   Typography,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Chip,
+  Grid2,
+  Paper,
 } from '@mui/material';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { fetchIncomes, fetchExpensesByIncome } from './api';
-import type { ExpenseTransaction, IncomeTransaction } from './api';
+import {
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
+
+import Loading from '@/components/Loading';
+
+const getErrorMessage = (operation: string, status: number): string => {
+  return `Ошибка ${operation}: ${status}`;
+};
 
 const MONTH_OPTIONS = [
   { value: 1, label: 'Январь' },
@@ -37,824 +47,189 @@ const MONTH_OPTIONS = [
   { value: 12, label: 'Декабрь' },
 ];
 
-const getYearMonth = (dateStr: string): { year: number; month: number } => {
-  const [yearRaw, monthRaw] = dateStr.split('-');
-  return {
-    year: Number(yearRaw) || 0,
-    month: Number(monthRaw) || 0,
-  };
+type OverviewResponse = {
+  totalBalance: number;
+  totalIncome: number;
+  totalExpense: number;
+  netFlow: number;
+  accounts: Array<{
+    walletId: string;
+    walletName: string;
+    walletType: string;
+    balance: number;
+    income: number;
+    expense: number;
+  }>;
 };
 
-const isInPeriod = (
-  transactionDate: string,
-  isMonthly: boolean,
-  selectedYear: number,
-  selectedMonth: number
-): boolean => {
-  const { year, month } = getYearMonth(transactionDate);
-  if (!year || !month) return false;
-  if (isMonthly) {
-    return year < selectedYear || (year === selectedYear && month <= selectedMonth);
+type CashFlowPeriod = {
+  year: number;
+  month: number;
+  income: number;
+  expense: number;
+  net: number;
+};
+
+type CashFlowResponse = {
+  periods: CashFlowPeriod[];
+};
+
+type CategoryAnalytics = {
+  categoryId: string | null;
+  categoryName: string | null;
+  amount: number;
+  percentage: number;
+};
+
+type CategoriesAnalyticsResponse = {
+  incomeByCategory: CategoryAnalytics[];
+  expenseByCategory: CategoryAnalytics[];
+};
+
+const fetchOverview = async (from: string, to: string): Promise<OverviewResponse> => {
+  const res = await fetch(`/api/finance/Analytics/Overview?from=${from}&to=${to}`, {
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    throw new Error(getErrorMessage('загрузки обзора', res.status));
   }
-  return year === selectedYear && month === selectedMonth;
+  return await res.json();
 };
 
-const formatMoney = (value: number): string => `${value.toFixed(2)} ₽`;
+const fetchCashFlow = async (from: string, to: string): Promise<CashFlowResponse> => {
+  const res = await fetch(`/api/finance/Analytics/CashFlow?from=${from}&to=${to}`, {
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    throw new Error(getErrorMessage('загрузки денежного потока', res.status));
+  }
+  return await res.json();
+};
 
-// Цвета для секторов графика
+const fetchCategoriesAnalytics = async (from: string, to: string): Promise<CategoriesAnalyticsResponse> => {
+  const res = await fetch(`/api/finance/Analytics/Categories?from=${from}&to=${to}`, {
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    throw new Error(getErrorMessage('загрузки аналитики по категориям', res.status));
+  }
+  return await res.json();
+};
+
+const formatMoney = (value: number): string => {
+  return new Intl.NumberFormat('ru-RU', {
+    style: 'currency',
+    currency: 'RUB',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
+};
+
+// Цвета для Pie Chart
 const COLORS = [
   '#0088FE',
   '#00C49F',
   '#FFBB28',
   '#FF8042',
-  '#8884D8',
-  '#82CA9D',
-  '#FFC658',
-  '#FF7C7C',
-  '#8DD1E1',
-  '#D084D0',
-  '#FFB347',
-  '#87CEEB',
+  '#8884d8',
+  '#82ca9d',
+  '#ffc658',
+  '#ff7c7c',
+  '#8dd1e1',
+  '#d084d0',
+  '#ffb347',
+  '#87ceeb',
 ];
 
-type ExpenseGroup = {
-  name: string;
-  value: number;
-  count: number;
-};
-
-type BarChartData = {
-  date: string;
-  amount: number;
-  count: number;
-  label: string; // Для отображения на оси X
-};
-
-type DateRange = {
-  startYear: number;
-  startMonth: number;
-  endYear: number;
-  endMonth: number;
-};
-
-type MonthlyBalance = {
-  year: number;
-  month: number;
-  incomes: number;
-  expenses: number;
-  balance: number;
-};
-
 function AnalyticsPage() {
-  const now = useMemo(() => new Date(), []);
-  // Фильтры для Pie Chart
-  const [selectedYear, setSelectedYear] = useState<number>(now.getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState<number>(now.getMonth() + 1);
-  // Фильтры для Bar Chart расходов (гистограммы) - диапазон дат
-  const [barChartStartYear, setBarChartStartYear] = useState<number>(now.getFullYear());
-  const [barChartStartMonth, setBarChartStartMonth] = useState<number>(now.getMonth() + 1);
-  const [barChartEndYear, setBarChartEndYear] = useState<number>(now.getFullYear());
-  const [barChartEndMonth, setBarChartEndMonth] = useState<number>(now.getMonth() + 1);
-  // Фильтры для Bar Chart доходов (гистограммы) - диапазон дат
-  const [incomeChartStartYear, setIncomeChartStartYear] = useState<number>(now.getFullYear());
-  const [incomeChartStartMonth, setIncomeChartStartMonth] = useState<number>(now.getMonth() + 1);
-  const [incomeChartEndYear, setIncomeChartEndYear] = useState<number>(now.getFullYear());
-  const [incomeChartEndMonth, setIncomeChartEndMonth] = useState<number>(now.getMonth() + 1);
-  const [incomes, setIncomes] = useState<IncomeTransaction[]>([]);
-  const [expensesByIncome, setExpensesByIncome] = useState<Record<string, ExpenseTransaction[]>>({});
-  const [loadingIncomes, setLoadingIncomes] = useState(false);
-  const [loadingExpenses, setLoadingExpenses] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const now = new Date();
+  const [filterStartYear, setFilterStartYear] = useState<number>(now.getFullYear());
+  const [filterStartMonth, setFilterStartMonth] = useState<number>(now.getMonth() + 1);
+  const [filterEndYear, setFilterEndYear] = useState<number>(now.getFullYear());
+  const [filterEndMonth, setFilterEndMonth] = useState<number>(now.getMonth() + 1);
 
-  const loadExpenses = useCallback(async (incomeId: string) => {
-    try {
-      const data = await fetchExpensesByIncome(incomeId);
-      setExpensesByIncome(prev => {
-        if (prev[incomeId]) {
-          return prev; // Уже загружены
-        }
-        return {
-          ...prev,
-          [incomeId]: data,
-        };
-      });
-    } catch (e) {
-      const err = e as Error;
-      setError(err.message ?? 'Ошибка загрузки расходов');
-    }
-  }, []);
+  // Формируем даты для фильтрации
+  const filterFrom = `${filterStartYear}-${String(filterStartMonth).padStart(2, '0')}-01`;
+  const filterTo = `${filterEndYear}-${String(filterEndMonth).padStart(2, '0')}-${new Date(filterEndYear, filterEndMonth, 0).getDate()}`;
 
-  const loadIncomes = useCallback(async () => {
-    setLoadingIncomes(true);
-    setError(null);
-    try {
-      const data = await fetchIncomes();
-      setIncomes(data);
-      
-      // Загружаем расходы для всех доходов
-      setLoadingExpenses(true);
-      try {
-        await Promise.all(data.map(income => loadExpenses(income.id)));
-      } catch (e) {
-        const err = e as Error;
-        setError(err.message ?? 'Ошибка загрузки расходов');
-      } finally {
-        setLoadingExpenses(false);
-      }
-    } catch (e) {
-      const err = e as Error;
-      setError(err.message ?? 'Ошибка загрузки доходов');
-    } finally {
-      setLoadingIncomes(false);
-    }
-  }, [loadExpenses]);
+  const { data: overview, isLoading: isLoadingOverview } = useQuery({
+    queryKey: ['analytics', 'overview', filterFrom, filterTo],
+    queryFn: () => fetchOverview(filterFrom, filterTo),
+    retry: false,
+  });
 
-  useEffect(() => {
-    void loadIncomes();
-  }, [loadIncomes]);
+  const { data: cashFlow, isLoading: isLoadingCashFlow } = useQuery({
+    queryKey: ['analytics', 'cashflow', filterFrom, filterTo],
+    queryFn: () => fetchCashFlow(filterFrom, filterTo),
+    retry: false,
+  });
 
-  // Собираем все расходы из всех доходов
-  const allExpenses = useMemo(() => {
-    return Object.values(expensesByIncome).flat();
-  }, [expensesByIncome]);
+  const { data: categoriesAnalytics, isLoading: isLoadingCategories } = useQuery({
+    queryKey: ['analytics', 'categories', filterFrom, filterTo],
+    queryFn: () => fetchCategoriesAnalytics(filterFrom, filterTo),
+    retry: false,
+  });
 
-  // Фильтруем расходы по выбранному периоду
-  const filteredExpenses = useMemo(() => {
-    return allExpenses.filter(e => isInPeriod(e.operationDate, e.isMonthly, selectedYear, selectedMonth));
-  }, [allExpenses, selectedYear, selectedMonth]);
+  // Форматируем данные для Bar Chart
+  const cashFlowChartData = useMemo(() => {
+    if (!cashFlow?.periods) return [];
+    return cashFlow.periods.map((period) => ({
+      name: `${MONTH_OPTIONS[period.month - 1]?.label || period.month} ${period.year}`,
+      Доходы: period.income,
+      Расходы: period.expense,
+      Чистый: period.net,
+    }));
+  }, [cashFlow]);
 
-  // Группируем расходы по названиям
-  const expenseGroups = useMemo<ExpenseGroup[]>(() => {
-    const groups = new Map<string, number>();
+  // Форматируем данные для Pie Chart доходов
+  const incomePieData = useMemo(() => {
+    if (!categoriesAnalytics?.incomeByCategory) return [];
+    return categoriesAnalytics.incomeByCategory.map((item) => ({
+      name: item.categoryName || 'Без категории',
+      value: item.amount,
+      percentage: item.percentage,
+    }));
+  }, [categoriesAnalytics]);
 
-    filteredExpenses.forEach(expense => {
-      const current = groups.get(expense.name) || 0;
-      groups.set(expense.name, current + expense.amount);
-    });
+  // Форматируем данные для Pie Chart расходов
+  const expensePieData = useMemo(() => {
+    if (!categoriesAnalytics?.expenseByCategory) return [];
+    return categoriesAnalytics.expenseByCategory.map((item) => ({
+      name: item.categoryName || 'Без категории',
+      value: item.amount,
+      percentage: item.percentage,
+    }));
+  }, [categoriesAnalytics]);
 
-    return Array.from(groups.entries())
-      .map(([name, value]) => ({
-        name,
-        value: Number(value.toFixed(2)),
-        count: filteredExpenses.filter(e => e.name === name).length,
-      }))
-      .sort((a, b) => b.value - a.value);
-  }, [filteredExpenses]);
-
-  const totalAmount = useMemo(
-    () => expenseGroups.reduce((sum, group) => sum + group.value, 0),
-    [expenseGroups]
-  );
-
+  // Генерируем список доступных годов
   const availableYears = useMemo(() => {
-    const set = new Set<number>([now.getFullYear(), selectedYear]);
-    incomes.forEach(i => {
-      const { year } = getYearMonth(i.operationDate);
-      if (year) set.add(year);
-    });
-    allExpenses.forEach(e => {
-      const { year } = getYearMonth(e.operationDate);
-      if (year) set.add(year);
-    });
-    return Array.from(set).sort((a, b) => b - a);
-  }, [incomes, allExpenses, now, selectedYear]);
-
-  // Получаем все месяцы, где есть транзакции
-  const monthsWithTransactions = useMemo(() => {
-    const monthSet = new Set<string>();
-    
-    incomes.forEach(income => {
-      const { year, month } = getYearMonth(income.operationDate);
-      if (year && month) {
-        if (income.isMonthly) {
-          // Для помесячных доходов добавляем все месяцы начиная с месяца создания до текущего
-          const nowDate = new Date();
-          let currentYear = year;
-          let currentMonth = month;
-          
-          while (
-            currentYear < nowDate.getFullYear() ||
-            (currentYear === nowDate.getFullYear() && currentMonth <= nowDate.getMonth() + 1)
-          ) {
-            monthSet.add(`${currentYear}-${currentMonth}`);
-            currentMonth++;
-            if (currentMonth > 12) {
-              currentMonth = 1;
-              currentYear++;
-            }
-          }
-        } else {
-          monthSet.add(`${year}-${month}`);
-        }
-      }
-    });
-
-    allExpenses.forEach(expense => {
-      const { year, month } = getYearMonth(expense.operationDate);
-      if (year && month) {
-        if (expense.isMonthly) {
-          // Для помесячных расходов добавляем все месяцы начиная с месяца создания до текущего
-          const nowDate = new Date();
-          let currentYear = year;
-          let currentMonth = month;
-          
-          while (
-            currentYear < nowDate.getFullYear() ||
-            (currentYear === nowDate.getFullYear() && currentMonth <= nowDate.getMonth() + 1)
-          ) {
-            monthSet.add(`${currentYear}-${currentMonth}`);
-            currentMonth++;
-            if (currentMonth > 12) {
-              currentMonth = 1;
-              currentYear++;
-            }
-          }
-        } else {
-          monthSet.add(`${year}-${month}`);
-        }
-      }
-    });
-
-    return Array.from(monthSet)
-      .map(key => {
-        const [year, month] = key.split('-').map(Number);
-        return { year, month };
-      })
-      .sort((a, b) => {
-        if (a.year !== b.year) return b.year - a.year;
-        return b.month - a.month;
-      });
-  }, [incomes, allExpenses]);
-
-  // Рассчитываем баланс по месяцам
-  const monthlyBalances = useMemo<MonthlyBalance[]>(() => {
-    return monthsWithTransactions.map(({ year, month }) => {
-      let monthIncomes = 0;
-      let monthExpenses = 0;
-
-      // Считаем доходы за месяц
-      incomes.forEach(income => {
-        if (isInPeriod(income.operationDate, income.isMonthly, year, month)) {
-          monthIncomes += income.amount;
-        }
-      });
-
-      // Считаем расходы за месяц
-      allExpenses.forEach(expense => {
-        if (isInPeriod(expense.operationDate, expense.isMonthly, year, month)) {
-          monthExpenses += expense.amount;
-        }
-      });
-
-      return {
-        year,
-        month,
-        incomes: Number(monthIncomes.toFixed(2)),
-        expenses: Number(monthExpenses.toFixed(2)),
-        balance: Number((monthIncomes - monthExpenses).toFixed(2)),
-      };
-    });
-  }, [incomes, allExpenses, monthsWithTransactions]);
-
-  // Общий баланс (сумма всех балансов)
-  const totalBalance = useMemo(
-    () => monthlyBalances.reduce((sum, mb) => sum + mb.balance, 0),
-    [monthlyBalances]
-  );
-
-  const shiftMonth = (delta: number) => {
-    setSelectedMonth(prev => {
-      let nextMonth = prev + delta;
-      let nextYear = selectedYear;
-      if (nextMonth > 12) {
-        nextMonth = 1;
-        nextYear += 1;
-      } else if (nextMonth < 1) {
-        nextMonth = 12;
-        nextYear -= 1;
-      }
-      setSelectedYear(nextYear);
-      return nextMonth;
-    });
-  };
-
-  // Функция для проверки, попадает ли дата в диапазон
-  const isDateInRange = (
-    transactionDate: string,
-    isMonthly: boolean,
-    startYear: number,
-    startMonth: number,
-    endYear: number,
-    endMonth: number
-  ): boolean => {
-    const { year, month } = getYearMonth(transactionDate);
-    if (!year || !month) return false;
-
-    // Для помесячных транзакций: проверяем, попадает ли начало периода в диапазон
-    if (isMonthly) {
-      // Помесячная транзакция учитывается, если её дата <= конца периода
-      return year < endYear || (year === endYear && month <= endMonth);
+    const years: number[] = [];
+    for (let year = now.getFullYear(); year >= now.getFullYear() - 5; year--) {
+      years.push(year);
     }
+    return years;
+  }, [now]);
 
-    // Для разовых транзакций: проверяем точное попадание в диапазон
-    const startDate = new Date(startYear, startMonth - 1, 1);
-    const endDate = new Date(endYear, endMonth, 0); // Последний день месяца
-    const txDate = new Date(year, month - 1, Number(transactionDate.split('-')[2]) || 1);
+  const isLoading = isLoadingOverview || isLoadingCashFlow || isLoadingCategories;
 
-    return txDate >= startDate && txDate <= endDate;
-  };
+  if (isLoading) {
+    return <Loading />;
+  }
 
-  // Получить все даты в диапазоне
-  const getDatesInRange = (startYear: number, startMonth: number, endYear: number, endMonth: number): Date[] => {
-    const dates: Date[] = [];
-    const start = new Date(startYear, startMonth - 1, 1);
-    const end = new Date(endYear, endMonth, 0); // Последний день месяца
-
-    const current = new Date(start);
-    while (current <= end) {
-      dates.push(new Date(current));
-      current.setDate(current.getDate() + 1);
-    }
-
-    return dates;
-  };
-
-  // Определить тип группировки в зависимости от размера диапазона
-  const getGroupingType = (startYear: number, startMonth: number, endYear: number, endMonth: number): 'day' | 'week' | 'month' => {
-    const start = new Date(startYear, startMonth - 1, 1);
-    const end = new Date(endYear, endMonth, 0);
-    const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-
-    if (daysDiff <= 31) return 'day';
-    if (daysDiff <= 90) return 'week';
-    return 'month';
-  };
-
-  // Фильтруем расходы для гистограммы по выбранному диапазону
-  const barChartFilteredExpenses = useMemo(() => {
-    return allExpenses.filter(e =>
-      isDateInRange(e.operationDate, e.isMonthly, barChartStartYear, barChartStartMonth, barChartEndYear, barChartEndMonth)
-    );
-  }, [allExpenses, barChartStartYear, barChartStartMonth, barChartEndYear, barChartEndMonth]);
-
-  // Группируем расходы для гистограммы
-  const barChartData = useMemo<BarChartData[]>(() => {
-    const groupingType = getGroupingType(barChartStartYear, barChartStartMonth, barChartEndYear, barChartEndMonth);
-    const dataMap = new Map<string, { amount: number; count: number; label: string }>();
-
-    // Получаем все месяцы в диапазоне
-    const monthsInRange: Array<{ year: number; month: number }> = [];
-    let currentYear = barChartStartYear;
-    let currentMonth = barChartStartMonth;
-    
-    while (
-      currentYear < barChartEndYear ||
-      (currentYear === barChartEndYear && currentMonth <= barChartEndMonth)
-    ) {
-      monthsInRange.push({ year: currentYear, month: currentMonth });
-      currentMonth++;
-      if (currentMonth > 12) {
-        currentMonth = 1;
-        currentYear++;
-      }
-    }
-
-    if (groupingType === 'day') {
-      // Группировка по дням
-      const dates = getDatesInRange(barChartStartYear, barChartStartMonth, barChartEndYear, barChartEndMonth);
-
-      // Обрабатываем все расходы (и разовые, и помесячные)
-      barChartFilteredExpenses.forEach(expense => {
-        const { year: expenseYear, month: expenseMonth } = getYearMonth(expense.operationDate);
-        const expenseDay = Number(expense.operationDate.split('-')[2]) || 1;
-        
-        if (!expense.isMonthly) {
-          // Разовый расход - показываем только в день его создания
-          const key = expense.operationDate;
-          const label = `${expenseDay}.${expenseMonth}`;
-          const current = dataMap.get(key) || { amount: 0, count: 0, label };
-          dataMap.set(key, {
-            amount: current.amount + expense.amount,
-            count: current.count + 1,
-            label,
-          });
-        } else {
-          // Помесячный расход - показываем в день его создания для каждого месяца в диапазоне
-          monthsInRange.forEach(({ year, month }) => {
-            // Проверяем, что месяц >= месяца создания расхода
-            if (year > expenseYear || (year === expenseYear && month >= expenseMonth)) {
-              // Проверяем, что день существует в этом месяце (например, 31 число может не быть в феврале)
-              const daysInMonth = new Date(year, month, 0).getDate();
-              if (expenseDay <= daysInMonth) {
-                const key = `${year}-${String(month).padStart(2, '0')}-${String(expenseDay).padStart(2, '0')}`;
-                const label = `${expenseDay}.${month}`;
-                const current = dataMap.get(key) || { amount: 0, count: 0, label };
-                dataMap.set(key, {
-                  amount: current.amount + expense.amount,
-                  count: current.count + 1,
-                  label,
-                });
-              }
-            }
-          });
-        }
-      });
-    } else if (groupingType === 'week') {
-      // Группировка по неделям
-      const dates = getDatesInRange(barChartStartYear, barChartStartMonth, barChartEndYear, barChartEndMonth);
-      const weekMap = new Map<string, { dates: Date[]; label: string }>();
-
-      // Создаем карту недель
-      dates.forEach(date => {
-        const weekStart = new Date(date);
-        weekStart.setDate(date.getDate() - date.getDay()); // Начало недели (воскресенье)
-        const weekKey = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`;
-        
-        if (!weekMap.has(weekKey)) {
-          const weekDates: Date[] = [];
-          for (let i = 0; i < 7; i++) {
-            const d = new Date(weekStart);
-            d.setDate(weekStart.getDate() + i);
-            if (d >= new Date(barChartStartYear, barChartStartMonth - 1, 1) && 
-                d <= new Date(barChartEndYear, barChartEndMonth, 0)) {
-              weekDates.push(d);
-            }
-          }
-          const firstDate = weekDates[0];
-          const lastDate = weekDates[weekDates.length - 1];
-          const label = `${firstDate.getDate()}.${firstDate.getMonth() + 1} - ${lastDate.getDate()}.${lastDate.getMonth() + 1}`;
-          weekMap.set(weekKey, { dates: weekDates, label });
-        }
-      });
-
-      // Обрабатываем все расходы (и разовые, и помесячные)
-      barChartFilteredExpenses.forEach(expense => {
-        const { year: expenseYear, month: expenseMonth } = getYearMonth(expense.operationDate);
-        const expenseDay = Number(expense.operationDate.split('-')[2]) || 1;
-        
-        if (!expense.isMonthly) {
-          // Разовый расход - показываем только в неделю его создания
-          const expenseDate = new Date(expense.operationDate);
-          const weekStart = new Date(expenseDate);
-          weekStart.setDate(expenseDate.getDate() - expenseDate.getDay());
-          const weekKey = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`;
-          const week = weekMap.get(weekKey);
-          if (week) {
-            const current = dataMap.get(weekKey) || { amount: 0, count: 0, label: week.label };
-            dataMap.set(weekKey, {
-              amount: current.amount + expense.amount,
-              count: current.count + 1,
-              label: week.label,
-            });
-          }
-        } else {
-          // Помесячный расход - показываем в неделю, которая содержит день создания расхода для каждого месяца
-          monthsInRange.forEach(({ year, month }) => {
-            if (year > expenseYear || (year === expenseYear && month >= expenseMonth)) {
-              // Проверяем, что день существует в этом месяце
-              const daysInMonth = new Date(year, month, 0).getDate();
-              if (expenseDay <= daysInMonth) {
-                const expenseDateInMonth = new Date(year, month - 1, expenseDay);
-                const weekStart = new Date(expenseDateInMonth);
-                weekStart.setDate(expenseDateInMonth.getDate() - expenseDateInMonth.getDay());
-                const weekKey = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`;
-                const week = weekMap.get(weekKey);
-                if (week) {
-                  const current = dataMap.get(weekKey) || { amount: 0, count: 0, label: week.label };
-                  dataMap.set(weekKey, {
-                    amount: current.amount + expense.amount,
-                    count: current.count + 1,
-                    label: week.label,
-                  });
-                }
-              }
-            }
-          });
-        }
-      });
-    } else {
-      // Группировка по месяцам
-      monthsInRange.forEach(({ year, month }) => {
-        const key = `${year}-${String(month).padStart(2, '0')}`;
-        const label = `${MONTH_OPTIONS[month - 1]?.label || month} ${year}`;
-        dataMap.set(key, { amount: 0, count: 0, label });
-      });
-
-      // Обрабатываем разовые расходы
-      barChartFilteredExpenses.forEach(expense => {
-        if (!expense.isMonthly) {
-          const { year, month } = getYearMonth(expense.operationDate);
-          const key = `${year}-${String(month).padStart(2, '0')}`;
-          const current = dataMap.get(key);
-          if (current) {
-            dataMap.set(key, {
-              amount: current.amount + expense.amount,
-              count: current.count + 1,
-              label: current.label,
-            });
-          }
-        }
-      });
-
-      // Обрабатываем помесячные расходы
-      barChartFilteredExpenses.forEach(expense => {
-        if (expense.isMonthly) {
-          const { year: expenseYear, month: expenseMonth } = getYearMonth(expense.operationDate);
-          
-          // Добавляем расход в каждый месяц, начиная с месяца создания
-          monthsInRange.forEach(({ year, month }) => {
-            if (year > expenseYear || (year === expenseYear && month >= expenseMonth)) {
-              const key = `${year}-${String(month).padStart(2, '0')}`;
-              const current = dataMap.get(key);
-              if (current) {
-                dataMap.set(key, {
-                  amount: current.amount + expense.amount,
-                  count: current.count + 1,
-                  label: current.label,
-                });
-              }
-            }
-          });
-        }
-      });
-    }
-
-    return Array.from(dataMap.entries())
-      .map(([key, { amount, count, label }]) => ({
-        date: key,
-        amount: Number(amount.toFixed(2)),
-        count,
-        label,
-      }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-  }, [barChartFilteredExpenses, barChartStartYear, barChartStartMonth, barChartEndYear, barChartEndMonth]);
-
-  const barChartTotalAmount = useMemo(
-    () => barChartData.reduce((sum, item) => sum + item.amount, 0),
-    [barChartData]
-  );
-
-  const availableYearsForBarChart = useMemo(() => {
-    const set = new Set<number>([now.getFullYear(), barChartStartYear, barChartEndYear]);
-    incomes.forEach(i => {
-      const { year } = getYearMonth(i.operationDate);
-      if (year) set.add(year);
-    });
-    allExpenses.forEach(e => {
-      const { year } = getYearMonth(e.operationDate);
-      if (year) set.add(year);
-    });
-    return Array.from(set).sort((a, b) => b - a);
-  }, [incomes, allExpenses, now, barChartStartYear, barChartEndYear]);
-
-  // Фильтруем доходы для гистограммы по выбранному диапазону
-  const incomeChartFilteredIncomes = useMemo(() => {
-    return incomes.filter(i =>
-      isDateInRange(i.operationDate, i.isMonthly, incomeChartStartYear, incomeChartStartMonth, incomeChartEndYear, incomeChartEndMonth)
-    );
-  }, [incomes, incomeChartStartYear, incomeChartStartMonth, incomeChartEndYear, incomeChartEndMonth]);
-
-  // Группируем доходы для гистограммы (аналогично расходам)
-  const incomeChartData = useMemo<BarChartData[]>(() => {
-    const groupingType = getGroupingType(incomeChartStartYear, incomeChartStartMonth, incomeChartEndYear, incomeChartEndMonth);
-    const dataMap = new Map<string, { amount: number; count: number; label: string }>();
-
-    // Получаем все месяцы в диапазоне
-    const monthsInRange: Array<{ year: number; month: number }> = [];
-    let currentYear = incomeChartStartYear;
-    let currentMonth = incomeChartStartMonth;
-    
-    while (
-      currentYear < incomeChartEndYear ||
-      (currentYear === incomeChartEndYear && currentMonth <= incomeChartEndMonth)
-    ) {
-      monthsInRange.push({ year: currentYear, month: currentMonth });
-      currentMonth++;
-      if (currentMonth > 12) {
-        currentMonth = 1;
-        currentYear++;
-      }
-    }
-
-    if (groupingType === 'day') {
-      // Группировка по дням
-      const dates = getDatesInRange(incomeChartStartYear, incomeChartStartMonth, incomeChartEndYear, incomeChartEndMonth);
-
-      // Обрабатываем все доходы (и разовые, и помесячные)
-      incomeChartFilteredIncomes.forEach(income => {
-        const { year: incomeYear, month: incomeMonth } = getYearMonth(income.operationDate);
-        const incomeDay = Number(income.operationDate.split('-')[2]) || 1;
-        
-        if (!income.isMonthly) {
-          // Разовый доход - показываем только в день его создания
-          const key = income.operationDate;
-          const label = `${incomeDay}.${incomeMonth}`;
-          const current = dataMap.get(key) || { amount: 0, count: 0, label };
-          dataMap.set(key, {
-            amount: current.amount + income.amount,
-            count: current.count + 1,
-            label,
-          });
-        } else {
-          // Помесячный доход - показываем в день его создания для каждого месяца в диапазоне
-          monthsInRange.forEach(({ year, month }) => {
-            if (year > incomeYear || (year === incomeYear && month >= incomeMonth)) {
-              const daysInMonth = new Date(year, month, 0).getDate();
-              if (incomeDay <= daysInMonth) {
-                const key = `${year}-${String(month).padStart(2, '0')}-${String(incomeDay).padStart(2, '0')}`;
-                const label = `${incomeDay}.${month}`;
-                const current = dataMap.get(key) || { amount: 0, count: 0, label };
-                dataMap.set(key, {
-                  amount: current.amount + income.amount,
-                  count: current.count + 1,
-                  label,
-                });
-              }
-            }
-          });
-        }
-      });
-    } else if (groupingType === 'week') {
-      // Группировка по неделям
-      const dates = getDatesInRange(incomeChartStartYear, incomeChartStartMonth, incomeChartEndYear, incomeChartEndMonth);
-      const weekMap = new Map<string, { dates: Date[]; label: string }>();
-
-      dates.forEach(date => {
-        const weekStart = new Date(date);
-        weekStart.setDate(date.getDate() - date.getDay());
-        const weekKey = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`;
-        
-        if (!weekMap.has(weekKey)) {
-          const weekDates: Date[] = [];
-          for (let i = 0; i < 7; i++) {
-            const d = new Date(weekStart);
-            d.setDate(weekStart.getDate() + i);
-            if (d >= new Date(incomeChartStartYear, incomeChartStartMonth - 1, 1) && 
-                d <= new Date(incomeChartEndYear, incomeChartEndMonth, 0)) {
-              weekDates.push(d);
-            }
-          }
-          const firstDate = weekDates[0];
-          const lastDate = weekDates[weekDates.length - 1];
-          const label = `${firstDate.getDate()}.${firstDate.getMonth() + 1} - ${lastDate.getDate()}.${lastDate.getMonth() + 1}`;
-          weekMap.set(weekKey, { dates: weekDates, label });
-        }
-      });
-
-      incomeChartFilteredIncomes.forEach(income => {
-        const { year: incomeYear, month: incomeMonth } = getYearMonth(income.operationDate);
-        const incomeDay = Number(income.operationDate.split('-')[2]) || 1;
-        
-        if (!income.isMonthly) {
-          const incomeDate = new Date(income.operationDate);
-          const weekStart = new Date(incomeDate);
-          weekStart.setDate(incomeDate.getDate() - incomeDate.getDay());
-          const weekKey = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`;
-          const week = weekMap.get(weekKey);
-          if (week) {
-            const current = dataMap.get(weekKey) || { amount: 0, count: 0, label: week.label };
-            dataMap.set(weekKey, {
-              amount: current.amount + income.amount,
-              count: current.count + 1,
-              label: week.label,
-            });
-          }
-        } else {
-          monthsInRange.forEach(({ year, month }) => {
-            if (year > incomeYear || (year === incomeYear && month >= incomeMonth)) {
-              const daysInMonth = new Date(year, month, 0).getDate();
-              if (incomeDay <= daysInMonth) {
-                const incomeDateInMonth = new Date(year, month - 1, incomeDay);
-                const weekStart = new Date(incomeDateInMonth);
-                weekStart.setDate(incomeDateInMonth.getDate() - incomeDateInMonth.getDay());
-                const weekKey = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`;
-                const week = weekMap.get(weekKey);
-                if (week) {
-                  const current = dataMap.get(weekKey) || { amount: 0, count: 0, label: week.label };
-                  dataMap.set(weekKey, {
-                    amount: current.amount + income.amount,
-                    count: current.count + 1,
-                    label: week.label,
-                  });
-                }
-              }
-            }
-          });
-        }
-      });
-    } else {
-      // Группировка по месяцам
-      monthsInRange.forEach(({ year, month }) => {
-        const key = `${year}-${String(month).padStart(2, '0')}`;
-        const label = `${MONTH_OPTIONS[month - 1]?.label || month} ${year}`;
-        dataMap.set(key, { amount: 0, count: 0, label });
-      });
-
-      incomeChartFilteredIncomes.forEach(income => {
-        if (!income.isMonthly) {
-          const { year, month } = getYearMonth(income.operationDate);
-          const key = `${year}-${String(month).padStart(2, '0')}`;
-          const current = dataMap.get(key);
-          if (current) {
-            dataMap.set(key, {
-              amount: current.amount + income.amount,
-              count: current.count + 1,
-              label: current.label,
-            });
-          }
-        } else {
-          const { year: incomeYear, month: incomeMonth } = getYearMonth(income.operationDate);
-          monthsInRange.forEach(({ year, month }) => {
-            if (year > incomeYear || (year === incomeYear && month >= incomeMonth)) {
-              const key = `${year}-${String(month).padStart(2, '0')}`;
-              const current = dataMap.get(key);
-              if (current) {
-                dataMap.set(key, {
-                  amount: current.amount + income.amount,
-                  count: current.count + 1,
-                  label: current.label,
-                });
-              }
-            }
-          });
-        }
-      });
-    }
-
-    return Array.from(dataMap.entries())
-      .map(([key, { amount, count, label }]) => ({
-        date: key,
-        amount: Number(amount.toFixed(2)),
-        count,
-        label,
-      }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-  }, [incomeChartFilteredIncomes, incomeChartStartYear, incomeChartStartMonth, incomeChartEndYear, incomeChartEndMonth]);
-
-  const incomeChartTotalAmount = useMemo(
-    () => incomeChartData.reduce((sum, item) => sum + item.amount, 0),
-    [incomeChartData]
-  );
-
-  const availableYearsForIncomeChart = useMemo(() => {
-    const set = new Set<number>([now.getFullYear(), incomeChartStartYear, incomeChartEndYear]);
-    incomes.forEach(i => {
-      const { year } = getYearMonth(i.operationDate);
-      if (year) set.add(year);
-    });
-    return Array.from(set).sort((a, b) => b - a);
-  }, [incomes, now, incomeChartStartYear, incomeChartEndYear]);
-
-  // Валидация диапазона дат для доходов
-  const isIncomeDateRangeValid = useMemo(() => {
-    const start = new Date(incomeChartStartYear, incomeChartStartMonth - 1, 1);
-    const end = new Date(incomeChartEndYear, incomeChartEndMonth, 0);
-    return start <= end;
-  }, [incomeChartStartYear, incomeChartStartMonth, incomeChartEndYear, incomeChartEndMonth]);
-
-  const BarChartTooltip = ({ active, payload }: any) => {
+  // Кастомный Tooltip для Pie Chart
+  const CustomPieTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0];
       return (
-        <Paper sx={{ p: 1.5, boxShadow: 3 }}>
-          <Typography variant="body2" fontWeight={600}>
-            {data.payload.label || data.payload.date}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Сумма: {formatMoney(data.value)}
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            Количество транзакций: {data.payload.count}
-          </Typography>
-        </Paper>
-      );
-    }
-    return null;
-  };
-
-  // Валидация диапазона дат
-  const isDateRangeValid = useMemo(() => {
-    const start = new Date(barChartStartYear, barChartStartMonth - 1, 1);
-    const end = new Date(barChartEndYear, barChartEndMonth, 0);
-    return start <= end;
-  }, [barChartStartYear, barChartStartMonth, barChartEndYear, barChartEndMonth]);
-
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0];
-      return (
-        <Paper sx={{ p: 1.5, boxShadow: 3 }}>
-          <Typography variant="body2" fontWeight={600}>
+        <Paper sx={{ p: 1.5, bgcolor: 'background.paper', boxShadow: 2 }}>
+          <Typography variant="body2" fontWeight="bold">
             {data.name}
           </Typography>
           <Typography variant="body2" color="text.secondary">
             Сумма: {formatMoney(data.value)}
           </Typography>
-          <Typography variant="caption" color="text.secondary">
-            Количество: {data.payload.count};
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            Доля: {((data.value / totalAmount) * 100).toFixed(1)}%
+          <Typography variant="body2" color="text.secondary">
+            Доля: {data.payload.percentage.toFixed(1)}%
           </Typography>
         </Paper>
       );
@@ -862,498 +237,255 @@ function AnalyticsPage() {
     return null;
   };
 
-  const CustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }: any) => {
-    const RADIAN = Math.PI / 180;
-    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-    const x = cx + radius * Math.cos(-midAngle * RADIAN);
-    const y = cy + radius * Math.sin(-midAngle * RADIAN);
-
-    // Показываем метку только если доля больше 5%
-    if (percent < 0.05) return null;
-
-    return (
-      <text
-        x={x}
-        y={y}
-        fill="white"
-        textAnchor={x > cx ? 'start' : 'end'}
-        dominantBaseline="central"
-        fontSize={12}
-        fontWeight={600}
-      >
-        {name.length > 15 ? `${name.substring(0, 15)}...` : name}
-      </text>
-    );
+  // Кастомный Label для Pie Chart
+  const renderCustomLabel = (entry: any) => {
+    return `${entry.percentage.toFixed(1)}%`;
   };
 
   return (
-    <>
+    <Box sx={{ p: 3 }}>
       <meta name="title" content="Аналитика" />
-      <Box sx={{ maxWidth: 1200, mx: 'auto', px: { xs: 2, sm: 3 }, py: 3, display: 'flex', flexDirection: 'column', gap: 3 }}>
-        <Stack direction="row" justifyContent="center" alignItems="center">
-          <Typography variant="h4">Аналитика расходов</Typography>
-        </Stack>
+      <Typography variant="h4" sx={{ mb: 3 }}>
+        Аналитика
+      </Typography>
 
-        {/* Баланс по месяцам */}
-        {!loadingIncomes && !loadingExpenses && monthlyBalances.length > 0 && (
-          <Paper variant="outlined" sx={{ p: 2 }}>
-            <Stack spacing={2}>
-              <Stack direction="row" justifyContent="space-between" alignItems="center">
-                <Typography variant="h6">Баланс по месяцам</Typography>
-                <Chip
-                  label={`Общий баланс: ${formatMoney(totalBalance)}`}
-                  color={totalBalance >= 0 ? 'success' : 'error'}
-                  sx={{ fontWeight: 600 }}
-                />
-              </Stack>
-              <TableContainer>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Месяц</TableCell>
-                      <TableCell align="right">Доходы</TableCell>
-                      <TableCell align="right">Расходы</TableCell>
-                      <TableCell align="right">Баланс</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {monthlyBalances.map((mb) => (
-                      <TableRow key={`${mb.year}-${mb.month}`}>
-                        <TableCell>
-                          {MONTH_OPTIONS[mb.month - 1]?.label || mb.month} {mb.year}
-                        </TableCell>
-                        <TableCell align="right" sx={{ color: 'success.main' }}>
-                          +{formatMoney(mb.incomes)}
-                        </TableCell>
-                        <TableCell align="right" sx={{ color: 'error.main' }}>
-                          -{formatMoney(mb.expenses)}
-                        </TableCell>
-                        <TableCell
-                          align="right"
-                          sx={{
-                            fontWeight: 600,
-                            color: mb.balance >= 0 ? 'success.main' : 'error.main',
-                          }}
-                        >
-                          {mb.balance >= 0 ? '+' : ''}
-                          {formatMoney(mb.balance)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Stack>
-          </Paper>
-        )}
-
-        {(loadingIncomes || loadingExpenses) ? (
-          <Stack alignItems="center" justifyContent="center" sx={{ py: 5 }}>
-            <CircularProgress size={40} />
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-              {loadingIncomes ? 'Загрузка доходов...' : 'Загрузка расходов...'}
+      {/* Фильтры по датам */}
+      <Card variant="outlined" sx={{ mb: 3 }}>
+        <CardContent>
+          <Typography variant="subtitle2" sx={{ mb: 2 }}>
+            Фильтр по датам
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Typography variant="body2" color="text.secondary">
+              От:
             </Typography>
-          </Stack>
-        ) : error ? (
-          <Paper variant="outlined" sx={{ p: 3 }}>
-            <Typography variant="body1" color="error" align="center">
-              {error}
-            </Typography>
-          </Paper>
-        ) : expenseGroups.length === 0 ? (
-          <Paper variant="outlined" sx={{ p: 3 }}>
-            <Typography variant="body1" color="text.secondary" align="center">
-              Нет расходов за выбранный период
-            </Typography>
-          </Paper>
-        ) : (
-          <Paper variant="outlined" sx={{ p: 3 }}>
-            <Stack spacing={3}>
-              <Stack direction="row" justifyContent="space-between" alignItems="center">
-                <Typography variant="h6">Распределение расходов</Typography>
-                <Typography variant="body1" fontWeight={600}>
-                  Всего: {formatMoney(totalAmount)}
-                </Typography>
-              </Stack>
-
-              <Stack direction="row" spacing={1} alignItems="center" justifyContent="center" flexWrap="wrap" rowGap={1.5}>
-              <Button
-                variant="outlined"
-                size="small"
-                onClick={() => shiftMonth(-1)}
-                aria-label="Предыдущий месяц"
-              >
-                <ArrowBackIosNewIcon fontSize="small" />
-              </Button>
-              <TextField
-                select
-                size="small"
-                label="Месяц"
-                value={selectedMonth}
-                onChange={e => setSelectedMonth(Number(e.target.value))}
-                sx={{ minWidth: { xs: 140, sm: 180 } }}
-              >
-                {MONTH_OPTIONS.map(m => (
-                  <MenuItem key={m.value} value={m.value}>
-                    {m.label}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <TextField
-                select
-                size="small"
+            <FormControl size="small" sx={{ minWidth: 100 }}>
+              <InputLabel>Год</InputLabel>
+              <Select
+                value={filterStartYear}
                 label="Год"
-                value={selectedYear}
-                onChange={e => setSelectedYear(Number(e.target.value))}
-                sx={{ minWidth: { xs: 110, sm: 140 } }}
+                onChange={(e) => setFilterStartYear(Number(e.target.value))}
               >
-                {availableYears.map(y => (
-                  <MenuItem key={y} value={y}>
-                    {y}
+                {availableYears.map((year) => (
+                  <MenuItem key={year} value={year}>
+                    {year}
                   </MenuItem>
                 ))}
-              </TextField>
-              <Button
-                variant="outlined"
-                size="small"
-                onClick={() => shiftMonth(1)}
-                aria-label="Следующий месяц"
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ minWidth: 140 }}>
+              <InputLabel>Месяц</InputLabel>
+              <Select
+                value={filterStartMonth}
+                label="Месяц"
+                onChange={(e) => setFilterStartMonth(Number(e.target.value))}
               >
-                <ArrowForwardIosIcon fontSize="small" />
-              </Button>
-            </Stack>
+                {MONTH_OPTIONS.map((month) => (
+                  <MenuItem key={month.value} value={month.value}>
+                    {month.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
-              <Box sx={{ width: '100%', height: 500 }}>
-                <ResponsiveContainer width="100%" height="100%">
+            <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>
+              До:
+            </Typography>
+            <FormControl size="small" sx={{ minWidth: 100 }}>
+              <InputLabel>Год</InputLabel>
+              <Select
+                value={filterEndYear}
+                label="Год"
+                onChange={(e) => setFilterEndYear(Number(e.target.value))}
+              >
+                {availableYears.map((year) => (
+                  <MenuItem key={year} value={year}>
+                    {year}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ minWidth: 140 }}>
+              <InputLabel>Месяц</InputLabel>
+              <Select
+                value={filterEndMonth}
+                label="Месяц"
+                onChange={(e) => setFilterEndMonth(Number(e.target.value))}
+              >
+                {MONTH_OPTIONS.map((month) => (
+                  <MenuItem key={month.value} value={month.value}>
+                    {month.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+        </CardContent>
+      </Card>
+
+      {/* Общий баланс */}
+      {overview && (
+        <Grid2 container spacing={3} sx={{ mb: 3 }}>
+          <Grid2 size={{ xs: 12, sm: 6, md: 3 }}>
+            <Card variant="outlined">
+              <CardContent>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  Общий баланс
+                </Typography>
+                <Typography variant="h4" color={overview.totalBalance >= 0 ? 'success.main' : 'error.main'}>
+                  {formatMoney(overview.totalBalance)}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid2>
+          <Grid2 size={{ xs: 12, sm: 6, md: 3 }}>
+            <Card variant="outlined">
+              <CardContent>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  Общий доход
+                </Typography>
+                <Typography variant="h4" color="success.main">
+                  {formatMoney(overview.totalIncome)}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid2>
+          <Grid2 size={{ xs: 12, sm: 6, md: 3 }}>
+            <Card variant="outlined">
+              <CardContent>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  Общий расход
+                </Typography>
+                <Typography variant="h4" color="error.main">
+                  {formatMoney(overview.totalExpense)}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid2>
+          <Grid2 size={{ xs: 12, sm: 6, md: 3 }}>
+            <Card variant="outlined">
+              <CardContent>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  Чистый поток
+                </Typography>
+                <Typography variant="h4" color={overview.netFlow >= 0 ? 'success.main' : 'error.main'}>
+                  {formatMoney(overview.netFlow)}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid2>
+        </Grid2>
+      )}
+
+      {/* График доходов/расходов */}
+      {cashFlowChartData.length > 0 && (
+        <Card variant="outlined" sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography variant="h6" sx={{ mb: 2 }}>
+              Денежный поток по месяцам
+            </Typography>
+            <ResponsiveContainer width="100%" height={400}>
+              <BarChart data={cashFlowChartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
+                <YAxis tickFormatter={(value) => formatMoney(value ?? 0)} />
+                <Tooltip formatter={(value: number | undefined) => formatMoney(value ?? 0)} />
+                <Legend />
+                <Bar dataKey="Доходы" fill="#4caf50" />
+                <Bar dataKey="Расходы" fill="#f44336" />
+                <Bar dataKey="Чистый" fill="#2196f3" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Pie Charts для категорий */}
+      <Grid2 container spacing={3}>
+        {/* Pie Chart доходов */}
+        {incomePieData.length > 0 && (
+          <Grid2 size={{ xs: 12, md: 6 }}>
+            <Card variant="outlined">
+              <CardContent>
+                <Typography variant="h6" sx={{ mb: 2 }}>
+                  Доходы по категориям
+                </Typography>
+                <ResponsiveContainer width="100%" height={400}>
                   <PieChart>
                     <Pie
-                      data={expenseGroups}
+                      data={incomePieData}
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={CustomLabel}
-                      outerRadius={180}
+                      label={renderCustomLabel}
+                      outerRadius={120}
                       fill="#8884d8"
                       dataKey="value"
                     >
-                      {expenseGroups.map((_, index) => (
+                      {incomePieData.map((_, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip content={<CustomTooltip />} />
+                    <Tooltip content={<CustomPieTooltip />} />
                     <Legend
-                      formatter={(value) => {
-                        const group = expenseGroups.find(g => g.name === value);
-                        if (!group) return value;
-                        const percent = ((group.value / totalAmount) * 100).toFixed(1);
-                        return `${value} (${percent}%)`;
-                      }}
+                      formatter={(value, entry: any) => `${value} (${formatMoney(entry.payload.value)})`}
                     />
                   </PieChart>
                 </ResponsiveContainer>
-              </Box>
-
-              <Box>
-                <Typography variant="subtitle2" gutterBottom>
-                  Детализация по расходам:
-                </Typography>
-                <Stack spacing={1} sx={{ mt: 1 }}>
-                  {expenseGroups.map((group, index) => {
-                    const percent = ((group.value / totalAmount) * 100).toFixed(1);
-                    return (
-                      <Stack
-                        key={group.name}
-                        direction="row"
-                        justifyContent="space-between"
-                        alignItems="center"
-                        sx={{
-                          p: 1.5,
-                          borderRadius: 1,
-                          bgcolor: 'action.hover',
-                        }}
-                      >
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          <Box
-                            sx={{
-                              width: 16,
-                              height: 16,
-                              borderRadius: '50%',
-                              bgcolor: COLORS[index % COLORS.length],
-                            }}
-                          />
-                          <Typography variant="body2">{group.name}</Typography>
-                        </Stack>
-                        <Stack direction="row" spacing={2} alignItems="center">
-                          <Typography variant="body2" color="text.secondary">
-                            {group.count} {group.count === 1 ? 'транзакция' : group.count < 5 ? 'транзакции' : 'транзакций'}
-                          </Typography>
-                          <Typography variant="body2" fontWeight={600}>
-                            {formatMoney(group.value)}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            ({percent}%)
-                          </Typography>
-                        </Stack>
-                      </Stack>
-                    );
-                  })}
-                </Stack>
-              </Box>
-            </Stack>
-          </Paper>
+              </CardContent>
+            </Card>
+          </Grid2>
         )}
 
-        {/* Гистограмма доходов */}
-        <Paper variant="outlined" sx={{ p: 2 }}>
-          <Stack spacing={2}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center">
-              <Typography variant="subtitle1" fontWeight={600}>
-                Доходы за период
-              </Typography>
-              <Typography variant="body2" fontWeight={600}>
-                Всего: {formatMoney(incomeChartTotalAmount)}
-              </Typography>
-            </Stack>
-
-            {!isIncomeDateRangeValid && (
-              <Typography variant="body2" color="error" align="center">
-                Дата начала должна быть раньше или равна дате конца
-              </Typography>
-            )}
-
-            <Stack spacing={2}>
-              <Stack direction="row" spacing={1} alignItems="center" justifyContent="center" flexWrap="wrap" rowGap={1.5}>
-                <Typography variant="body2" fontWeight={600} sx={{ minWidth: 80 }}>
-                  Начало:
+        {/* Pie Chart расходов */}
+        {expensePieData.length > 0 && (
+          <Grid2 size={{ xs: 12, md: 6 }}>
+            <Card variant="outlined">
+              <CardContent>
+                <Typography variant="h6" sx={{ mb: 2 }}>
+                  Расходы по категориям
                 </Typography>
-                <TextField
-                  select
-                  size="small"
-                  label="Месяц"
-                  value={incomeChartStartMonth}
-                  onChange={e => setIncomeChartStartMonth(Number(e.target.value))}
-                  sx={{ minWidth: { xs: 140, sm: 180 } }}
-                >
-                  {MONTH_OPTIONS.map(m => (
-                    <MenuItem key={m.value} value={m.value}>
-                      {m.label}
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <TextField
-                  select
-                  size="small"
-                  label="Год"
-                  value={incomeChartStartYear}
-                  onChange={e => setIncomeChartStartYear(Number(e.target.value))}
-                  sx={{ minWidth: { xs: 110, sm: 140 } }}
-                >
-                  {availableYearsForIncomeChart.map(y => (
-                    <MenuItem key={y} value={y}>
-                      {y}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Stack>
-
-              <Stack direction="row" spacing={1} alignItems="center" justifyContent="center" flexWrap="wrap" rowGap={1.5}>
-                <Typography variant="body2" fontWeight={600} sx={{ minWidth: 80 }}>
-                  Конец:
-                </Typography>
-                <TextField
-                  select
-                  size="small"
-                  label="Месяц"
-                  value={incomeChartEndMonth}
-                  onChange={e => setIncomeChartEndMonth(Number(e.target.value))}
-                  sx={{ minWidth: { xs: 140, sm: 180 } }}
-                >
-                  {MONTH_OPTIONS.map(m => (
-                    <MenuItem key={m.value} value={m.value}>
-                      {m.label}
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <TextField
-                  select
-                  size="small"
-                  label="Год"
-                  value={incomeChartEndYear}
-                  onChange={e => setIncomeChartEndYear(Number(e.target.value))}
-                  sx={{ minWidth: { xs: 110, sm: 140 } }}
-                >
-                  {availableYearsForIncomeChart.map(y => (
-                    <MenuItem key={y} value={y}>
-                      {y}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Stack>
-            </Stack>
-
-            {!isIncomeDateRangeValid ? (
-              <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 3 }}>
-                Выберите корректный диапазон дат
-              </Typography>
-            ) : incomeChartData.length === 0 || incomeChartTotalAmount === 0 ? (
-              <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 3 }}>
-                Нет доходов за выбранный период
-              </Typography>
-            ) : (
-              <Box sx={{ width: '100%', height: 400 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={incomeChartData} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis
-                      dataKey="label"
-                      label={{ value: 'Период', position: 'insideBottom', offset: -5 }}
-                      angle={-45}
-                      textAnchor="end"
-                      height={100}
-                    />
-                    <YAxis
-                      label={{ value: 'Сумма (₽)', angle: -90, position: 'insideLeft' }}
-                      tickFormatter={(value) => value.toFixed(0)}
-                    />
-                    <Tooltip content={<BarChartTooltip />} />
-                    <Bar dataKey="amount" fill="#00C49F" radius={[4, 4, 0, 0]}>
-                      {incomeChartData.map((_, index) => (
-                        <Cell key={`income-bar-cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                <ResponsiveContainer width="100%" height={400}>
+                  <PieChart>
+                    <Pie
+                      data={expensePieData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={renderCustomLabel}
+                      outerRadius={120}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {expensePieData.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </Box>
-            )}
-          </Stack>
-        </Paper>
-
-        {/* Гистограмма расходов */}
-        <Paper variant="outlined" sx={{ p: 2 }}>
-          <Stack spacing={2}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center">
-              <Typography variant="subtitle1" fontWeight={600}>
-                Расходы за период
-              </Typography>
-              <Typography variant="body2" fontWeight={600}>
-                Всего: {formatMoney(barChartTotalAmount)}
-              </Typography>
-            </Stack>
-
-            {!isDateRangeValid && (
-              <Typography variant="body2" color="error" align="center">
-                Дата начала должна быть раньше или равна дате конца
-              </Typography>
-            )}
-
-            <Stack spacing={2}>
-              <Stack direction="row" spacing={1} alignItems="center" justifyContent="center" flexWrap="wrap" rowGap={1.5}>
-                <Typography variant="body2" fontWeight={600} sx={{ minWidth: 80 }}>
-                  Начало:
-                </Typography>
-                <TextField
-                  select
-                  size="small"
-                  label="Месяц"
-                  value={barChartStartMonth}
-                  onChange={e => setBarChartStartMonth(Number(e.target.value))}
-                  sx={{ minWidth: { xs: 140, sm: 180 } }}
-                >
-                  {MONTH_OPTIONS.map(m => (
-                    <MenuItem key={m.value} value={m.value}>
-                      {m.label}
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <TextField
-                  select
-                  size="small"
-                  label="Год"
-                  value={barChartStartYear}
-                  onChange={e => setBarChartStartYear(Number(e.target.value))}
-                  sx={{ minWidth: { xs: 110, sm: 140 } }}
-                >
-                  {availableYearsForBarChart.map(y => (
-                    <MenuItem key={y} value={y}>
-                      {y}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Stack>
-
-              <Stack direction="row" spacing={1} alignItems="center" justifyContent="center" flexWrap="wrap" rowGap={1.5}>
-                <Typography variant="body2" fontWeight={600} sx={{ minWidth: 80 }}>
-                  Конец:
-                </Typography>
-                <TextField
-                  select
-                  size="small"
-                  label="Месяц"
-                  value={barChartEndMonth}
-                  onChange={e => setBarChartEndMonth(Number(e.target.value))}
-                  sx={{ minWidth: { xs: 140, sm: 180 } }}
-                >
-                  {MONTH_OPTIONS.map(m => (
-                    <MenuItem key={m.value} value={m.value}>
-                      {m.label}
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <TextField
-                  select
-                  size="small"
-                  label="Год"
-                  value={barChartEndYear}
-                  onChange={e => setBarChartEndYear(Number(e.target.value))}
-                  sx={{ minWidth: { xs: 110, sm: 140 } }}
-                >
-                  {availableYearsForBarChart.map(y => (
-                    <MenuItem key={y} value={y}>
-                      {y}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Stack>
-            </Stack>
-
-            {!isDateRangeValid ? (
-              <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 3 }}>
-                Выберите корректный диапазон дат
-              </Typography>
-            ) : barChartData.length === 0 || barChartTotalAmount === 0 ? (
-              <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 3 }}>
-                Нет расходов за выбранный период
-              </Typography>
-            ) : (
-              <Box sx={{ width: '100%', height: 400 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={barChartData} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis
-                      dataKey="label"
-                      label={{ value: 'Период', position: 'insideBottom', offset: -5 }}
-                      angle={-45}
-                      textAnchor="end"
-                      height={100}
+                    </Pie>
+                    <Tooltip content={<CustomPieTooltip />} />
+                    <Legend
+                      formatter={(value, entry: any) => `${value} (${formatMoney(entry.payload.value)})`}
                     />
-                    <YAxis
-                      label={{ value: 'Сумма (₽)', angle: -90, position: 'insideLeft' }}
-                      tickFormatter={(value) => value.toFixed(0)}
-                    />
-                    <Tooltip content={<BarChartTooltip />} />
-                    <Bar dataKey="amount" fill="#8884d8" radius={[4, 4, 0, 0]}>
-                      {barChartData.map((_, index) => (
-                        <Cell key={`bar-cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
+                  </PieChart>
                 </ResponsiveContainer>
-              </Box>
-            )}
-          </Stack>
-        </Paper>
-      </Box>
-    </>
+              </CardContent>
+            </Card>
+          </Grid2>
+        )}
+
+        {/* Сообщения, если нет данных */}
+        {incomePieData.length === 0 && expensePieData.length === 0 && (
+          <Grid2 size={12}>
+            <Card variant="outlined">
+              <CardContent>
+                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
+                  Нет данных по категориям за выбранный период
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid2>
+        )}
+      </Grid2>
+    </Box>
   );
 }
 
