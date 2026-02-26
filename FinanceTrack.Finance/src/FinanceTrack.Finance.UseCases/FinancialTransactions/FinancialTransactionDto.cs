@@ -9,5 +9,7 @@ public sealed record FinancialTransactionDto(
     string Type,
     Guid? CategoryId,
     Guid? RelatedTransactionId,
-    Guid? RecurringTransactionId
+    Guid? RecurringTransactionId,
+    Guid? RelatedWalletId = null,
+    string? RelatedWalletName = null
 );

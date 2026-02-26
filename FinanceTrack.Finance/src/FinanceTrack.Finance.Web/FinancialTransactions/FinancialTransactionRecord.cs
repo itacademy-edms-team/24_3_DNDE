@@ -9,5 +9,7 @@ public sealed record FinancialTransactionRecord(
     string Type,
     Guid? CategoryId,
     Guid? RelatedTransactionId,
-    Guid? RecurringTransactionId
+    Guid? RecurringTransactionId,
+    Guid? RelatedWalletId,
+    string? RelatedWalletName
 );

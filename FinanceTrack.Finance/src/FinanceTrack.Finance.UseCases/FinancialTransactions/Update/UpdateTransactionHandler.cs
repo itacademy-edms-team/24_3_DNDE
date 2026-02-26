@@ -31,7 +31,9 @@ public sealed class UpdateTransactionHandler(UpdateTransactionService _service)
             t.TransactionType.Name,
             t.CategoryId,
             t.RelatedTransactionId,
-            t.RecurringTransactionId
+            t.RecurringTransactionId,
+            null, // RelatedWalletId - not loaded during update
+            null  // RelatedWalletName - not loaded during update
         ));
     }
 }

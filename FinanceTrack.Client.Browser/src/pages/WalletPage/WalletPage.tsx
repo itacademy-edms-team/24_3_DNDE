@@ -293,6 +293,8 @@ type Transaction = {
   categoryId: string | null;
   relatedTransactionId: string | null;
   recurringTransactionId: string | null;
+  relatedWalletId: string | null;
+  relatedWalletName: string | null;
 };
 
 type TransactionsResponse = {
@@ -1111,15 +1113,25 @@ function WalletPage() {
                         <TableRow key={transaction.id}>
                           <TableCell>{formatDateShort(transaction.operationDate)}</TableCell>
                           <TableCell>
-                            {displayName}
-                            {isTransfer && (
-                              <Chip
-                                label={transaction.type === 'TransferOut' ? 'Исходящий' : 'Входящий'}
-                                size="small"
-                                sx={{ ml: 1 }}
-                                variant="outlined"
-                              />
-                            )}
+                            <Box>
+                              <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}>
+                                {displayName}
+                                {isTransfer && (
+                                  <Chip
+                                    label={transaction.type === 'TransferOut' ? 'Исходящий' : 'Входящий'}
+                                    size="small"
+                                    variant="outlined"
+                                  />
+                                )}
+                              </Box>
+                              {isTransfer && transaction.relatedWalletName && (
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                                  {transaction.type === 'TransferOut' 
+                                    ? `→ ${transaction.relatedWalletName}`
+                                    : `← ${transaction.relatedWalletName}`}
+                                </Typography>
+                              )}
+                            </Box>
                           </TableCell>
                           <TableCell align="right">
                             <Typography

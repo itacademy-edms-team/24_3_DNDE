@@ -1,4 +1,4 @@
-using FinanceTrack.Finance.UseCases.FinancialTransactions.Update;
+﻿using FinanceTrack.Finance.UseCases.FinancialTransactions.Update;
 using FinanceTrack.Finance.Web.Extensions;
 using FluentValidation;
 
@@ -19,12 +19,17 @@ public class UpdateTransactionValidator : Validator<UpdateTransactionRequest>
     public UpdateTransactionValidator()
     {
         RuleFor(x => x.Name).NotEmpty().WithMessage("Name is required.");
-        RuleFor(x => x.Amount).GreaterThanOrEqualTo(0.01m).WithMessage("Amount must be at least 0.01.");
-        RuleFor(x => x.OperationDate).Must(d => d != default).WithMessage("OperationDate is required.");
+        RuleFor(x => x.Amount)
+            .GreaterThanOrEqualTo(0.01m)
+            .WithMessage("Amount must be at least 0.01.");
+        RuleFor(x => x.OperationDate)
+            .Must(d => d != default)
+            .WithMessage("OperationDate is required.");
     }
 }
 
-public class UpdateTransaction(IMediator mediator) : Endpoint<UpdateTransactionRequest, FinancialTransactionRecord>
+public class UpdateTransaction(IMediator mediator)
+    : Endpoint<UpdateTransactionRequest, FinancialTransactionRecord>
 {
     public override void Configure()
     {
@@ -42,7 +47,12 @@ public class UpdateTransaction(IMediator mediator) : Endpoint<UpdateTransactionR
         }
 
         var command = new UpdateTransactionCommand(
-            req.TransactionId, userId, req.Name, req.Amount, req.OperationDate, req.CategoryId
+            req.TransactionId,
+            userId,
+            req.Name,
+            req.Amount,
+            req.OperationDate,
+            req.CategoryId
         );
         var result = await mediator.Send(command, ct);
 
@@ -51,8 +61,17 @@ public class UpdateTransaction(IMediator mediator) : Endpoint<UpdateTransactionR
 
         var dto = result.Value;
         Response = new FinancialTransactionRecord(
-            dto.Id, dto.WalletId, dto.Name, dto.Amount, dto.OperationDate,
-            dto.Type, dto.CategoryId, dto.RelatedTransactionId, dto.RecurringTransactionId
+            dto.Id,
+            dto.WalletId,
+            dto.Name,
+            dto.Amount,
+            dto.OperationDate,
+            dto.Type,
+            dto.CategoryId,
+            dto.RelatedTransactionId,
+            dto.RecurringTransactionId,
+            dto.RelatedWalletId,
+            dto.RelatedWalletName
         );
     }
 }
