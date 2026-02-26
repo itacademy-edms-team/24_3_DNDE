@@ -56,3 +56,8 @@ public sealed record SavingsAccountProgressDto(
     DateOnly? TargetDate,
     decimal ProgressPercent
 );
+
+public sealed record CategoriesAnalyticsDto(
+    IReadOnlyList<CategoryBreakdownDto> IncomeByCategory,
+    IReadOnlyList<CategoryBreakdownDto> ExpenseByCategory
+);

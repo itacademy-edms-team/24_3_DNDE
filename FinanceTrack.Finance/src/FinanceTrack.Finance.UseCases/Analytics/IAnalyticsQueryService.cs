@@ -28,4 +28,11 @@ public interface IAnalyticsQueryService
         string userId,
         CancellationToken ct = default
     );
+
+    Task<CategoriesAnalyticsDto> GetCategoriesAnalytics(
+        string userId,
+        DateOnly from,
+        DateOnly to,
+        CancellationToken ct = default
+    );
 }

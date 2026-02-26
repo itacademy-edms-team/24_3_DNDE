@@ -223,4 +223,73 @@ public class AnalyticsQueryService(AppDbContext _dbContext) : IAnalyticsQuerySer
 
         return new SavingsProgressDto(accounts);
     }
+
+    public async Task<CategoriesAnalyticsDto> GetCategoriesAnalytics(
+        string userId,
+        DateOnly from,
+        DateOnly to,
+        CancellationToken ct = default
+    )
+    {
+        var transactions = await _dbContext
+            .FinancialTransactions.Where(t =>
+                t.UserId == userId && t.OperationDate >= from && t.OperationDate <= to
+            )
+            .ToListAsync(ct);
+
+        var categories = await _dbContext
+            .Categories.Where(c => c.UserId == userId)
+            .ToListAsync(ct);
+        var categoryDict = categories.ToDictionary(c => c.Id, c => c.Name);
+
+        // Income by category
+        var incomeTransactions = transactions
+            .Where(t => t.TransactionType == FinancialTransactionType.Income)
+            .ToList();
+        var totalIncome = incomeTransactions.Sum(t => t.Amount);
+
+        var incomeByCategory = incomeTransactions
+            .GroupBy(t => t.CategoryId)
+            .Select(g =>
+            {
+                var amount = g.Sum(t => t.Amount);
+                var totalForType = totalIncome > 0 ? totalIncome : 1m;
+                return new CategoryBreakdownDto(
+                    g.Key,
+                    g.Key.HasValue && categoryDict.TryGetValue(g.Key.Value, out var name)
+                        ? name
+                        : null,
+                    amount,
+                    Math.Round(amount / totalForType * 100, 2)
+                );
+            })
+            .OrderByDescending(x => x.Amount)
+            .ToList();
+
+        // Expense by category
+        var expenseTransactions = transactions
+            .Where(t => t.TransactionType == FinancialTransactionType.Expense)
+            .ToList();
+        var totalExpense = expenseTransactions.Sum(t => t.Amount);
+
+        var expenseByCategory = expenseTransactions
+            .GroupBy(t => t.CategoryId)
+            .Select(g =>
+            {
+                var amount = g.Sum(t => t.Amount);
+                var totalForType = totalExpense > 0 ? totalExpense : 1m;
+                return new CategoryBreakdownDto(
+                    g.Key,
+                    g.Key.HasValue && categoryDict.TryGetValue(g.Key.Value, out var name)
+                        ? name
+                        : null,
+                    amount,
+                    Math.Round(amount / totalForType * 100, 2)
+                );
+            })
+            .OrderByDescending(x => x.Amount)
+            .ToList();
+
+        return new CategoriesAnalyticsDto(incomeByCategory, expenseByCategory);
+    }
 }
