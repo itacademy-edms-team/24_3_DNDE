@@ -35,6 +35,13 @@ const routes: Routes = [
     protected: true,
   },
   {
+    component: asyncComponentLoader(() => import('@/pages/WalletsArchivePage')),
+    path: '/wallets-archive',
+    title: 'Кошельки (Архив)',
+    icon: AddTaskIcon,
+    protected: true,
+  },
+  {
     component: asyncComponentLoader(() => import('@/pages/AnalyticsPage')),
     path: '/analytics',
     title: 'Аналитика',
