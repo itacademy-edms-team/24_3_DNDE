@@ -9,7 +9,7 @@ public sealed class GetWalletHandler(IReadRepository<Wallet> _repo)
     public async Task<Result<WalletDto>> Handle(GetWalletQuery request, CancellationToken ct)
     {
         var spec = new WalletByIdSpec(request.WalletId);
-        var wallet = await _repo.GetByIdAsync(spec, ct);
+        var wallet = await _repo.FirstOrDefaultAsync(spec, ct);
         if (wallet is null)
             return Result.NotFound();
         if (!string.Equals(wallet.UserId, request.UserId, StringComparison.Ordinal))
