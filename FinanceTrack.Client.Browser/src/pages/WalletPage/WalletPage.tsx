@@ -39,6 +39,7 @@ import ArchiveIcon from '@mui/icons-material/Archive';
 import DeleteIcon from '@mui/icons-material/Delete';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 
 import Loading from '@/components/Loading';
 
@@ -156,6 +157,34 @@ const fetchCategories = async (type: 'Income' | 'Expense'): Promise<Category[]> 
   return data.categories.filter((cat) => cat.type === type);
 };
 
+const fetchAllWallets = async (): Promise<Wallet[]> => {
+  const res = await fetch('/api/finance/Wallets', {
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    throw new Error(getErrorMessage('загрузки кошельков', res.status));
+  }
+  const data: WalletsResponse = await res.json();
+  return data.wallets;
+};
+
+const createTransfer = async (payload: CreateTransferPayload): Promise<{ id: string }> => {
+  const res = await fetch('/api/finance/Transactions/Transfer', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    throw new Error(getErrorMessage('создания перевода', res.status));
+  }
+
+  return await res.json();
+};
+
 const createIncome = async (payload: CreateIncomePayload): Promise<{ id: string }> => {
   const res = await fetch('/api/finance/Transactions/Income', {
     method: 'POST',
@@ -262,6 +291,14 @@ type CreateExpensePayload = {
   categoryId?: string | null;
 };
 
+type CreateTransferPayload = {
+  fromWalletId: string;
+  toWalletId: string;
+  name: string;
+  amount: number;
+  operationDate: string;
+};
+
 type Category = {
   id: string;
   name: string;
@@ -274,11 +311,23 @@ type CategoriesResponse = {
   categories: Category[];
 };
 
+type WalletsResponse = {
+  wallets: Wallet[];
+};
+
 type TransactionFormState = {
   name: string;
   amount: string;
   operationDate: string;
   categoryId: string;
+};
+
+type TransferFormState = {
+  fromWalletId: string;
+  toWalletId: string;
+  name: string;
+  amount: string;
+  operationDate: string;
 };
 
 function WalletPage() {
@@ -288,12 +337,20 @@ function WalletPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
   const [transactionDialogOpen, setTransactionDialogOpen] = useState(false);
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const [transactionType, setTransactionType] = useState<'Income' | 'Expense'>('Income');
   const [transactionEditMode, setTransactionEditMode] = useState<'create' | 'edit'>('create');
   const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
   const [errorDialog, setErrorDialog] = useState({ open: false, message: '' });
+  const [transferForm, setTransferForm] = useState<TransferFormState>({
+    fromWalletId: walletId || '',
+    toWalletId: '',
+    name: '',
+    amount: '',
+    operationDate: new Date().toISOString().split('T')[0],
+  });
   const [formState, setFormState] = useState<WalletFormState>({
     name: '',
     allowNegativeBalance: true,
@@ -332,6 +389,13 @@ function WalletPage() {
     queryKey: ['categories', 'Expense'],
     queryFn: () => fetchCategories('Expense'),
     enabled: transactionDialogOpen && transactionType === 'Expense',
+    retry: false,
+  });
+
+  const { data: allWallets = [] } = useQuery({
+    queryKey: ['wallets'],
+    queryFn: fetchAllWallets,
+    enabled: transferDialogOpen,
     retry: false,
   });
 
@@ -420,6 +484,27 @@ function WalletPage() {
     onError: (error: Error) => {
       console.error('Failed to delete transaction:', error);
       setErrorDialog({ open: true, message: error.message || 'Ошибка удаления транзакции' });
+    },
+  });
+
+  const createTransferMutation = useMutation({
+    mutationFn: createTransfer,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transactions', walletId] });
+      queryClient.invalidateQueries({ queryKey: ['wallet', walletId] });
+      queryClient.invalidateQueries({ queryKey: ['wallets'] });
+      setTransferDialogOpen(false);
+      setTransferForm({
+        fromWalletId: walletId || '',
+        toWalletId: '',
+        name: '',
+        amount: '',
+        operationDate: new Date().toISOString().split('T')[0],
+      });
+    },
+    onError: (error: Error) => {
+      console.error('Failed to create transfer:', error);
+      setErrorDialog({ open: true, message: error.message || 'Ошибка создания перевода' });
     },
   });
 
@@ -572,9 +657,74 @@ function WalletPage() {
     }
   };
 
-  const filteredTransactions = transactions.filter(
-    (t) => t.type === 'Income' || t.type === 'Expense'
+  const handleOpenTransferDialog = () => {
+    setTransferForm({
+      fromWalletId: walletId || '',
+      toWalletId: '',
+      name: '',
+      amount: '',
+      operationDate: new Date().toISOString().split('T')[0],
+    });
+    setTransferDialogOpen(true);
+  };
+
+  const handleCloseTransferDialog = () => {
+    setTransferDialogOpen(false);
+    setTransferForm({
+      fromWalletId: walletId || '',
+      toWalletId: '',
+      name: '',
+      amount: '',
+      operationDate: new Date().toISOString().split('T')[0],
+    });
+  };
+
+  const handleSaveTransfer = () => {
+    if (!transferForm.name.trim()) {
+      setErrorDialog({ open: true, message: 'Введите название перевода' });
+      return;
+    }
+
+    const amount = parseFloat(transferForm.amount);
+    if (!transferForm.amount || isNaN(amount) || amount <= 0) {
+      setErrorDialog({ open: true, message: 'Введите корректную сумму (больше 0)' });
+      return;
+    }
+
+    if (!transferForm.operationDate) {
+      setErrorDialog({ open: true, message: 'Выберите дату операции' });
+      return;
+    }
+
+    if (!transferForm.fromWalletId || !transferForm.toWalletId) {
+      setErrorDialog({ open: true, message: 'Выберите кошельки для перевода' });
+      return;
+    }
+
+    if (transferForm.fromWalletId === transferForm.toWalletId) {
+      setErrorDialog({ open: true, message: 'Нельзя перевести деньги на тот же кошелёк' });
+      return;
+    }
+
+    const payload: CreateTransferPayload = {
+      fromWalletId: transferForm.fromWalletId,
+      toWalletId: transferForm.toWalletId,
+      name: transferForm.name.trim(),
+      amount,
+      operationDate: transferForm.operationDate,
+    };
+
+    createTransferMutation.mutate(payload);
+  };
+
+  // Сортируем все транзакции по дате (новые сверху)
+  const sortedTransactions = [...transactions].sort(
+    (a, b) => new Date(b.operationDate).getTime() - new Date(a.operationDate).getTime()
   );
+
+  const availableWallets = allWallets.filter((w) => !w.isArchived);
+  const fromWallets = availableWallets.filter((w) => w.id !== transferForm.toWalletId);
+  const toWallets = availableWallets.filter((w) => w.id !== transferForm.fromWalletId);
 
   if (isLoading || isPending) {
     return <Loading />;
@@ -731,12 +881,21 @@ function WalletPage() {
                 >
                   Расход
                 </Button>
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  startIcon={<SwapHorizIcon />}
+                  onClick={handleOpenTransferDialog}
+                  size="small"
+                >
+                  Перевод
+                </Button>
               </Box>
             </Box>
 
-            {filteredTransactions.length === 0 ? (
+            {sortedTransactions.length === 0 ? (
               <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
-                Нет транзакций. Добавьте доход или расход.
+                Нет транзакций. Добавьте доход, расход или перевод.
               </Typography>
             ) : (
               <TableContainer component={Paper} variant="outlined">
@@ -750,31 +909,60 @@ function WalletPage() {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {filteredTransactions
-                      .sort((a, b) => new Date(b.operationDate).getTime() - new Date(a.operationDate).getTime())
-                      .map((transaction) => (
+                    {sortedTransactions.map((transaction) => {
+                      const isTransfer = transaction.type === 'TransferIn' || transaction.type === 'TransferOut';
+                      const isIncome = transaction.type === 'Income';
+                      const isExpense = transaction.type === 'Expense';
+                      
+                      let displayName = transaction.name;
+                      if (isTransfer) {
+                        displayName = transaction.type === 'TransferOut' 
+                          ? `↗ ${transaction.name}` 
+                          : `↙ ${transaction.name}`;
+                      }
+
+                      return (
                         <TableRow key={transaction.id}>
                           <TableCell>{formatDateShort(transaction.operationDate)}</TableCell>
-                          <TableCell>{transaction.name}</TableCell>
+                          <TableCell>
+                            {displayName}
+                            {isTransfer && (
+                              <Chip
+                                label={transaction.type === 'TransferOut' ? 'Исходящий' : 'Входящий'}
+                                size="small"
+                                sx={{ ml: 1 }}
+                                variant="outlined"
+                              />
+                            )}
+                          </TableCell>
                           <TableCell align="right">
                             <Typography
-                              color={transaction.type === 'Income' ? 'success.main' : 'error.main'}
+                              color={
+                                isIncome
+                                  ? 'success.main'
+                                  : isExpense
+                                    ? 'error.main'
+                                    : transaction.type === 'TransferOut'
+                                      ? 'warning.main'
+                                      : 'info.main'
+                              }
                               fontWeight="bold"
                             >
-                              {transaction.type === 'Income' ? '+' : '-'}
+                              {isIncome ? '+' : isExpense ? '-' : transaction.type === 'TransferOut' ? '↗' : '↙'}
                               {formatMoney(transaction.amount)}
                             </Typography>
                           </TableCell>
                           <TableCell align="right">
                             <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
-                              <IconButton
-                                size="small"
-                                color="primary"
-                                onClick={() => handleEditTransaction(transaction)}
-                                disabled={transaction.type === 'TransferIn' || transaction.type === 'TransferOut'}
-                              >
-                                <EditIcon fontSize="small" />
-                              </IconButton>
+                              {!isTransfer && (
+                                <IconButton
+                                  size="small"
+                                  color="primary"
+                                  onClick={() => handleEditTransaction(transaction)}
+                                >
+                                  <EditIcon fontSize="small" />
+                                </IconButton>
+                              )}
                               <IconButton
                                 size="small"
                                 color="error"
@@ -785,7 +973,8 @@ function WalletPage() {
                             </Box>
                           </TableCell>
                         </TableRow>
-                      ))}
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </TableContainer>
@@ -1012,6 +1201,88 @@ function WalletPage() {
             startIcon={<DeleteIcon />}
           >
             {deleteTransactionMutation.isPending ? 'Удаление...' : 'Удалить'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog создания перевода */}
+      <Dialog open={transferDialogOpen} onClose={handleCloseTransferDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Создать перевод</DialogTitle>
+        <DialogContent>
+          <Stack spacing={3} sx={{ mt: 1 }}>
+            <FormControl fullWidth required>
+              <InputLabel>Откуда</InputLabel>
+              <Select
+                value={transferForm.fromWalletId}
+                label="Откуда"
+                onChange={(e) => setTransferForm({ ...transferForm, fromWalletId: e.target.value })}
+              >
+                {fromWallets.map((w) => (
+                  <MenuItem key={w.id} value={w.id}>
+                    {w.name} ({formatMoney(w.balance)})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl fullWidth required>
+              <InputLabel>Куда</InputLabel>
+              <Select
+                value={transferForm.toWalletId}
+                label="Куда"
+                onChange={(e) => setTransferForm({ ...transferForm, toWalletId: e.target.value })}
+              >
+                {toWallets.map((w) => (
+                  <MenuItem key={w.id} value={w.id}>
+                    {w.name} ({formatMoney(w.balance)})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <TextField
+              label="Название"
+              value={transferForm.name}
+              onChange={(e) => setTransferForm({ ...transferForm, name: e.target.value })}
+              fullWidth
+              required
+              autoFocus
+            />
+
+            <TextField
+              label="Сумма"
+              type="number"
+              value={transferForm.amount}
+              onChange={(e) => setTransferForm({ ...transferForm, amount: e.target.value })}
+              fullWidth
+              required
+              inputProps={{ min: 0.01, step: 0.01 }}
+              InputProps={{
+                endAdornment: <InputAdornment position="end">₽</InputAdornment>,
+              }}
+            />
+
+            <TextField
+              label="Дата операции"
+              type="date"
+              value={transferForm.operationDate}
+              onChange={(e) => setTransferForm({ ...transferForm, operationDate: e.target.value })}
+              fullWidth
+              required
+              InputLabelProps={{ shrink: true }}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseTransferDialog}>Отмена</Button>
+          <Button
+            onClick={handleSaveTransfer}
+            variant="contained"
+            color="primary"
+            disabled={createTransferMutation.isPending}
+            startIcon={<SwapHorizIcon />}
+          >
+            {createTransferMutation.isPending ? 'Создание...' : 'Создать перевод'}
           </Button>
         </DialogActions>
       </Dialog>
