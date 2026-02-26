@@ -31,7 +31,7 @@ const routes: Routes = [
   {
     component: asyncComponentLoader(() => import('@/pages/WalletPage')),
     path: '/wallets/:walletId',
-    title: 'Кошелёк',
+    title: '',
     protected: true,
   },
   {
