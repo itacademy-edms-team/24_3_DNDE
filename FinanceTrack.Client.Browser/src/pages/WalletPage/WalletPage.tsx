@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -64,6 +64,21 @@ type UpdateWalletPayload = {
 const getErrorMessage = (operation: string, status: number): string => {
   return `Ошибка ${operation}: ${status}`;
 };
+
+const MONTH_OPTIONS = [
+  { value: 1, label: 'Январь' },
+  { value: 2, label: 'Февраль' },
+  { value: 3, label: 'Март' },
+  { value: 4, label: 'Апрель' },
+  { value: 5, label: 'Май' },
+  { value: 6, label: 'Июнь' },
+  { value: 7, label: 'Июль' },
+  { value: 8, label: 'Август' },
+  { value: 9, label: 'Сентябрь' },
+  { value: 10, label: 'Октябрь' },
+  { value: 11, label: 'Ноябрь' },
+  { value: 12, label: 'Декабрь' },
+];
 
 const fetchWallet = async (walletId: string): Promise<Wallet> => {
   const res = await fetch(`/api/finance/Wallets/${walletId}`, {
@@ -135,8 +150,17 @@ const formatDateShort = (dateStr: string): string => {
   });
 };
 
-const fetchTransactions = async (walletId: string): Promise<Transaction[]> => {
-  const res = await fetch(`/api/finance/Wallets/${walletId}/Transactions`, {
+const fetchTransactions = async (
+  walletId: string,
+  from?: string,
+  to?: string
+): Promise<Transaction[]> => {
+  const params = new URLSearchParams();
+  if (from) params.append('from', from);
+  if (to) params.append('to', to);
+  
+  const url = `/api/finance/Wallets/${walletId}/Transactions${params.toString() ? `?${params.toString()}` : ''}`;
+  const res = await fetch(url, {
     credentials: 'include',
   });
   if (!res.ok) {
@@ -357,6 +381,14 @@ function WalletPage() {
     targetAmount: '',
     targetDate: '',
   });
+
+  // Фильтры по датам
+  const now = new Date();
+  const [filterStartYear, setFilterStartYear] = useState<number>(now.getFullYear());
+  const [filterStartMonth, setFilterStartMonth] = useState<number>(now.getMonth() + 1);
+  const [filterEndYear, setFilterEndYear] = useState<number>(now.getFullYear());
+  const [filterEndMonth, setFilterEndMonth] = useState<number>(now.getMonth() + 1);
+  const [filtersInitialized, setFiltersInitialized] = useState(false);
   const [transactionForm, setTransactionForm] = useState<TransactionFormState>({
     name: '',
     amount: '',
@@ -371,10 +403,90 @@ function WalletPage() {
     retry: false,
   });
 
-  const { data: transactions = [] } = useQuery({
-    queryKey: ['transactions', walletId],
+  // Загружаем все транзакции для определения диапазона дат
+  const { data: allTransactions = [] } = useQuery({
+    queryKey: ['transactions', walletId, 'all'],
     queryFn: () => fetchTransactions(walletId!),
     enabled: !!walletId && !wallet?.isArchived,
+    retry: false,
+  });
+
+  // Определяем самую позднюю и самую раннюю даты транзакций
+  const latestTransactionDate = useMemo(() => {
+    if (allTransactions.length === 0) return null;
+    const dates = allTransactions.map((t) => new Date(t.operationDate));
+    const latest = new Date(Math.max(...dates.map((d) => d.getTime())));
+    return latest;
+  }, [allTransactions]);
+
+  const earliestTransactionDate = useMemo(() => {
+    if (allTransactions.length === 0) return null;
+    const dates = allTransactions.map((t) => new Date(t.operationDate));
+    const earliest = new Date(Math.min(...dates.map((d) => d.getTime())));
+    return earliest;
+  }, [allTransactions]);
+
+  // Определяем диапазон годов для фильтров
+  const availableYears = useMemo(() => {
+    const currentYear = now.getFullYear();
+    let minYear = currentYear - 10;
+    let maxYear = currentYear;
+
+    if (earliestTransactionDate) {
+      const earliestYear = earliestTransactionDate.getFullYear();
+      minYear = Math.min(minYear, earliestYear);
+    }
+    if (latestTransactionDate) {
+      const latestYear = latestTransactionDate.getFullYear();
+      maxYear = Math.max(maxYear, latestYear);
+    }
+
+    // Добавляем небольшой запас
+    minYear = Math.max(2000, minYear - 1); // Не раньше 2000 года
+    maxYear = Math.min(2100, maxYear + 1); // Не позже 2100 года
+
+    const years: number[] = [];
+    for (let year = maxYear; year >= minYear; year--) {
+      years.push(year);
+    }
+    return years;
+  }, [earliestTransactionDate, latestTransactionDate, now]);
+
+  // Сбрасываем фильтры при смене кошелька
+  useEffect(() => {
+    const currentDate = new Date();
+    setFiltersInitialized(false);
+    setFilterStartYear(currentDate.getFullYear());
+    setFilterStartMonth(currentDate.getMonth() + 1);
+    setFilterEndYear(currentDate.getFullYear());
+    setFilterEndMonth(currentDate.getMonth() + 1);
+  }, [walletId]);
+
+  // Устанавливаем фильтры на основе самой поздней транзакции
+  useEffect(() => {
+    if (!filtersInitialized && walletId) {
+      if (latestTransactionDate) {
+        // Если есть транзакции, устанавливаем фильтры на основе самой поздней
+        const year = latestTransactionDate.getFullYear();
+        const month = latestTransactionDate.getMonth() + 1;
+        setFilterEndYear(year);
+        setFilterEndMonth(month);
+        setFilterStartYear(year);
+        setFilterStartMonth(month);
+      }
+      // Если транзакций нет, фильтры остаются на текущем месяце (уже установлены по умолчанию)
+      setFiltersInitialized(true);
+    }
+  }, [latestTransactionDate, filtersInitialized, walletId]);
+
+  // Формируем даты для фильтрации
+  const filterFrom = `${filterStartYear}-${String(filterStartMonth).padStart(2, '0')}-01`;
+  const filterTo = `${filterEndYear}-${String(filterEndMonth).padStart(2, '0')}-${new Date(filterEndYear, filterEndMonth, 0).getDate()}`;
+
+  const { data: transactions = [] } = useQuery({
+    queryKey: ['transactions', walletId, filterFrom, filterTo],
+    queryFn: () => fetchTransactions(walletId!, filterFrom, filterTo),
+    enabled: !!walletId && !wallet?.isArchived && filtersInitialized,
     retry: false,
   });
 
@@ -433,6 +545,8 @@ function WalletPage() {
       queryClient.invalidateQueries({ queryKey: ['transactions', walletId] });
       queryClient.invalidateQueries({ queryKey: ['wallet', walletId] });
       queryClient.invalidateQueries({ queryKey: ['wallets'] });
+      // Сбрасываем инициализацию фильтров, чтобы они обновились с учетом новой транзакции
+      setFiltersInitialized(false);
       setTransactionDialogOpen(false);
       setTransactionForm({
         name: '',
@@ -890,6 +1004,78 @@ function WalletPage() {
                 >
                   Перевод
                 </Button>
+              </Box>
+            </Box>
+
+            {/* Фильтры по датам */}
+            <Box sx={{ mb: 3, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+              <Typography variant="subtitle2" sx={{ mb: 2 }}>
+                Фильтр по датам
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+                <Typography variant="body2" color="text.secondary">
+                  От:
+                </Typography>
+                <FormControl size="small" sx={{ minWidth: 100 }}>
+                  <InputLabel>Год</InputLabel>
+                  <Select
+                    value={filterStartYear}
+                    label="Год"
+                    onChange={(e) => setFilterStartYear(Number(e.target.value))}
+                  >
+                    {availableYears.map((year) => (
+                      <MenuItem key={year} value={year}>
+                        {year}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <FormControl size="small" sx={{ minWidth: 140 }}>
+                  <InputLabel>Месяц</InputLabel>
+                  <Select
+                    value={filterStartMonth}
+                    label="Месяц"
+                    onChange={(e) => setFilterStartMonth(Number(e.target.value))}
+                  >
+                    {MONTH_OPTIONS.map((month) => (
+                      <MenuItem key={month.value} value={month.value}>
+                        {month.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>
+                  До:
+                </Typography>
+                <FormControl size="small" sx={{ minWidth: 100 }}>
+                  <InputLabel>Год</InputLabel>
+                  <Select
+                    value={filterEndYear}
+                    label="Год"
+                    onChange={(e) => setFilterEndYear(Number(e.target.value))}
+                  >
+                    {availableYears.map((year) => (
+                      <MenuItem key={year} value={year}>
+                        {year}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <FormControl size="small" sx={{ minWidth: 140 }}>
+                  <InputLabel>Месяц</InputLabel>
+                  <Select
+                    value={filterEndMonth}
+                    label="Месяц"
+                    onChange={(e) => setFilterEndMonth(Number(e.target.value))}
+                  >
+                    {MONTH_OPTIONS.map((month) => (
+                      <MenuItem key={month.value} value={month.value}>
+                        {month.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Box>
             </Box>
 
