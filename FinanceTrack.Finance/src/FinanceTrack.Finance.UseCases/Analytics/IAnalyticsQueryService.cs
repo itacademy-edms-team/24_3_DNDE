@@ -9,7 +9,7 @@ public interface IAnalyticsQueryService
         CancellationToken ct = default
     );
 
-    Task<AccountAnalyticsDto> GetAccountAnalytics(
+    Task<Result<AccountAnalyticsDto>> GetAccountAnalytics(
         string userId,
         Guid walletId,
         DateOnly from,

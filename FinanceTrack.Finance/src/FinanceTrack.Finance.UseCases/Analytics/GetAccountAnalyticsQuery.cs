@@ -15,20 +15,12 @@ public sealed class GetAccountAnalyticsHandler(IAnalyticsQueryService _service)
         CancellationToken ct
     )
     {
-        try
-        {
-            var result = await _service.GetAccountAnalytics(
-                request.UserId,
-                request.WalletId,
-                request.From,
-                request.To,
-                ct
-            );
-            return Result.Success(result);
-        }
-        catch (InvalidOperationException)
-        {
-            return Result.NotFound();
-        }
+        return await _service.GetAccountAnalytics(
+            request.UserId,
+            request.WalletId,
+            request.From,
+            request.To,
+            ct
+        );
     }
 }
