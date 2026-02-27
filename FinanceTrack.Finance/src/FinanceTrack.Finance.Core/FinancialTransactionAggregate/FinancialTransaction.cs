@@ -1,9 +1,10 @@
 ﻿using FinanceTrack.Finance.Core.CategoryAggregate;
+using FinanceTrack.Finance.Core.Shared;
 using FinanceTrack.Finance.Core.WalletAggregate;
 
 namespace FinanceTrack.Finance.Core.FinancialTransactionAggregate;
 
-public sealed class FinancialTransaction : EntityBase<Guid>, IAggregateRoot
+public sealed class FinancialTransaction : GuidEntityBase, IAggregateRoot
 {
     public string UserId { get; private set; } = default!;
     public Guid WalletId { get; private set; }

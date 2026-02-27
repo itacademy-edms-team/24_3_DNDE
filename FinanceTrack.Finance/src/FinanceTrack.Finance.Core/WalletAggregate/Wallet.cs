@@ -1,6 +1,8 @@
+﻿using FinanceTrack.Finance.Core.Shared;
+
 namespace FinanceTrack.Finance.Core.WalletAggregate;
 
-public sealed class Wallet : EntityBase<Guid>, IAggregateRoot
+public sealed class Wallet : GuidEntityBase, IAggregateRoot
 {
     public string UserId { get; private set; } = default!;
     public string Name { get; private set; } = default!;
@@ -15,7 +17,11 @@ public sealed class Wallet : EntityBase<Guid>, IAggregateRoot
     // ORM
     private Wallet() { }
 
-    public static Wallet CreateChecking(string userId, string name, bool allowNegativeBalance = true)
+    public static Wallet CreateChecking(
+        string userId,
+        string name,
+        bool allowNegativeBalance = true
+    )
     {
         Guard.Against.NullOrWhiteSpace(userId);
         Guard.Against.NullOrWhiteSpace(name);

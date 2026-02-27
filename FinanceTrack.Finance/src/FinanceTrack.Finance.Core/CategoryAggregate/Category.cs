@@ -1,6 +1,8 @@
+﻿using FinanceTrack.Finance.Core.Shared;
+
 namespace FinanceTrack.Finance.Core.CategoryAggregate;
 
-public sealed class Category : EntityBase<Guid>, IAggregateRoot
+public sealed class Category : GuidEntityBase, IAggregateRoot
 {
     public string UserId { get; private set; } = default!;
     public string Name { get; private set; } = default!;
