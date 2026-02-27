@@ -36,6 +36,7 @@ public class RecurringTransactionProcessorServiceTests : BaseEfRepoTestFixture
             startDate: new DateOnly(2026, 2, 1)
         );
         await recurringRepo.AddAsync(rule);
+        await SaveChangesAsync();
 
         var service = new RecurringTransactionProcessorService(
             recurringRepo,
@@ -87,6 +88,7 @@ public class RecurringTransactionProcessorServiceTests : BaseEfRepoTestFixture
             startDate: new DateOnly(2026, 1, 10)
         );
         await recurringRepo.AddAsync(rule);
+        await SaveChangesAsync();
 
         var service = new RecurringTransactionProcessorService(
             recurringRepo,
@@ -126,6 +128,7 @@ public class RecurringTransactionProcessorServiceTests : BaseEfRepoTestFixture
             startDate: new DateOnly(2026, 2, 1)
         );
         await recurringRepo.AddAsync(rule);
+        await SaveChangesAsync();
 
         var service = new RecurringTransactionProcessorService(
             recurringRepo,
@@ -169,6 +172,7 @@ public class RecurringTransactionProcessorServiceTests : BaseEfRepoTestFixture
         );
         rule.MarkProcessed(new DateOnly(2026, 1, 1));
         await recurringRepo.AddAsync(rule);
+        await SaveChangesAsync();
 
         var service = new RecurringTransactionProcessorService(
             recurringRepo,

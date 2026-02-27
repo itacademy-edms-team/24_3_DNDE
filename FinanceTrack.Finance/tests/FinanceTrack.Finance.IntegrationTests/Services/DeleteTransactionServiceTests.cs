@@ -20,12 +20,15 @@ public class DeleteTransactionServiceTests : BaseEfRepoTestFixture
         // Arrange: create wallet and income using service
         var wallet = Wallet.CreateChecking(UserId, "Checking");
         await walletRepo.AddAsync(wallet);
+        await SaveChangesAsync();
 
         var createIncomeService = new CreateIncomeService(transactionRepo, walletRepo);
         var createResult = await createIncomeService.Execute(
             new CreateIncomeRequest(UserId, wallet.Id, "Salary", 1000m, Today)
         );
         createResult.IsSuccess.ShouldBeTrue();
+
+        await SaveChangesAsync();
 
         // Verify setup
         (await walletRepo.GetByIdAsync(wallet.Id))!.Balance.ShouldBe(1000m);
@@ -35,6 +38,7 @@ public class DeleteTransactionServiceTests : BaseEfRepoTestFixture
         var result = await service.Execute(createResult.Value, UserId);
 
         result.IsSuccess.ShouldBeTrue();
+        await SaveChangesAsync();
 
         // Verify: Income reversed => balance should be 0
         var updatedWallet = await walletRepo.GetByIdAsync(wallet.Id);
@@ -54,6 +58,7 @@ public class DeleteTransactionServiceTests : BaseEfRepoTestFixture
         var wallet = Wallet.CreateChecking(UserId, "Checking");
         wallet.Credit(1000m);
         await walletRepo.AddAsync(wallet);
+        await SaveChangesAsync();
 
         // Create expense using service
         var createExpenseService = new CreateExpenseService(transactionRepo, walletRepo);
@@ -62,6 +67,8 @@ public class DeleteTransactionServiceTests : BaseEfRepoTestFixture
         );
         createResult.IsSuccess.ShouldBeTrue();
 
+        await SaveChangesAsync();
+
         (await walletRepo.GetByIdAsync(wallet.Id))!.Balance.ShouldBe(800m);
 
         // Act
@@ -69,6 +76,7 @@ public class DeleteTransactionServiceTests : BaseEfRepoTestFixture
         var result = await service.Execute(createResult.Value, UserId);
 
         result.IsSuccess.ShouldBeTrue();
+        await SaveChangesAsync();
 
         // Verify: Expense reversed => balance should be 1000 again
         var updatedWallet = await walletRepo.GetByIdAsync(wallet.Id);

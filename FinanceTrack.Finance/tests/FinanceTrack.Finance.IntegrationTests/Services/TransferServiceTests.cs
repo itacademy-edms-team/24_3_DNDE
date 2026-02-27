@@ -24,11 +24,14 @@ public class TransferServiceTests : BaseEfRepoTestFixture
 
         await walletRepo.AddAsync(from);
         await walletRepo.AddAsync(to);
+        await SaveChangesAsync();
 
         var service = new TransferService(transactionRepo, walletRepo);
         var request = new CreateTransferRequest(UserId, from.Id, to.Id, "Transfer", 300m, Today);
 
         var result = await service.Execute(request);
+
+        await SaveChangesAsync();
 
         result.IsSuccess.ShouldBeTrue();
 

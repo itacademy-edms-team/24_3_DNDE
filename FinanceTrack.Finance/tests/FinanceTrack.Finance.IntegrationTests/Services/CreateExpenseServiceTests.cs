@@ -1,4 +1,4 @@
-using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
+﻿using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
 using FinanceTrack.Finance.Core.Interfaces;
 using FinanceTrack.Finance.Core.Services;
 using FinanceTrack.Finance.Core.WalletAggregate;
@@ -15,13 +15,17 @@ public class CreateExpenseServiceTests : BaseEfRepoTestFixture
     {
         var walletRepo = GetWalletRepository();
         var wallet = Wallet.CreateChecking(UserId, "Checking", allowNeg);
-        await walletRepo.AddAsync(wallet);
 
+        // Apply initial balance before persisting so EF performs a single INSERT
         if (initialBalance > 0)
         {
             wallet.Credit(initialBalance);
-            await walletRepo.UpdateAsync(wallet);
         }
+
+        await walletRepo.AddAsync(wallet);
+
+        // Persist initial wallet state to the store
+        await SaveChangesAsync();
 
         return wallet;
     }
@@ -38,6 +42,8 @@ public class CreateExpenseServiceTests : BaseEfRepoTestFixture
         var request = new CreateExpenseRequest(UserId, wallet.Id, "Groceries", 200m, Today);
 
         var result = await service.Execute(request);
+
+        await SaveChangesAsync();
 
         result.IsSuccess.ShouldBeTrue();
 
@@ -62,6 +68,8 @@ public class CreateExpenseServiceTests : BaseEfRepoTestFixture
         var request = new CreateExpenseRequest(UserId, wallet.Id, "Big Purchase", 100m, Today);
 
         var result = await service.Execute(request);
+
+        await SaveChangesAsync();
 
         result.Status.ShouldBe(Ardalis.Result.ResultStatus.Error);
 

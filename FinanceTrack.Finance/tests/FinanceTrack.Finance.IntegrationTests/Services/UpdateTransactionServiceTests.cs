@@ -25,6 +25,8 @@ public class UpdateTransactionServiceTests : BaseEfRepoTestFixture
         var tx = FinancialTransaction.CreateIncome(UserId, wallet.Id, "Salary", 500m, Today);
         await transactionRepo.AddAsync(tx);
 
+        await SaveChangesAsync();
+
         // Act: increase income to 800
         var service = new UpdateTransactionService(transactionRepo, walletRepo);
         var request = new UpdateTransactionRequest(tx.Id, UserId, "Updated Salary", 800m, Today, null);
@@ -53,6 +55,8 @@ public class UpdateTransactionServiceTests : BaseEfRepoTestFixture
         var tx = FinancialTransaction.CreateExpense(UserId, wallet.Id, "Groceries", 300m, Today);
         await transactionRepo.AddAsync(tx);
 
+        await SaveChangesAsync();
+
         // Act: decrease expense to 100
         var service = new UpdateTransactionService(transactionRepo, walletRepo);
         var request = new UpdateTransactionRequest(tx.Id, UserId, "Less Groceries", 100m, Today, null);
@@ -78,9 +82,13 @@ public class UpdateTransactionServiceTests : BaseEfRepoTestFixture
         );
         await transactionRepo.AddAsync(tx);
 
+        await SaveChangesAsync();
+
         var service = new UpdateTransactionService(transactionRepo, walletRepo);
         var request = new UpdateTransactionRequest(tx.Id, UserId, "Updated", 200m, Today, null);
         var result = await service.Execute(request);
+
+        await SaveChangesAsync();
 
         result.Status.ShouldBe(Ardalis.Result.ResultStatus.Error);
     }

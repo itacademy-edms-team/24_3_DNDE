@@ -16,11 +16,13 @@ public class CreateIncomeServiceTests : BaseEfRepoTestFixture
     {
         var walletRepo = GetWalletRepository();
         var transactionRepo = GetFinancialTransactionRepository();
-
         // Arrange: create and persist a wallet
         var wallet = Wallet.CreateChecking(UserId, "Checking");
         await walletRepo.AddAsync(wallet);
         var walletId = wallet.Id;
+
+        // Persist initial wallet state to the store so services can load it via specs
+        await SaveChangesAsync();
 
         var service = new CreateIncomeService(transactionRepo, walletRepo);
         var request = new CreateIncomeRequest(UserId, walletId, "Salary", 5000m, Today);
@@ -28,8 +30,16 @@ public class CreateIncomeServiceTests : BaseEfRepoTestFixture
         // Act
         var result = await service.Execute(request);
 
-        // Assert
-        result.IsSuccess.ShouldBeTrue();
+        // Persist effects of the service (mimic UnitOfWork behavior)
+        await SaveChangesAsync();
+
+        // Assert (temporary diagnostic)
+        if (!result.IsSuccess)
+        {
+            throw new Exception(
+                $"CreateIncomeService failed. Status={result.Status}, Errors={string.Join(" | ", result.Errors)}"
+            );
+        }
 
         // Verify wallet balance
         var updatedWallet = await walletRepo.GetByIdAsync(walletId);
@@ -52,11 +62,15 @@ public class CreateIncomeServiceTests : BaseEfRepoTestFixture
 
         var wallet = Wallet.CreateChecking(UserId, "Checking");
         await walletRepo.AddAsync(wallet);
+        await SaveChangesAsync();
 
         var service = new CreateIncomeService(transactionRepo, walletRepo);
 
         await service.Execute(new CreateIncomeRequest(UserId, wallet.Id, "Salary", 3000m, Today));
+        await SaveChangesAsync();
+
         await service.Execute(new CreateIncomeRequest(UserId, wallet.Id, "Bonus", 500m, Today));
+        await SaveChangesAsync();
 
         var updatedWallet = await walletRepo.GetByIdAsync(wallet.Id);
         updatedWallet.ShouldNotBeNull();
