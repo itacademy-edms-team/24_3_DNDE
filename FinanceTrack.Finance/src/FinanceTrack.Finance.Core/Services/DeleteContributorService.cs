@@ -14,7 +14,8 @@ namespace FinanceTrack.Finance.Core.Services;
 public class DeleteContributorService(
     IRepository<Contributor> _repository,
     IMediator _mediator,
-    ILogger<DeleteContributorService> _logger
+    ILogger<DeleteContributorService> _logger,
+    IUnitOfWork _unitOfWork
 )
 {
     public async Task<Result> DeleteContributor(int contributorId)
@@ -25,6 +26,8 @@ public class DeleteContributorService(
             return Result.NotFound();
 
         await _repository.DeleteAsync(aggregateToDelete);
+        await _unitOfWork.SaveChangesAsync();
+
         var domainEvent = new ContributorDeletedEvent(contributorId);
         await _mediator.Publish(domainEvent);
 

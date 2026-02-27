@@ -2,6 +2,7 @@
 using System.Reflection;
 using FastEndpoints;
 using FinanceTrack.Finance.Core.ContributorAggregate;
+using FinanceTrack.Finance.Core.Interfaces;
 using Microsoft.Extensions.Logging;
 
 namespace FinanceTrack.Finance.UseCases.Contributors.Create;
@@ -19,10 +20,15 @@ public class CreateContributorCommandHandler2
     : CommandHandler<CreateContributorCommand2, Result<int>>
 {
     private readonly IRepository<Contributor> _repository;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public CreateContributorCommandHandler2(IRepository<Contributor> repository)
+    public CreateContributorCommandHandler2(
+        IRepository<Contributor> repository,
+        IUnitOfWork unitOfWork
+    )
     {
         _repository = repository;
+        _unitOfWork = unitOfWork;
     }
 
     public override async Task<Result<int>> ExecuteAsync(
@@ -32,6 +38,8 @@ public class CreateContributorCommandHandler2
     {
         var newContributor = new Contributor(request.Name);
         var createdItem = await _repository.AddAsync(newContributor, cancellationToken);
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         Console.WriteLine($"<<<<<<<Created contributor with ID: {createdItem.Id}");
         return createdItem.Id;

@@ -1,9 +1,12 @@
 using FinanceTrack.Finance.Core.CategoryAggregate;
+using FinanceTrack.Finance.Core.Interfaces;
 
 namespace FinanceTrack.Finance.UseCases.Categories.Update;
 
-public sealed class UpdateCategoryHandler(IRepository<Category> _repo)
-    : ICommandHandler<UpdateCategoryCommand, Result<CategoryDto>>
+public sealed class UpdateCategoryHandler(
+    IRepository<Category> _repo,
+    IUnitOfWork _unitOfWork
+) : ICommandHandler<UpdateCategoryCommand, Result<CategoryDto>>
 {
     public async Task<Result<CategoryDto>> Handle(UpdateCategoryCommand request, CancellationToken ct)
     {
@@ -16,6 +19,7 @@ public sealed class UpdateCategoryHandler(IRepository<Category> _repo)
         category.UpdateName(request.Name).UpdateIcon(request.Icon).UpdateColor(request.Color);
 
         await _repo.UpdateAsync(category, ct);
+        await _unitOfWork.SaveChangesAsync(ct);
 
         return Result.Success(
             new CategoryDto(

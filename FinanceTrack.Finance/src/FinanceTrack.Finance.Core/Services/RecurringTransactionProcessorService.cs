@@ -11,7 +11,8 @@ public class RecurringTransactionProcessorService(
     IRepository<RecurringTransaction> _recurringRepo,
     IRepository<FinancialTransaction> _transactionRepo,
     IRepository<Wallet> _walletRepo,
-    ILogger<RecurringTransactionProcessorService> _logger
+    ILogger<RecurringTransactionProcessorService> _logger,
+    IUnitOfWork _unitOfWork
 )
 {
     public async Task<int> ProcessAsync(DateOnly today, CancellationToken ct = default)
@@ -142,6 +143,8 @@ public class RecurringTransactionProcessorService(
 
                 rule.MarkProcessed(operationDate);
                 await _recurringRepo.UpdateAsync(rule, ct);
+
+                await _unitOfWork.SaveChangesAsync(ct);
 
                 created++;
 

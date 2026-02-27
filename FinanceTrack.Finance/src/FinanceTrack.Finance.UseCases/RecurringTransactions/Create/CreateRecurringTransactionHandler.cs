@@ -1,3 +1,4 @@
+using FinanceTrack.Finance.Core.Interfaces;
 using FinanceTrack.Finance.Core.RecurringTransactionAggregate;
 using FinanceTrack.Finance.Core.WalletAggregate;
 
@@ -5,7 +6,8 @@ namespace FinanceTrack.Finance.UseCases.RecurringTransactions.Create;
 
 public sealed class CreateRecurringTransactionHandler(
     IRepository<RecurringTransaction> _repo,
-    IReadRepository<Wallet> _walletRepo
+    IReadRepository<Wallet> _walletRepo,
+    IUnitOfWork _unitOfWork
 ) : ICommandHandler<CreateRecurringTransactionCommand, Result<Guid>>
 {
     public async Task<Result<Guid>> Handle(
@@ -35,6 +37,7 @@ public sealed class CreateRecurringTransactionHandler(
         );
 
         await _repo.AddAsync(recurring, ct);
+        await _unitOfWork.SaveChangesAsync(ct);
         return Result.Success(recurring.Id);
     }
 }

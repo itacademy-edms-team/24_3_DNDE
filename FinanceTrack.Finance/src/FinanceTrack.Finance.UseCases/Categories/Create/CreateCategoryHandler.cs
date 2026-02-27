@@ -1,9 +1,12 @@
 using FinanceTrack.Finance.Core.CategoryAggregate;
+using FinanceTrack.Finance.Core.Interfaces;
 
 namespace FinanceTrack.Finance.UseCases.Categories.Create;
 
-public sealed class CreateCategoryHandler(IRepository<Category> _repo)
-    : ICommandHandler<CreateCategoryCommand, Result<Guid>>
+public sealed class CreateCategoryHandler(
+    IRepository<Category> _repo,
+    IUnitOfWork _unitOfWork
+) : ICommandHandler<CreateCategoryCommand, Result<Guid>>
 {
     public async Task<Result<Guid>> Handle(CreateCategoryCommand request, CancellationToken ct)
     {
@@ -19,6 +22,7 @@ public sealed class CreateCategoryHandler(IRepository<Category> _repo)
         );
 
         await _repo.AddAsync(category, ct);
+        await _unitOfWork.SaveChangesAsync(ct);
         return Result.Success(category.Id);
     }
 }

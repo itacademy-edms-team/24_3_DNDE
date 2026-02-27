@@ -3,8 +3,10 @@ using FinanceTrack.Finance.Core.Services;
 
 namespace FinanceTrack.Finance.UseCases.FinancialTransactions.Update;
 
-public sealed class UpdateTransactionHandler(UpdateTransactionService _service)
-    : ICommandHandler<UpdateTransactionCommand, Result<FinancialTransactionDto>>
+public sealed class UpdateTransactionHandler(
+    UpdateTransactionService _service,
+    IUnitOfWork _unitOfWork
+) : ICommandHandler<UpdateTransactionCommand, Result<FinancialTransactionDto>>
 {
     public async Task<Result<FinancialTransactionDto>> Handle(
         UpdateTransactionCommand request,
@@ -21,6 +23,11 @@ public sealed class UpdateTransactionHandler(UpdateTransactionService _service)
         );
 
         var result = await _service.Execute(coreRequest, ct);
+
+        if (result.IsSuccess)
+        {
+            await _unitOfWork.SaveChangesAsync(ct);
+        }
 
         return result.Map(t => new FinancialTransactionDto(
             t.Id,

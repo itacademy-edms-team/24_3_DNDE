@@ -1,9 +1,12 @@
+using FinanceTrack.Finance.Core.Interfaces;
 using FinanceTrack.Finance.Core.RecurringTransactionAggregate;
 
 namespace FinanceTrack.Finance.UseCases.RecurringTransactions.ToggleActive;
 
-public sealed class ToggleRecurringTransactionHandler(IRepository<RecurringTransaction> _repo)
-    : ICommandHandler<ToggleRecurringTransactionCommand, Result>
+public sealed class ToggleRecurringTransactionHandler(
+    IRepository<RecurringTransaction> _repo,
+    IUnitOfWork _unitOfWork
+) : ICommandHandler<ToggleRecurringTransactionCommand, Result>
 {
     public async Task<Result> Handle(
         ToggleRecurringTransactionCommand request,
@@ -22,6 +25,7 @@ public sealed class ToggleRecurringTransactionHandler(IRepository<RecurringTrans
             recurring.Deactivate();
 
         await _repo.UpdateAsync(recurring, ct);
+        await _unitOfWork.SaveChangesAsync(ct);
         return Result.Success();
     }
 }

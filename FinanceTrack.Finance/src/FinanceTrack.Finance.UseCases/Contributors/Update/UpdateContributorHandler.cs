@@ -1,9 +1,12 @@
 ﻿using FinanceTrack.Finance.Core.ContributorAggregate;
+using FinanceTrack.Finance.Core.Interfaces;
 
 namespace FinanceTrack.Finance.UseCases.Contributors.Update;
 
-public class UpdateContributorHandler(IRepository<Contributor> _repository)
-    : ICommandHandler<UpdateContributorCommand, Result<ContributorDTO>>
+public class UpdateContributorHandler(
+    IRepository<Contributor> _repository,
+    IUnitOfWork _unitOfWork
+) : ICommandHandler<UpdateContributorCommand, Result<ContributorDTO>>
 {
     public async Task<Result<ContributorDTO>> Handle(
         UpdateContributorCommand request,
@@ -22,6 +25,7 @@ public class UpdateContributorHandler(IRepository<Contributor> _repository)
         existingContributor.UpdateName(request.NewName!);
 
         await _repository.UpdateAsync(existingContributor, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new ContributorDTO(
             existingContributor.Id,

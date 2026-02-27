@@ -1,9 +1,12 @@
+using FinanceTrack.Finance.Core.Interfaces;
 using FinanceTrack.Finance.Core.WalletAggregate;
 
 namespace FinanceTrack.Finance.UseCases.Wallets.Create;
 
-public sealed class CreateWalletHandler(IRepository<Wallet> _repo)
-    : ICommandHandler<CreateWalletCommand, Result<Guid>>
+public sealed class CreateWalletHandler(
+    IRepository<Wallet> _repo,
+    IUnitOfWork _unitOfWork
+) : ICommandHandler<CreateWalletCommand, Result<Guid>>
 {
     public async Task<Result<Guid>> Handle(
         CreateWalletCommand request,
@@ -35,6 +38,7 @@ public sealed class CreateWalletHandler(IRepository<Wallet> _repo)
         }
 
         await _repo.AddAsync(wallet, ct);
+        await _unitOfWork.SaveChangesAsync(ct);
         return Result.Success(wallet.Id);
     }
 }

@@ -1,4 +1,5 @@
-﻿using FinanceTrack.Finance.Core.Services;
+﻿using FinanceTrack.Finance.Core.Interfaces;
+using FinanceTrack.Finance.Core.Services;
 using FinanceTrack.Finance.Infrastructure.Data;
 using FinanceTrack.Finance.Infrastructure.Data.Queries;
 using FinanceTrack.Finance.UseCases.Analytics;
@@ -22,6 +23,7 @@ public static class InfrastructureServiceExtensions
         services
             .AddScoped(typeof(IRepository<>), typeof(EfRepository<>))
             .AddScoped(typeof(IReadRepository<>), typeof(EfRepository<>))
+            .AddScoped<IUnitOfWork, EfUnitOfWork>()
             // Contributor (template example, kept)
             .AddScoped<IListContributorsQueryService, ListContributorsQueryService>()
             .AddScoped<DeleteContributorService>()

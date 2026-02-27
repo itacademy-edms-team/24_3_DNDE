@@ -1,10 +1,13 @@
-﻿using FinanceTrack.Finance.Core.WalletAggregate;
+﻿using FinanceTrack.Finance.Core.Interfaces;
+using FinanceTrack.Finance.Core.WalletAggregate;
 using FinanceTrack.Finance.Core.WalletAggregate.Specifications;
 
 namespace FinanceTrack.Finance.UseCases.Wallets.Update;
 
-public sealed class UpdateWalletHandler(IRepository<Wallet> _repo)
-    : ICommandHandler<UpdateWalletCommand, Result<WalletDto>>
+public sealed class UpdateWalletHandler(
+    IRepository<Wallet> _repo,
+    IUnitOfWork _unitOfWork
+) : ICommandHandler<UpdateWalletCommand, Result<WalletDto>>
 {
     public async Task<Result<WalletDto>> Handle(UpdateWalletCommand request, CancellationToken ct)
     {
@@ -21,6 +24,7 @@ public sealed class UpdateWalletHandler(IRepository<Wallet> _repo)
             .UpdateTarget(request.TargetAmount, request.TargetDate);
 
         await _repo.UpdateAsync(wallet, ct);
+        await _unitOfWork.SaveChangesAsync(ct);
 
         return Result.Success(
             new WalletDto(

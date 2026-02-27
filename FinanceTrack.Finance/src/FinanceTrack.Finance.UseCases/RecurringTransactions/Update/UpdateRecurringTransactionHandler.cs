@@ -1,9 +1,12 @@
+using FinanceTrack.Finance.Core.Interfaces;
 using FinanceTrack.Finance.Core.RecurringTransactionAggregate;
 
 namespace FinanceTrack.Finance.UseCases.RecurringTransactions.Update;
 
-public sealed class UpdateRecurringTransactionHandler(IRepository<RecurringTransaction> _repo)
-    : ICommandHandler<UpdateRecurringTransactionCommand, Result<RecurringTransactionDto>>
+public sealed class UpdateRecurringTransactionHandler(
+    IRepository<RecurringTransaction> _repo,
+    IUnitOfWork _unitOfWork
+) : ICommandHandler<UpdateRecurringTransactionCommand, Result<RecurringTransactionDto>>
 {
     public async Task<Result<RecurringTransactionDto>> Handle(
         UpdateRecurringTransactionCommand request,
@@ -24,6 +27,7 @@ public sealed class UpdateRecurringTransactionHandler(IRepository<RecurringTrans
             .SetCategory(request.CategoryId);
 
         await _repo.UpdateAsync(recurring, ct);
+        await _unitOfWork.SaveChangesAsync(ct);
 
         return Result.Success(
             new RecurringTransactionDto(
