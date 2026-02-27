@@ -1,6 +1,7 @@
-using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
+﻿using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
 using FinanceTrack.Finance.Core.Interfaces;
 using FinanceTrack.Finance.Core.WalletAggregate;
+using FinanceTrack.Finance.Core.WalletAggregate.Specifications;
 
 namespace FinanceTrack.Finance.Core.Services;
 
@@ -14,7 +15,8 @@ public class CreateExpenseService(
         CancellationToken ct = default
     )
     {
-        var wallet = await _walletRepo.GetByIdAsync(request.WalletId, ct);
+        var spec = new WalletByIdSpec(request.WalletId);
+        var wallet = await _walletRepo.FirstOrDefaultAsync(spec, ct);
         if (wallet is null)
             return Result.NotFound("Wallet not found.");
         if (!string.Equals(wallet.UserId, request.UserId, StringComparison.Ordinal))

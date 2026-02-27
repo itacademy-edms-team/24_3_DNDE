@@ -1,6 +1,7 @@
-using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
+﻿using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
 using FinanceTrack.Finance.Core.Interfaces;
 using FinanceTrack.Finance.Core.WalletAggregate;
+using FinanceTrack.Finance.Core.WalletAggregate.Specifications;
 
 namespace FinanceTrack.Finance.Core.Services;
 
@@ -17,7 +18,8 @@ public class TransferService(
         if (request.FromWalletId == request.ToWalletId)
             return Result.Error("Cannot transfer to the same wallet.");
 
-        var fromWallet = await _walletRepo.GetByIdAsync(request.FromWalletId, ct);
+        var spec = new WalletByIdSpec(request.FromWalletId);
+        var fromWallet = await _walletRepo.FirstOrDefaultAsync(spec, ct);
         if (fromWallet is null)
             return Result.NotFound("Source wallet not found.");
         if (!string.Equals(fromWallet.UserId, request.UserId, StringComparison.Ordinal))
@@ -25,7 +27,8 @@ public class TransferService(
         if (fromWallet.IsArchived)
             return Result.Error("Cannot transfer from an archived wallet.");
 
-        var toWallet = await _walletRepo.GetByIdAsync(request.ToWalletId, ct);
+        spec = new WalletByIdSpec(request.ToWalletId);
+        var toWallet = await _walletRepo.FirstOrDefaultAsync(spec, ct);
         if (toWallet is null)
             return Result.NotFound("Destination wallet not found.");
         if (!string.Equals(toWallet.UserId, request.UserId, StringComparison.Ordinal))

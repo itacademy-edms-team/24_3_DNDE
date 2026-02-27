@@ -1,6 +1,8 @@
-using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
+﻿using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
+using FinanceTrack.Finance.Core.FinancialTransactionAggregate.Specifications;
 using FinanceTrack.Finance.Core.Interfaces;
 using FinanceTrack.Finance.Core.WalletAggregate;
+using FinanceTrack.Finance.Core.WalletAggregate.Specifications;
 
 namespace FinanceTrack.Finance.Core.Services;
 
@@ -14,7 +16,8 @@ public class UpdateTransactionService(
         CancellationToken ct = default
     )
     {
-        var transaction = await _transactionRepo.GetByIdAsync(request.TransactionId, ct);
+        var transactionSpec = new FinancialTransactionByIdSpec(request.TransactionId);
+        var transaction = await _transactionRepo.FirstOrDefaultAsync(transactionSpec, ct);
         if (transaction is null)
             return Result.NotFound();
         if (!string.Equals(transaction.UserId, request.UserId, StringComparison.Ordinal))
@@ -26,10 +29,13 @@ public class UpdateTransactionService(
             || transaction.TransactionType == FinancialTransactionType.TransferOut
         )
         {
-            return Result.Error("Transfer transactions cannot be edited. Delete and recreate instead.");
+            return Result.Error(
+                "Transfer transactions cannot be edited. Delete and recreate instead."
+            );
         }
 
-        var wallet = await _walletRepo.GetByIdAsync(transaction.WalletId, ct);
+        var walletSpec = new WalletByIdSpec(transaction.WalletId);
+        var wallet = await _walletRepo.FirstOrDefaultAsync(walletSpec, ct);
         if (wallet is null)
             return Result.NotFound("Wallet not found.");
 

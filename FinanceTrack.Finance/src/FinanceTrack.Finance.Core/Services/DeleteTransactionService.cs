@@ -1,6 +1,7 @@
 ﻿using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
 using FinanceTrack.Finance.Core.FinancialTransactionAggregate.Specifications;
 using FinanceTrack.Finance.Core.WalletAggregate;
+using FinanceTrack.Finance.Core.WalletAggregate.Specifications;
 
 namespace FinanceTrack.Finance.Core.Services;
 
@@ -15,13 +16,15 @@ public class DeleteTransactionService(
         CancellationToken ct = default
     )
     {
-        var transaction = await _transactionRepo.GetByIdAsync(transactionId, ct);
+        var transactionSpec = new FinancialTransactionByIdSpec(transactionId);
+        var transaction = await _transactionRepo.FirstOrDefaultAsync(transactionSpec, ct);
         if (transaction is null)
             return Result.NotFound();
         if (!string.Equals(transaction.UserId, userId, StringComparison.Ordinal))
             return Result.Forbidden();
 
-        var wallet = await _walletRepo.GetByIdAsync(transaction.WalletId, ct);
+        var walletSpec = new WalletByIdSpec(transaction.WalletId);
+        var wallet = await _walletRepo.FirstOrDefaultAsync(walletSpec, ct);
         if (wallet is null)
             return Result.NotFound("Wallet not found.");
 
@@ -59,7 +62,8 @@ public class DeleteTransactionService(
 
             if (related is not null)
             {
-                var relatedWallet = await _walletRepo.GetByIdAsync(related.WalletId, ct);
+                walletSpec = new WalletByIdSpec(related.WalletId);
+                var relatedWallet = await _walletRepo.FirstOrDefaultAsync(walletSpec, ct);
                 if (relatedWallet is not null)
                 {
                     if (

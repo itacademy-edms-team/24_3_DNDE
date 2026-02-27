@@ -1,8 +1,9 @@
-using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
+﻿using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
 using FinanceTrack.Finance.Core.Interfaces;
 using FinanceTrack.Finance.Core.RecurringTransactionAggregate;
 using FinanceTrack.Finance.Core.RecurringTransactionAggregate.Specifications;
 using FinanceTrack.Finance.Core.WalletAggregate;
+using FinanceTrack.Finance.Core.WalletAggregate.Specifications;
 
 namespace FinanceTrack.Finance.Core.Services;
 
@@ -61,7 +62,10 @@ public class RecurringTransactionProcessorService(
             var operationDate = new DateOnly(
                 currentMonth.Year,
                 currentMonth.Month,
-                Math.Min(rule.DayOfMonth, DateTime.DaysInMonth(currentMonth.Year, currentMonth.Month))
+                Math.Min(
+                    rule.DayOfMonth,
+                    DateTime.DaysInMonth(currentMonth.Year, currentMonth.Month)
+                )
             );
 
             // Only create if the operation date has arrived and it's within the active range
@@ -71,13 +75,17 @@ public class RecurringTransactionProcessorService(
                     break;
 
                 // Check if already processed for this month
-                if (rule.LastProcessedDate.HasValue && operationDate <= rule.LastProcessedDate.Value)
+                if (
+                    rule.LastProcessedDate.HasValue
+                    && operationDate <= rule.LastProcessedDate.Value
+                )
                 {
                     currentMonth = currentMonth.AddMonths(1);
                     continue;
                 }
 
-                var wallet = await _walletRepo.GetByIdAsync(rule.WalletId, ct);
+                var spec = new WalletByIdSpec(rule.WalletId);
+                var wallet = await _walletRepo.GetByIdAsync(spec, ct);
                 if (wallet is null || wallet.IsArchived)
                 {
                     _logger.LogWarning(
