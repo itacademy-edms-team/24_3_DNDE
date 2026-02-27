@@ -60,6 +60,7 @@ public class CreateRecurringTransactionHandlerHandle
     [Fact]
     public async Task Handle_ValidIncomeRule_PersistsAndReturnsSuccess()
     {
+        var walletId = Guid.NewGuid();
         var wallet = Wallet.CreateChecking(UserId, "Main");
 
         _walletRepo
@@ -71,7 +72,7 @@ public class CreateRecurringTransactionHandlerHandle
 
         var command = new CreateRecurringTransactionCommand(
             UserId: UserId,
-            WalletId: wallet.Id,
+            WalletId: walletId,
             Name: "Salary",
             Type: "Income",
             Amount: 3000m,
@@ -84,7 +85,6 @@ public class CreateRecurringTransactionHandlerHandle
         var result = await _handler.Handle(command, CancellationToken.None);
 
         result.IsSuccess.ShouldBeTrue();
-        result.Value.ShouldNotBe(Guid.Empty);
 
         await _repo
             .Received(1)

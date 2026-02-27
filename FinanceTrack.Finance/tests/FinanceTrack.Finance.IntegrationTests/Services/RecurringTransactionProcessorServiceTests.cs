@@ -1,7 +1,8 @@
-using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
+﻿using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
 using FinanceTrack.Finance.Core.RecurringTransactionAggregate;
 using FinanceTrack.Finance.Core.Services;
 using FinanceTrack.Finance.Core.WalletAggregate;
+using FinanceTrack.Finance.Infrastructure.Data;
 using FinanceTrack.Finance.IntegrationTests.Data;
 using Microsoft.Extensions.Logging;
 
@@ -26,8 +27,11 @@ public class RecurringTransactionProcessorServiceTests : BaseEfRepoTestFixture
 
         // Setup recurring income rule
         var rule = RecurringTransaction.Create(
-            UserId, wallet.Id, "Monthly Salary",
-            RecurringTransactionType.Income, 5000m,
+            UserId,
+            wallet.Id,
+            "Monthly Salary",
+            RecurringTransactionType.Income,
+            5000m,
             dayOfMonth: 1,
             startDate: new DateOnly(2026, 2, 1)
         );
@@ -74,8 +78,11 @@ public class RecurringTransactionProcessorServiceTests : BaseEfRepoTestFixture
 
         // Rule started in Jan, processing in March
         var rule = RecurringTransaction.Create(
-            UserId, wallet.Id, "Salary",
-            RecurringTransactionType.Income, 1000m,
+            UserId,
+            wallet.Id,
+            "Salary",
+            RecurringTransactionType.Income,
+            1000m,
             dayOfMonth: 10,
             startDate: new DateOnly(2026, 1, 10)
         );
@@ -110,8 +117,11 @@ public class RecurringTransactionProcessorServiceTests : BaseEfRepoTestFixture
         await walletRepo.AddAsync(wallet);
 
         var rule = RecurringTransaction.Create(
-            UserId, wallet.Id, "Rent",
-            RecurringTransactionType.Expense, 2000m,
+            UserId,
+            wallet.Id,
+            "Rent",
+            RecurringTransactionType.Expense,
+            2000m,
             dayOfMonth: 5,
             startDate: new DateOnly(2026, 2, 1)
         );
@@ -149,8 +159,11 @@ public class RecurringTransactionProcessorServiceTests : BaseEfRepoTestFixture
         await walletRepo.AddAsync(wallet);
 
         var rule = RecurringTransaction.Create(
-            UserId, wallet.Id, "Salary",
-            RecurringTransactionType.Income, 1000m,
+            UserId,
+            wallet.Id,
+            "Salary",
+            RecurringTransactionType.Income,
+            1000m,
             dayOfMonth: 1,
             startDate: new DateOnly(2026, 1, 1)
         );

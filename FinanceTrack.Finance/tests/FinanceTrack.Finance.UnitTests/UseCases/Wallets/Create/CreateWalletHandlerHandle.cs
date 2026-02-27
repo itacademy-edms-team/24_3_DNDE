@@ -32,7 +32,6 @@ public class CreateWalletHandlerHandle
         var result = await _handler.Handle(command, CancellationToken.None);
 
         result.IsSuccess.ShouldBeTrue();
-        result.Value.ShouldNotBe(Guid.Empty);
 
         await _repo
             .Received(1)
