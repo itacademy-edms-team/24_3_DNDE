@@ -35,8 +35,6 @@ services:
 
 volumes:
   FinanceTrack_financeservice_pgdata:
-    name: financetrack-finance-dev_FinanceTrack_financeservice_pgdata
-    external: true
 
 networks:
   finance_track_network:
