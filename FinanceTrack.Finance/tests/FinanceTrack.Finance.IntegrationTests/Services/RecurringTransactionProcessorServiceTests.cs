@@ -17,6 +17,7 @@ public class RecurringTransactionProcessorServiceTests : BaseEfRepoTestFixture
         var recurringRepo = GetRecurringTransactionRepository();
         var transactionRepo = GetFinancialTransactionRepository();
         var walletRepo = GetWalletRepository();
+        var unitOfWork = new EfUnitOfWork(_dbContext);
         var logger = Substitute.For<ILogger<RecurringTransactionProcessorService>>();
 
         // Setup wallet
@@ -33,7 +34,11 @@ public class RecurringTransactionProcessorServiceTests : BaseEfRepoTestFixture
         await recurringRepo.AddAsync(rule);
 
         var service = new RecurringTransactionProcessorService(
-            recurringRepo, transactionRepo, walletRepo, logger
+            recurringRepo,
+            transactionRepo,
+            walletRepo,
+            logger,
+            unitOfWork
         );
 
         var result = await service.ProcessAsync(new DateOnly(2026, 2, 25));
@@ -61,6 +66,7 @@ public class RecurringTransactionProcessorServiceTests : BaseEfRepoTestFixture
         var recurringRepo = GetRecurringTransactionRepository();
         var transactionRepo = GetFinancialTransactionRepository();
         var walletRepo = GetWalletRepository();
+        var unitOfWork = new EfUnitOfWork(_dbContext);
         var logger = Substitute.For<ILogger<RecurringTransactionProcessorService>>();
 
         var wallet = Wallet.CreateChecking(UserId, "Wallet");
@@ -76,7 +82,11 @@ public class RecurringTransactionProcessorServiceTests : BaseEfRepoTestFixture
         await recurringRepo.AddAsync(rule);
 
         var service = new RecurringTransactionProcessorService(
-            recurringRepo, transactionRepo, walletRepo, logger
+            recurringRepo,
+            transactionRepo,
+            walletRepo,
+            logger,
+            unitOfWork
         );
 
         var result = await service.ProcessAsync(new DateOnly(2026, 3, 15));
@@ -92,6 +102,7 @@ public class RecurringTransactionProcessorServiceTests : BaseEfRepoTestFixture
         var recurringRepo = GetRecurringTransactionRepository();
         var transactionRepo = GetFinancialTransactionRepository();
         var walletRepo = GetWalletRepository();
+        var unitOfWork = new EfUnitOfWork(_dbContext);
         var logger = Substitute.For<ILogger<RecurringTransactionProcessorService>>();
 
         var wallet = Wallet.CreateChecking(UserId, "Wallet");
@@ -107,7 +118,11 @@ public class RecurringTransactionProcessorServiceTests : BaseEfRepoTestFixture
         await recurringRepo.AddAsync(rule);
 
         var service = new RecurringTransactionProcessorService(
-            recurringRepo, transactionRepo, walletRepo, logger
+            recurringRepo,
+            transactionRepo,
+            walletRepo,
+            logger,
+            unitOfWork
         );
 
         var result = await service.ProcessAsync(new DateOnly(2026, 2, 25));
@@ -126,6 +141,7 @@ public class RecurringTransactionProcessorServiceTests : BaseEfRepoTestFixture
         var recurringRepo = GetRecurringTransactionRepository();
         var transactionRepo = GetFinancialTransactionRepository();
         var walletRepo = GetWalletRepository();
+        var unitOfWork = new EfUnitOfWork(_dbContext);
         var logger = Substitute.For<ILogger<RecurringTransactionProcessorService>>();
 
         var wallet = Wallet.CreateChecking(UserId, "Wallet");
@@ -142,7 +158,11 @@ public class RecurringTransactionProcessorServiceTests : BaseEfRepoTestFixture
         await recurringRepo.AddAsync(rule);
 
         var service = new RecurringTransactionProcessorService(
-            recurringRepo, transactionRepo, walletRepo, logger
+            recurringRepo,
+            transactionRepo,
+            walletRepo,
+            logger,
+            unitOfWork
         );
 
         // Processing for Feb only (Jan already processed)
