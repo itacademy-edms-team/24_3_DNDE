@@ -86,7 +86,7 @@ public class RecurringTransactionProcessorService(
                 }
 
                 var spec = new WalletByIdSpec(rule.WalletId);
-                var wallet = await _walletRepo.GetByIdAsync(spec, ct);
+                var wallet = await _walletRepo.FirstOrDefaultAsync(spec, ct);
                 if (wallet is null || wallet.IsArchived)
                 {
                     _logger.LogWarning(
