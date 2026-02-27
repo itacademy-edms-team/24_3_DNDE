@@ -97,45 +97,14 @@ public class RecurringTransactionProcessorService(
                     break;
                 }
 
-                FinancialTransaction transaction;
+                // Create transaction and apply its effect to the wallet
+                var transaction = CreateTransactionForRuleAndDate(rule, wallet, operationDate);
 
-                if (rule.TransactionType == RecurringTransactionType.Income)
+                // For expense, we may skip if insufficient funds and negative not allowed
+                if (transaction is null)
                 {
-                    transaction = FinancialTransaction.CreateIncome(
-                        rule.UserId,
-                        rule.WalletId,
-                        rule.Name,
-                        rule.Amount,
-                        operationDate,
-                        rule.CategoryId,
-                        rule.Id
-                    );
-                    wallet.Credit(rule.Amount);
-                }
-                else
-                {
-                    // For expense, skip if insufficient funds and not allowed negative
-                    if (!wallet.AllowNegativeBalance && wallet.Balance < rule.Amount)
-                    {
-                        _logger.LogWarning(
-                            "Insufficient funds for recurring expense {RecurringId} on wallet {WalletId}. Skipping.",
-                            rule.Id,
-                            rule.WalletId
-                        );
-                        currentMonth = currentMonth.AddMonths(1);
-                        continue;
-                    }
-
-                    transaction = FinancialTransaction.CreateExpense(
-                        rule.UserId,
-                        rule.WalletId,
-                        rule.Name,
-                        rule.Amount,
-                        operationDate,
-                        rule.CategoryId,
-                        rule.Id
-                    );
-                    wallet.Debit(rule.Amount);
+                    currentMonth = currentMonth.AddMonths(1);
+                    continue;
                 }
 
                 await _transactionRepo.AddAsync(transaction, ct);
@@ -161,5 +130,55 @@ public class RecurringTransactionProcessorService(
         }
 
         return created;
+    }
+
+    /// <summary>
+    /// Creates a financial transaction for the given recurring rule and date
+    /// and applies its effect to the wallet. For expense rules, returns null
+    /// when there are insufficient funds and negative balance is not allowed.
+    /// </summary>
+    private FinancialTransaction? CreateTransactionForRuleAndDate(
+        RecurringTransaction rule,
+        Wallet wallet,
+        DateOnly operationDate
+    )
+    {
+        if (rule.TransactionType == RecurringTransactionType.Income)
+        {
+            var transaction = FinancialTransaction.CreateIncome(
+                rule.UserId,
+                rule.WalletId,
+                rule.Name,
+                rule.Amount,
+                operationDate,
+                rule.CategoryId,
+                rule.Id
+            );
+            wallet.Credit(rule.Amount);
+            return transaction;
+        }
+
+        // For expense, skip if insufficient funds and negative balance is not allowed
+        if (!wallet.AllowNegativeBalance && wallet.Balance < rule.Amount)
+        {
+            _logger.LogWarning(
+                "Insufficient funds for recurring expense {RecurringId} on wallet {WalletId}. Skipping.",
+                rule.Id,
+                rule.WalletId
+            );
+            return null;
+        }
+
+        var expenseTransaction = FinancialTransaction.CreateExpense(
+            rule.UserId,
+            rule.WalletId,
+            rule.Name,
+            rule.Amount,
+            operationDate,
+            rule.CategoryId,
+            rule.Id
+        );
+        wallet.Debit(rule.Amount);
+        return expenseTransaction;
     }
 }

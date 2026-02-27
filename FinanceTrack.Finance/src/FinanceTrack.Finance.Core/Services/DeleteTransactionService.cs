@@ -28,21 +28,45 @@ public class DeleteTransactionService(
         if (wallet is null)
             return Result.NotFound("Wallet not found.");
 
-        // Reverse the balance impact
+        // Reverse the balance impact of the main transaction
+        var mainReverseError = ReverseWalletImpact(wallet, transaction);
+        if (mainReverseError is not null)
+            return Result.Error(mainReverseError);
+
+        // If it's a transfer, also delete the related transaction and reverse its wallet
+        if (transaction.RelatedTransactionId.HasValue)
+        {
+            var relatedResult = await ReverseAndDeleteRelatedTransactionAsync(transaction, ct);
+            if (!relatedResult.IsSuccess)
+                return relatedResult;
+        }
+
+        await _transactionRepo.DeleteAsync(transaction, ct);
+        await _walletRepo.UpdateAsync(wallet, ct);
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Reverses the impact of a transaction on the given wallet.
+    /// Returns error message if reversal is not possible, otherwise null.
+    /// </summary>
+    private static string? ReverseWalletImpact(Wallet wallet, FinancialTransaction transaction)
+    {
         if (
             transaction.TransactionType == FinancialTransactionType.Income
             || transaction.TransactionType == FinancialTransactionType.TransferIn
         )
         {
-            // Was a credit, so debit to reverse
+            // Was a credit, so debit to reverse.
+            // Catch errors related to negative balance restrictions. Example: delete transaction -> balance still negative.
             try
             {
                 wallet.Debit(transaction.Amount);
             }
-            // Catch errors related to negative balance restrictions. Example: delete transaction -> balance still negative
             catch (InvalidOperationException ex)
             {
-                return Result.Error(ex.Message);
+                return ex.Message;
             }
         }
         else if (
@@ -50,50 +74,40 @@ public class DeleteTransactionService(
             || transaction.TransactionType == FinancialTransactionType.TransferOut
         )
         {
-            // Was a debit, so credit to reverse
+            // Was a debit, so credit to reverse.
             wallet.Credit(transaction.Amount);
         }
 
-        // If it's a transfer, also delete the related transaction and reverse its wallet
-        if (transaction.RelatedTransactionId.HasValue)
+        return null;
+    }
+
+    /// <summary>
+    /// For transfer transactions, reverses and deletes the related paired transaction.
+    /// </summary>
+    private async Task<Result> ReverseAndDeleteRelatedTransactionAsync(
+        FinancialTransaction transaction,
+        CancellationToken ct
+    )
+    {
+        var relatedSpec = new TransactionByRelatedIdSpec(transaction.Id);
+        var related = await _transactionRepo.FirstOrDefaultAsync(relatedSpec, ct);
+
+        if (related is null)
+            return Result.Success();
+
+        var walletSpec = new WalletByIdSpec(related.WalletId);
+        var relatedWallet = await _walletRepo.FirstOrDefaultAsync(walletSpec, ct);
+
+        if (relatedWallet is not null)
         {
-            var relatedSpec = new TransactionByRelatedIdSpec(transaction.Id);
-            var related = await _transactionRepo.FirstOrDefaultAsync(relatedSpec, ct);
+            var reverseError = ReverseWalletImpact(relatedWallet, related);
+            if (reverseError is not null)
+                return Result.Error(reverseError);
 
-            if (related is not null)
-            {
-                walletSpec = new WalletByIdSpec(related.WalletId);
-                var relatedWallet = await _walletRepo.FirstOrDefaultAsync(walletSpec, ct);
-                if (relatedWallet is not null)
-                {
-                    if (
-                        related.TransactionType == FinancialTransactionType.Income
-                        || related.TransactionType == FinancialTransactionType.TransferIn
-                    )
-                    {
-                        try
-                        {
-                            relatedWallet.Debit(related.Amount);
-                        }
-                        catch (InvalidOperationException ex)
-                        {
-                            return Result.Error(ex.Message);
-                        }
-                    }
-                    else
-                    {
-                        relatedWallet.Credit(related.Amount);
-                    }
-
-                    await _walletRepo.UpdateAsync(relatedWallet, ct);
-                }
-
-                await _transactionRepo.DeleteAsync(related, ct);
-            }
+            await _walletRepo.UpdateAsync(relatedWallet, ct);
         }
 
-        await _transactionRepo.DeleteAsync(transaction, ct);
-        await _walletRepo.UpdateAsync(wallet, ct);
+        await _transactionRepo.DeleteAsync(related, ct);
 
         return Result.Success();
     }

@@ -40,52 +40,10 @@ public class UpdateTransactionService(
             return Result.NotFound("Wallet not found.");
 
         // Adjust balance for amount difference
-        var oldAmount = transaction.Amount;
         var newAmount = decimal.Round(request.Amount, 2);
-
-        if (oldAmount != newAmount)
-        {
-            var diff = newAmount - oldAmount;
-
-            if (transaction.TransactionType == FinancialTransactionType.Income)
-            {
-                // Income increased -> credit more, decreased -> debit difference
-                if (diff > 0)
-                {
-                    wallet.Credit(diff);
-                }
-                else
-                {
-                    try
-                    {
-                        wallet.Debit(-diff);
-                    }
-                    catch (InvalidOperationException ex)
-                    {
-                        return Result.Error(ex.Message);
-                    }
-                }
-            }
-            else if (transaction.TransactionType == FinancialTransactionType.Expense)
-            {
-                // Expense increased -> debit more, decreased -> credit difference
-                if (diff > 0)
-                {
-                    try
-                    {
-                        wallet.Debit(diff);
-                    }
-                    catch (InvalidOperationException ex)
-                    {
-                        return Result.Error(ex.Message);
-                    }
-                }
-                else
-                {
-                    wallet.Credit(-diff);
-                }
-            }
-        }
+        var balanceError = AdjustWalletForAmountChange(wallet, transaction, newAmount);
+        if (balanceError is not null)
+            return Result.Error(balanceError);
 
         transaction
             .UpdateName(request.Name)
@@ -97,5 +55,63 @@ public class UpdateTransactionService(
         await _walletRepo.UpdateAsync(wallet, ct);
 
         return Result.Success(transaction);
+    }
+
+    /// <summary>
+    /// Adjusts wallet balance according to the difference between the existing transaction amount
+    /// and the new amount. Returns error message if adjustment is not possible, otherwise null.
+    /// </summary>
+    private static string? AdjustWalletForAmountChange(
+        Wallet wallet,
+        FinancialTransaction transaction,
+        decimal newAmount
+    )
+    {
+        var oldAmount = transaction.Amount;
+        if (oldAmount == newAmount)
+            return null;
+
+        var diff = newAmount - oldAmount;
+
+        if (transaction.TransactionType == FinancialTransactionType.Income)
+        {
+            // Income increased -> credit more, decreased -> debit difference
+            if (diff > 0)
+            {
+                wallet.Credit(diff);
+            }
+            else
+            {
+                try
+                {
+                    wallet.Debit(-diff);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return ex.Message;
+                }
+            }
+        }
+        else if (transaction.TransactionType == FinancialTransactionType.Expense)
+        {
+            // Expense increased -> debit more, decreased -> credit difference
+            if (diff > 0)
+            {
+                try
+                {
+                    wallet.Debit(diff);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return ex.Message;
+                }
+            }
+            else
+            {
+                wallet.Credit(-diff);
+            }
+        }
+
+        return null;
     }
 }
