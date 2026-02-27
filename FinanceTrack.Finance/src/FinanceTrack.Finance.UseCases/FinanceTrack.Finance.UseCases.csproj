@@ -12,8 +12,6 @@
 
   <ItemGroup>
     <Folder Include="Contributors\Delete\" />
-    <Folder Include="FinancialTransactions\Expenses\Update\" />
-    <Folder Include="FinancialTransactions\Expenses\List\" />
   </ItemGroup>
 
 </Project>
