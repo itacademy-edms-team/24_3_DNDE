@@ -57,4 +57,7 @@ public abstract class BaseEfRepoTestFixture
     {
         return new EfRepository<RecurringTransaction>(_dbContext);
     }
+
+    protected Task SaveChangesAsync(CancellationToken ct = default) =>
+        _dbContext.SaveChangesAsync(ct);
 }

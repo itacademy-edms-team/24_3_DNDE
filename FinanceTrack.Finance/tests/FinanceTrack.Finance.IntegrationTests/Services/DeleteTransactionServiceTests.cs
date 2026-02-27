@@ -1,4 +1,5 @@
 using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
+using FinanceTrack.Finance.Core.Interfaces;
 using FinanceTrack.Finance.Core.Services;
 using FinanceTrack.Finance.Core.WalletAggregate;
 using FinanceTrack.Finance.IntegrationTests.Data;
@@ -16,24 +17,26 @@ public class DeleteTransactionServiceTests : BaseEfRepoTestFixture
         var walletRepo = GetWalletRepository();
         var transactionRepo = GetFinancialTransactionRepository();
 
-        // Create wallet and income transaction
+        // Arrange: create wallet and income using service
         var wallet = Wallet.CreateChecking(UserId, "Checking");
         await walletRepo.AddAsync(wallet);
 
-        var tx = FinancialTransaction.CreateIncome(UserId, wallet.Id, "Salary", 1000m, Today);
-        await transactionRepo.AddAsync(tx);
-        wallet.Credit(1000m);
-        await walletRepo.UpdateAsync(wallet);
+        var createIncomeService = new CreateIncomeService(transactionRepo, walletRepo);
+        var createResult = await createIncomeService.Execute(
+            new CreateIncomeRequest(UserId, wallet.Id, "Salary", 1000m, Today)
+        );
+        createResult.IsSuccess.ShouldBeTrue();
 
         // Verify setup
         (await walletRepo.GetByIdAsync(wallet.Id))!.Balance.ShouldBe(1000m);
 
+        // Act
         var service = new DeleteTransactionService(transactionRepo, walletRepo);
-        var result = await service.Execute(tx.Id, UserId);
+        var result = await service.Execute(createResult.Value, UserId);
 
         result.IsSuccess.ShouldBeTrue();
 
-        // Income reversed => balance should be 0
+        // Verify: Income reversed => balance should be 0
         var updatedWallet = await walletRepo.GetByIdAsync(wallet.Id);
         updatedWallet!.Balance.ShouldBe(0m);
 
@@ -47,24 +50,27 @@ public class DeleteTransactionServiceTests : BaseEfRepoTestFixture
         var walletRepo = GetWalletRepository();
         var transactionRepo = GetFinancialTransactionRepository();
 
-        // Create wallet with balance and expense
+        // Arrange: wallet with balance 1000
         var wallet = Wallet.CreateChecking(UserId, "Checking");
         wallet.Credit(1000m);
         await walletRepo.AddAsync(wallet);
 
-        var tx = FinancialTransaction.CreateExpense(UserId, wallet.Id, "Groceries", 200m, Today);
-        await transactionRepo.AddAsync(tx);
-        wallet.Debit(200m);
-        await walletRepo.UpdateAsync(wallet);
+        // Create expense using service
+        var createExpenseService = new CreateExpenseService(transactionRepo, walletRepo);
+        var createResult = await createExpenseService.Execute(
+            new CreateExpenseRequest(UserId, wallet.Id, "Groceries", 200m, Today)
+        );
+        createResult.IsSuccess.ShouldBeTrue();
 
         (await walletRepo.GetByIdAsync(wallet.Id))!.Balance.ShouldBe(800m);
 
+        // Act
         var service = new DeleteTransactionService(transactionRepo, walletRepo);
-        var result = await service.Execute(tx.Id, UserId);
+        var result = await service.Execute(createResult.Value, UserId);
 
         result.IsSuccess.ShouldBeTrue();
 
-        // Expense reversed => balance should be 1000 again
+        // Verify: Expense reversed => balance should be 1000 again
         var updatedWallet = await walletRepo.GetByIdAsync(wallet.Id);
         updatedWallet!.Balance.ShouldBe(1000m);
 

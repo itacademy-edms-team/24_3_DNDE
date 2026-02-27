@@ -31,7 +31,7 @@ public class CreateIncomeServiceTests : BaseEfRepoTestFixture
         // Assert
         result.IsSuccess.ShouldBeTrue();
 
-        // Verify wallet balance persisted
+        // Verify wallet balance
         var updatedWallet = await walletRepo.GetByIdAsync(walletId);
         updatedWallet.ShouldNotBeNull();
         updatedWallet.Balance.ShouldBe(5000m);

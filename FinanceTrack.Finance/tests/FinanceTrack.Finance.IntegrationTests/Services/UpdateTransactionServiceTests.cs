@@ -17,14 +17,13 @@ public class UpdateTransactionServiceTests : BaseEfRepoTestFixture
         var walletRepo = GetWalletRepository();
         var transactionRepo = GetFinancialTransactionRepository();
 
-        // Setup: wallet with income
+        // Setup: wallet with income (wallet balance already includes original income)
         var wallet = Wallet.CreateChecking(UserId, "Checking");
+        wallet.Credit(500m); // starting balance reflecting original income
         await walletRepo.AddAsync(wallet);
 
         var tx = FinancialTransaction.CreateIncome(UserId, wallet.Id, "Salary", 500m, Today);
         await transactionRepo.AddAsync(tx);
-        wallet.Credit(500m);
-        await walletRepo.UpdateAsync(wallet);
 
         // Act: increase income to 800
         var service = new UpdateTransactionService(transactionRepo, walletRepo);
@@ -35,7 +34,6 @@ public class UpdateTransactionServiceTests : BaseEfRepoTestFixture
         result.IsSuccess.ShouldBeTrue();
         result.Value.Amount.ShouldBe(800m);
         result.Value.Name.ShouldBe("Updated Salary");
-
         var updatedWallet = await walletRepo.GetByIdAsync(wallet.Id);
         updatedWallet!.Balance.ShouldBe(800m); // 500 + 300
     }
@@ -49,12 +47,11 @@ public class UpdateTransactionServiceTests : BaseEfRepoTestFixture
         // Setup: wallet=1000, expense=300 => wallet=700
         var wallet = Wallet.CreateChecking(UserId, "Checking");
         wallet.Credit(1000m);
+        wallet.Debit(300m); // apply initial expense effect to wallet balance
         await walletRepo.AddAsync(wallet);
 
         var tx = FinancialTransaction.CreateExpense(UserId, wallet.Id, "Groceries", 300m, Today);
         await transactionRepo.AddAsync(tx);
-        wallet.Debit(300m);
-        await walletRepo.UpdateAsync(wallet);
 
         // Act: decrease expense to 100
         var service = new UpdateTransactionService(transactionRepo, walletRepo);
@@ -63,7 +60,6 @@ public class UpdateTransactionServiceTests : BaseEfRepoTestFixture
 
         // Assert: wallet should gain back 200 (from 700 to 900)
         result.IsSuccess.ShouldBeTrue();
-
         var updatedWallet = await walletRepo.GetByIdAsync(wallet.Id);
         updatedWallet!.Balance.ShouldBe(900m);
     }
