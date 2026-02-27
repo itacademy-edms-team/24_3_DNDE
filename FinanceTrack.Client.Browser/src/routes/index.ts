@@ -43,7 +43,7 @@ const routes: Routes = [
     protected: true,
   },
   {
-    component: asyncComponentLoader(() => import('@/pages/AnalyticsPage')),
+    component: asyncComponentLoader(() => import('@/pages/GeneralAnalyticsPage')),
     path: '/analytics',
     title: 'Аналитика',
     icon: TerrainIcon,

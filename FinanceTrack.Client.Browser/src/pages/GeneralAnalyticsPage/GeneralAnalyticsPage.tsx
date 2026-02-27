@@ -141,7 +141,7 @@ const COLORS = [
   '#87ceeb',
 ];
 
-function AnalyticsPage() {
+function GeneralAnalyticsPage() {
   const now = new Date();
   const [filterStartYear, setFilterStartYear] = useState<number>(now.getFullYear());
   const [filterStartMonth, setFilterStartMonth] = useState<number>(now.getMonth() + 1);
@@ -580,4 +580,4 @@ function AnalyticsPage() {
   );
 }
 
-export default AnalyticsPage;
+export default GeneralAnalyticsPage;
