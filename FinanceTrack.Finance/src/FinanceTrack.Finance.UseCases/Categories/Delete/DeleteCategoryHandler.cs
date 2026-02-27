@@ -1,16 +1,16 @@
-using FinanceTrack.Finance.Core.CategoryAggregate;
+﻿using FinanceTrack.Finance.Core.CategoryAggregate;
+using FinanceTrack.Finance.Core.CategoryAggregate.Specifications;
 using FinanceTrack.Finance.Core.Interfaces;
 
 namespace FinanceTrack.Finance.UseCases.Categories.Delete;
 
-public sealed class DeleteCategoryHandler(
-    IRepository<Category> _repo,
-    IUnitOfWork _unitOfWork
-) : ICommandHandler<DeleteCategoryCommand, Result>
+public sealed class DeleteCategoryHandler(IRepository<Category> _repo, IUnitOfWork _unitOfWork)
+    : ICommandHandler<DeleteCategoryCommand, Result>
 {
     public async Task<Result> Handle(DeleteCategoryCommand request, CancellationToken ct)
     {
-        var category = await _repo.GetByIdAsync(request.CategoryId, ct);
+        var spec = new CategoryByIdSpec(request.CategoryId);
+        var category = await _repo.FirstOrDefaultAsync(spec, ct);
         if (category is null)
             return Result.NotFound();
         if (!string.Equals(category.UserId, request.UserId, StringComparison.Ordinal))

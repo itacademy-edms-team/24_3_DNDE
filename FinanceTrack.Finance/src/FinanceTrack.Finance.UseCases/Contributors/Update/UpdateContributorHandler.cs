@@ -1,4 +1,5 @@
 ﻿using FinanceTrack.Finance.Core.ContributorAggregate;
+using FinanceTrack.Finance.Core.ContributorAggregate.Specifications;
 using FinanceTrack.Finance.Core.Interfaces;
 
 namespace FinanceTrack.Finance.UseCases.Contributors.Update;
@@ -13,10 +14,8 @@ public class UpdateContributorHandler(
         CancellationToken cancellationToken
     )
     {
-        var existingContributor = await _repository.GetByIdAsync(
-            request.ContributorId,
-            cancellationToken
-        );
+        var spec = new ContributorByIdSpec(request.ContributorId);
+        var existingContributor = await _repository.FirstOrDefaultAsync(spec, cancellationToken);
         if (existingContributor == null)
         {
             return Result.NotFound();

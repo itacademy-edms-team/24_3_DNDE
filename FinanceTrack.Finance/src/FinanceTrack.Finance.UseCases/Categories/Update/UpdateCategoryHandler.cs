@@ -1,4 +1,5 @@
 using FinanceTrack.Finance.Core.CategoryAggregate;
+using FinanceTrack.Finance.Core.CategoryAggregate.Specifications;
 using FinanceTrack.Finance.Core.Interfaces;
 
 namespace FinanceTrack.Finance.UseCases.Categories.Update;
@@ -10,7 +11,8 @@ public sealed class UpdateCategoryHandler(
 {
     public async Task<Result<CategoryDto>> Handle(UpdateCategoryCommand request, CancellationToken ct)
     {
-        var category = await _repo.GetByIdAsync(request.CategoryId, ct);
+        var spec = new CategoryByIdSpec(request.CategoryId);
+        var category = await _repo.FirstOrDefaultAsync(spec, ct);
         if (category is null)
             return Result.NotFound();
         if (!string.Equals(category.UserId, request.UserId, StringComparison.Ordinal))

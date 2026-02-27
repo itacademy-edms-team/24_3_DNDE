@@ -1,6 +1,7 @@
 ﻿using FinanceTrack.Finance.Core.ContributorAggregate;
 using FinanceTrack.Finance.Core.ContributorAggregate.Events;
 using FinanceTrack.Finance.Core.Interfaces;
+using FinanceTrack.Finance.Core.ContributorAggregate.Specifications;
 
 namespace FinanceTrack.Finance.Core.Services;
 
@@ -21,7 +22,8 @@ public class DeleteContributorService(
     public async Task<Result> DeleteContributor(int contributorId)
     {
         _logger.LogInformation("Deleting Contributor {contributorId}", contributorId);
-        Contributor? aggregateToDelete = await _repository.GetByIdAsync(contributorId);
+        var spec = new ContributorByIdSpec(contributorId);
+        Contributor? aggregateToDelete = await _repository.FirstOrDefaultAsync(spec);
         if (aggregateToDelete == null)
             return Result.NotFound();
 

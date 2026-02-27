@@ -15,7 +15,8 @@ public sealed class ListWalletTransactionsHandler(
         CancellationToken ct
     )
     {
-        var wallet = await _walletRepo.GetByIdAsync(request.WalletId, ct);
+        var walletSpec = new WalletByIdSpec(request.WalletId);
+        var wallet = await _walletRepo.FirstOrDefaultAsync(walletSpec, ct);
         if (wallet is null)
             return Result.NotFound();
         if (!string.Equals(wallet.UserId, request.UserId, StringComparison.Ordinal))

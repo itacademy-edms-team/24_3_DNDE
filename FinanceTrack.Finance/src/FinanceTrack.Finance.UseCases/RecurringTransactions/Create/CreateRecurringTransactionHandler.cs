@@ -1,6 +1,7 @@
 using FinanceTrack.Finance.Core.Interfaces;
 using FinanceTrack.Finance.Core.RecurringTransactionAggregate;
 using FinanceTrack.Finance.Core.WalletAggregate;
+using FinanceTrack.Finance.Core.WalletAggregate.Specifications;
 
 namespace FinanceTrack.Finance.UseCases.RecurringTransactions.Create;
 
@@ -18,7 +19,8 @@ public sealed class CreateRecurringTransactionHandler(
         if (!RecurringTransactionType.TryFromName(request.Type, ignoreCase: true, out var txType))
             return Result.Error($"Invalid recurring transaction type: {request.Type}. Must be 'Income' or 'Expense'.");
 
-        var wallet = await _walletRepo.GetByIdAsync(request.WalletId, ct);
+        var walletSpec = new WalletByIdSpec(request.WalletId);
+        var wallet = await _walletRepo.FirstOrDefaultAsync(walletSpec, ct);
         if (wallet is null)
             return Result.NotFound("Wallet not found.");
         if (!string.Equals(wallet.UserId, request.UserId, StringComparison.Ordinal))

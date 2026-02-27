@@ -1,5 +1,6 @@
 using FinanceTrack.Finance.Core.Interfaces;
 using FinanceTrack.Finance.Core.RecurringTransactionAggregate;
+using FinanceTrack.Finance.Core.RecurringTransactionAggregate.Specifications;
 
 namespace FinanceTrack.Finance.UseCases.RecurringTransactions.Delete;
 
@@ -10,7 +11,8 @@ public sealed class DeleteRecurringTransactionHandler(
 {
     public async Task<Result> Handle(DeleteRecurringTransactionCommand request, CancellationToken ct)
     {
-        var recurring = await _repo.GetByIdAsync(request.RecurringId, ct);
+        var spec = new RecurringTransactionByIdSpec(request.RecurringId);
+        var recurring = await _repo.FirstOrDefaultAsync(spec, ct);
         if (recurring is null)
             return Result.NotFound();
         if (!string.Equals(recurring.UserId, request.UserId, StringComparison.Ordinal))
