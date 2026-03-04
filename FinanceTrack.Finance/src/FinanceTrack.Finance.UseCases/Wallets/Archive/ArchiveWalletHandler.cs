@@ -4,10 +4,8 @@ using FinanceTrack.Finance.Core.WalletAggregate.Specifications;
 
 namespace FinanceTrack.Finance.UseCases.Wallets.Archive;
 
-public sealed class ArchiveWalletHandler(
-    IRepository<Wallet> _repo,
-    IUnitOfWork _unitOfWork
-) : ICommandHandler<ArchiveWalletCommand, Result>
+public sealed class ArchiveWalletHandler(IRepository<Wallet> _repo, IUnitOfWork _unitOfWork)
+    : ICommandHandler<ArchiveWalletCommand, Result>
 {
     public async Task<Result> Handle(ArchiveWalletCommand request, CancellationToken ct)
     {
@@ -19,7 +17,6 @@ public sealed class ArchiveWalletHandler(
             return Result.Forbidden();
 
         wallet.Archive();
-        await _repo.UpdateAsync(wallet, ct);
         await _unitOfWork.SaveChangesAsync(ct);
         return Result.Success();
     }

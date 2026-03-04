@@ -1,4 +1,4 @@
-using FinanceTrack.Finance.Core.Interfaces;
+﻿using FinanceTrack.Finance.Core.Interfaces;
 using FinanceTrack.Finance.Core.RecurringTransactionAggregate;
 using FinanceTrack.Finance.Core.RecurringTransactionAggregate.Specifications;
 
@@ -26,7 +26,6 @@ public sealed class ToggleRecurringTransactionHandler(
         else
             recurring.Deactivate();
 
-        await _repo.UpdateAsync(recurring, ct);
         await _unitOfWork.SaveChangesAsync(ct);
         return Result.Success();
     }

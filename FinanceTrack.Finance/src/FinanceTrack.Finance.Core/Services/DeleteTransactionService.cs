@@ -42,7 +42,6 @@ public class DeleteTransactionService(
         }
 
         await _transactionRepo.DeleteAsync(transaction, ct);
-        await _walletRepo.UpdateAsync(wallet, ct);
 
         return Result.Success();
     }
@@ -103,8 +102,6 @@ public class DeleteTransactionService(
             var reverseError = ReverseWalletImpact(relatedWallet, related);
             if (reverseError is not null)
                 return Result.Error(reverseError);
-
-            await _walletRepo.UpdateAsync(relatedWallet, ct);
         }
 
         await _transactionRepo.DeleteAsync(related, ct);

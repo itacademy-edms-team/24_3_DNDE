@@ -74,9 +74,6 @@ public class TransferService(
         // Set back-reference on TransferOut (still in Added state, no explicit Update needed)
         transferOut.SetRelatedTransactionId(transferIn.Id);
 
-        await _walletRepo.UpdateAsync(fromWallet, ct);
-        await _walletRepo.UpdateAsync(toWallet, ct);
-
         return Result.Success(transferOut.Id);
     }
 }

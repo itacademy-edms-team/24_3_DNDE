@@ -108,10 +108,8 @@ public class RecurringTransactionProcessorService(
                 }
 
                 await _transactionRepo.AddAsync(transaction, ct);
-                await _walletRepo.UpdateAsync(wallet, ct);
 
                 rule.MarkProcessed(operationDate);
-                await _recurringRepo.UpdateAsync(rule, ct);
 
                 await _unitOfWork.SaveChangesAsync(ct);
 

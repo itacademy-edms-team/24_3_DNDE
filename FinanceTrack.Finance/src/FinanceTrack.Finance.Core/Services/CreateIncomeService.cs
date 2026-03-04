@@ -37,7 +37,6 @@ public class CreateIncomeService(
         wallet.Credit(request.Amount);
 
         await _transactionRepo.AddAsync(transaction, ct);
-        await _walletRepo.UpdateAsync(wallet, ct);
 
         return Result.Success(transaction.Id);
     }

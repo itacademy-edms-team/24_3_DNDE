@@ -51,9 +51,6 @@ public class UpdateTransactionService(
             .SetOperationDate(request.OperationDate)
             .SetCategory(request.CategoryId);
 
-        await _transactionRepo.UpdateAsync(transaction, ct);
-        await _walletRepo.UpdateAsync(wallet, ct);
-
         return Result.Success(transaction);
     }
 
