@@ -1,3 +1,5 @@
+﻿using FinanceTrack.Finance.Core.RecurringTransactionAggregate;
+
 namespace FinanceTrack.Finance.UseCases.FinancialTransactions.Expense;
 
 public sealed record CreateExpenseCommand(
@@ -6,5 +8,16 @@ public sealed record CreateExpenseCommand(
     string Name,
     decimal Amount,
     DateOnly OperationDate,
-    Guid? CategoryId
-) : ICommand<Result<Guid>>;
+    Guid? CategoryId = null,
+    Guid? RecurringTransactionId = null
+)
+    : CreateExpenseRequest(
+        UserId,
+        WalletId,
+        Name,
+        Amount,
+        OperationDate,
+        CategoryId,
+        RecurringTransactionId
+    ),
+        ICommand<Result<Guid>>;

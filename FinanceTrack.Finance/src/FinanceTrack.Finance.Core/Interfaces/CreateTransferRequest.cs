@@ -1,6 +1,6 @@
 namespace FinanceTrack.Finance.Core.Interfaces;
 
-public sealed record CreateTransferRequest(
+public record CreateTransferRequest(
     string UserId,
     Guid FromWalletId,
     Guid ToWalletId,

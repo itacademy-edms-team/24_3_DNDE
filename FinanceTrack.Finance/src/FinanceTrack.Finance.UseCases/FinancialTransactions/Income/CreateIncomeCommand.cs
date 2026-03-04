@@ -1,3 +1,5 @@
+using FinanceTrack.Finance.Core.Interfaces;
+
 namespace FinanceTrack.Finance.UseCases.FinancialTransactions.Income;
 
 public sealed record CreateIncomeCommand(
@@ -6,5 +8,16 @@ public sealed record CreateIncomeCommand(
     string Name,
     decimal Amount,
     DateOnly OperationDate,
-    Guid? CategoryId
-) : ICommand<Result<Guid>>;
+    Guid? CategoryId = null,
+    Guid? RecurringTransactionId = null
+)
+    : CreateIncomeRequest(
+        UserId,
+        WalletId,
+        Name,
+        Amount,
+        OperationDate,
+        CategoryId,
+        RecurringTransactionId
+    ),
+        ICommand<Result<Guid>>;

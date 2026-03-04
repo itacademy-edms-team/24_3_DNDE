@@ -1,6 +1,6 @@
 namespace FinanceTrack.Finance.Core.Interfaces;
 
-public sealed record CreateIncomeRequest(
+public record CreateIncomeRequest(
     string UserId,
     Guid WalletId,
     string Name,

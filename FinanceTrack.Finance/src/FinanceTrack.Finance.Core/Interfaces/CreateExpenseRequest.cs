@@ -1,6 +1,6 @@
-namespace FinanceTrack.Finance.Core.Interfaces;
+﻿namespace FinanceTrack.Finance.Core.Interfaces;
 
-public sealed record CreateExpenseRequest(
+public record CreateExpenseRequest(
     string UserId,
     Guid WalletId,
     string Name,
