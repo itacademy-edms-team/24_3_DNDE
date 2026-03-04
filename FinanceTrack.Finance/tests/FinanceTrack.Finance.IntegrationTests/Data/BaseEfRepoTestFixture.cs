@@ -1,8 +1,7 @@
-﻿using FinanceTrack.Finance.Core.ContributorAggregate;
+﻿using FinanceTrack.Finance.Core.CategoryAggregate;
 using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
-using FinanceTrack.Finance.Core.WalletAggregate;
-using FinanceTrack.Finance.Core.CategoryAggregate;
 using FinanceTrack.Finance.Core.RecurringTransactionAggregate;
+using FinanceTrack.Finance.Core.WalletAggregate;
 using FinanceTrack.Finance.Infrastructure.Data;
 
 namespace FinanceTrack.Finance.IntegrationTests.Data;
@@ -31,11 +30,6 @@ public abstract class BaseEfRepoTestFixture
             .UseInternalServiceProvider(serviceProvider);
 
         return builder.Options;
-    }
-
-    protected EfRepository<Contributor> GetContributorRepository()
-    {
-        return new EfRepository<Contributor>(_dbContext);
     }
 
     protected EfRepository<FinancialTransaction> GetFinancialTransactionRepository()

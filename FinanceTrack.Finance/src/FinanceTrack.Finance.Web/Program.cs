@@ -1,6 +1,6 @@
-﻿using FinanceTrack.Finance.UseCases.Contributors.Create;
-using FinanceTrack.Finance.Web.BackgroundServices;
+﻿using FinanceTrack.Finance.Web.BackgroundServices;
 using FinanceTrack.Finance.Web.Configurations;
+using FinanceTrack.Finance.Web.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 

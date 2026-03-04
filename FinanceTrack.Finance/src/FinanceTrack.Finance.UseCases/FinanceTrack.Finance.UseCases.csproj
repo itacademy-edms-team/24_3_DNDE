@@ -10,8 +10,4 @@
     <ProjectReference Include="..\FinanceTrack.Finance.Core\FinanceTrack.Finance.Core.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Contributors\Delete\" />
-  </ItemGroup>
-
 </Project>

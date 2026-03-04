@@ -1,2 +1,0 @@
-﻿namespace FinanceTrack.Finance.UseCases.Contributors;
-public record ContributorDTO(int Id, string Name, string? PhoneNumber);
