@@ -6,8 +6,8 @@ using FinanceTrack.Finance.Core.WalletAggregate.Specifications;
 namespace FinanceTrack.Finance.Core.Services;
 
 public class DeleteTransactionService(
-    IRepository<FinancialTransaction> _transactionRepo,
-    IRepository<Wallet> _walletRepo
+    IRepository<FinancialTransaction> transactionRepo,
+    IRepository<Wallet> walletRepo
 )
 {
     public async Task<Result> Execute(
@@ -17,14 +17,14 @@ public class DeleteTransactionService(
     )
     {
         var transactionSpec = new FinancialTransactionByIdSpec(transactionId);
-        var transaction = await _transactionRepo.FirstOrDefaultAsync(transactionSpec, ct);
+        var transaction = await transactionRepo.FirstOrDefaultAsync(transactionSpec, ct);
         if (transaction is null)
             return Result.NotFound();
         if (!string.Equals(transaction.UserId, userId, StringComparison.Ordinal))
             return Result.Forbidden();
 
         var walletSpec = new WalletByIdSpec(transaction.WalletId);
-        var wallet = await _walletRepo.FirstOrDefaultAsync(walletSpec, ct);
+        var wallet = await walletRepo.FirstOrDefaultAsync(walletSpec, ct);
         if (wallet is null)
             return Result.NotFound("Wallet not found.");
 
@@ -41,7 +41,7 @@ public class DeleteTransactionService(
                 return relatedResult;
         }
 
-        await _transactionRepo.DeleteAsync(transaction, ct);
+        await transactionRepo.DeleteAsync(transaction, ct);
 
         return Result.Success();
     }
@@ -89,13 +89,13 @@ public class DeleteTransactionService(
     )
     {
         var relatedSpec = new TransactionByRelatedIdSpec(transaction.Id);
-        var related = await _transactionRepo.FirstOrDefaultAsync(relatedSpec, ct);
+        var related = await transactionRepo.FirstOrDefaultAsync(relatedSpec, ct);
 
         if (related is null)
             return Result.Success();
 
         var walletSpec = new WalletByIdSpec(related.WalletId);
-        var relatedWallet = await _walletRepo.FirstOrDefaultAsync(walletSpec, ct);
+        var relatedWallet = await walletRepo.FirstOrDefaultAsync(walletSpec, ct);
 
         if (relatedWallet is not null)
         {
@@ -104,7 +104,7 @@ public class DeleteTransactionService(
                 return Result.Error(reverseError);
         }
 
-        await _transactionRepo.DeleteAsync(related, ct);
+        await transactionRepo.DeleteAsync(related, ct);
 
         return Result.Success();
     }

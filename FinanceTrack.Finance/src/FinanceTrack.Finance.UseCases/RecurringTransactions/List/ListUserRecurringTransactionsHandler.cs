@@ -1,9 +1,9 @@
-using FinanceTrack.Finance.Core.RecurringTransactionAggregate;
+﻿using FinanceTrack.Finance.Core.RecurringTransactionAggregate;
 using FinanceTrack.Finance.Core.RecurringTransactionAggregate.Specifications;
 
 namespace FinanceTrack.Finance.UseCases.RecurringTransactions.List;
 
-public sealed class ListUserRecurringTransactionsHandler(IReadRepository<RecurringTransaction> _repo)
+public sealed class ListUserRecurringTransactionsHandler(IReadRepository<RecurringTransaction> repo)
     : IQueryHandler<ListUserRecurringTransactionsQuery, IReadOnlyList<RecurringTransactionDto>>
 {
     public async Task<IReadOnlyList<RecurringTransactionDto>> Handle(
@@ -12,7 +12,7 @@ public sealed class ListUserRecurringTransactionsHandler(IReadRepository<Recurri
     )
     {
         var spec = new UserRecurringTransactionsSpec(request.UserId);
-        var items = await _repo.ListAsync(spec, ct);
+        var items = await repo.ListAsync(spec, ct);
 
         return items
             .Select(r => new RecurringTransactionDto(

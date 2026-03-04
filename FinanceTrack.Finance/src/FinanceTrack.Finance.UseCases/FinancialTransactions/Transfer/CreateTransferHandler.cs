@@ -1,12 +1,10 @@
-using FinanceTrack.Finance.Core.Interfaces;
+﻿using FinanceTrack.Finance.Core.Interfaces;
 using FinanceTrack.Finance.Core.Services;
 
 namespace FinanceTrack.Finance.UseCases.FinancialTransactions.Transfer;
 
-public sealed class CreateTransferHandler(
-    TransferService _service,
-    IUnitOfWork _unitOfWork
-) : ICommandHandler<CreateTransferCommand, Result<Guid>>
+public sealed class CreateTransferHandler(TransferService service, IUnitOfWork unitOfWork)
+    : ICommandHandler<CreateTransferCommand, Result<Guid>>
 {
     public async Task<Result<Guid>> Handle(CreateTransferCommand request, CancellationToken ct)
     {
@@ -19,11 +17,11 @@ public sealed class CreateTransferHandler(
             OperationDate: request.OperationDate
         );
 
-        var result = await _service.Execute(coreRequest, ct);
+        var result = await service.Execute(coreRequest, ct);
 
         if (result.IsSuccess)
         {
-            await _unitOfWork.SaveChangesAsync(ct);
+            await unitOfWork.SaveChangesAsync(ct);
         }
 
         return result;

@@ -7,8 +7,6 @@ public sealed class CommandLogger<TCommand, TResult>(ILogger<TCommand> logger)
     : ICommandMiddleware<TCommand, TResult>
     where TCommand : ICommand<TResult>
 {
-    private readonly ILogger<TCommand> _logger = logger;
-
     public async Task<TResult> ExecuteAsync(
         TCommand command,
         CommandDelegate<TResult> next,
@@ -16,9 +14,9 @@ public sealed class CommandLogger<TCommand, TResult>(ILogger<TCommand> logger)
     )
     {
         string commandName = command.GetType().Name;
-        if (_logger.IsEnabled(LogLevel.Information))
+        if (logger.IsEnabled(LogLevel.Information))
         {
-            _logger.LogInformation("Handling {RequestName}", commandName);
+            logger.LogInformation("Handling {RequestName}", commandName);
 
             // Reflection! Could be a performance concern
             Type myType = command.GetType();
@@ -26,7 +24,7 @@ public sealed class CommandLogger<TCommand, TResult>(ILogger<TCommand> logger)
             foreach (PropertyInfo prop in props)
             {
                 object? propValue = prop?.GetValue(command, null);
-                _logger.LogInformation("Property {Property} : {@Value}", prop?.Name, propValue);
+                logger.LogInformation("Property {Property} : {@Value}", prop?.Name, propValue);
             }
         }
 
@@ -34,7 +32,7 @@ public sealed class CommandLogger<TCommand, TResult>(ILogger<TCommand> logger)
 
         var result = await next();
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Handled {CommandName} with {Result} in {ms} ms",
             commandName,
             result,

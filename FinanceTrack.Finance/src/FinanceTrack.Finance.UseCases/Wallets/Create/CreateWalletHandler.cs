@@ -1,21 +1,22 @@
-using FinanceTrack.Finance.Core.Interfaces;
+﻿using FinanceTrack.Finance.Core.Interfaces;
 using FinanceTrack.Finance.Core.WalletAggregate;
 
 namespace FinanceTrack.Finance.UseCases.Wallets.Create;
 
-public sealed class CreateWalletHandler(
-    IRepository<Wallet> _repo,
-    IUnitOfWork _unitOfWork
-) : ICommandHandler<CreateWalletCommand, Result<Guid>>
+public sealed class CreateWalletHandler(IRepository<Wallet> repo, IUnitOfWork unitOfWork)
+    : ICommandHandler<CreateWalletCommand, Result<Guid>>
 {
-    public async Task<Result<Guid>> Handle(
-        CreateWalletCommand request,
-        CancellationToken ct
-    )
+    public async Task<Result<Guid>> Handle(CreateWalletCommand request, CancellationToken ct)
     {
         Wallet wallet;
 
-        if (string.Equals(request.WalletType, nameof(WalletType.Savings), StringComparison.OrdinalIgnoreCase))
+        if (
+            string.Equals(
+                request.WalletType,
+                nameof(WalletType.Savings),
+                StringComparison.OrdinalIgnoreCase
+            )
+        )
         {
             if (!request.TargetAmount.HasValue || request.TargetAmount.Value <= 0)
                 return Result.Error("TargetAmount is required for Savings wallets.");
@@ -37,8 +38,8 @@ public sealed class CreateWalletHandler(
             );
         }
 
-        await _repo.AddAsync(wallet, ct);
-        await _unitOfWork.SaveChangesAsync(ct);
+        await repo.AddAsync(wallet, ct);
+        await unitOfWork.SaveChangesAsync(ct);
         return Result.Success(wallet.Id);
     }
 }

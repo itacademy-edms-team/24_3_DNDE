@@ -1,11 +1,11 @@
-using FinanceTrack.Finance.Core.Interfaces;
+﻿using FinanceTrack.Finance.Core.Interfaces;
 using FinanceTrack.Finance.Core.Services;
 
 namespace FinanceTrack.Finance.UseCases.FinancialTransactions.Update;
 
 public sealed class UpdateTransactionHandler(
-    UpdateTransactionService _service,
-    IUnitOfWork _unitOfWork
+    UpdateTransactionService service,
+    IUnitOfWork unitOfWork
 ) : ICommandHandler<UpdateTransactionCommand, Result<FinancialTransactionDto>>
 {
     public async Task<Result<FinancialTransactionDto>> Handle(
@@ -22,11 +22,11 @@ public sealed class UpdateTransactionHandler(
             CategoryId: request.CategoryId
         );
 
-        var result = await _service.Execute(coreRequest, ct);
+        var result = await service.Execute(coreRequest, ct);
 
         if (result.IsSuccess)
         {
-            await _unitOfWork.SaveChangesAsync(ct);
+            await unitOfWork.SaveChangesAsync(ct);
         }
 
         return result.Map(t => new FinancialTransactionDto(
@@ -40,7 +40,7 @@ public sealed class UpdateTransactionHandler(
             t.RelatedTransactionId,
             t.RecurringTransactionId,
             null, // RelatedWalletId - not loaded during update
-            null  // RelatedWalletName - not loaded during update
+            null // RelatedWalletName - not loaded during update
         ));
     }
 }

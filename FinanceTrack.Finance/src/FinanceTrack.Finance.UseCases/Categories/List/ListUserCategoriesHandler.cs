@@ -1,9 +1,9 @@
-using FinanceTrack.Finance.Core.CategoryAggregate;
+﻿using FinanceTrack.Finance.Core.CategoryAggregate;
 using FinanceTrack.Finance.Core.CategoryAggregate.Specifications;
 
 namespace FinanceTrack.Finance.UseCases.Categories.List;
 
-public sealed class ListUserCategoriesHandler(IReadRepository<Category> _repo)
+public sealed class ListUserCategoriesHandler(IReadRepository<Category> repo)
     : IQueryHandler<ListUserCategoriesQuery, IReadOnlyList<CategoryDto>>
 {
     public async Task<IReadOnlyList<CategoryDto>> Handle(
@@ -21,12 +21,12 @@ public sealed class ListUserCategoriesHandler(IReadRepository<Category> _repo)
             }
 
             var spec = new UserCategoriesByTypeSpec(request.UserId, categoryType);
-            categories = await _repo.ListAsync(spec, ct);
+            categories = await repo.ListAsync(spec, ct);
         }
         else
         {
             var spec = new UserCategoriesSpec(request.UserId);
-            categories = await _repo.ListAsync(spec, ct);
+            categories = await repo.ListAsync(spec, ct);
         }
 
         return categories

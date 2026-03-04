@@ -8,17 +8,17 @@ using FinanceTrack.Finance.Core.WalletAggregate.Specifications;
 namespace FinanceTrack.Finance.Core.Services;
 
 public class RecurringTransactionProcessorService(
-    IRepository<RecurringTransaction> _recurringRepo,
-    IRepository<FinancialTransaction> _transactionRepo,
-    IRepository<Wallet> _walletRepo,
-    ILogger<RecurringTransactionProcessorService> _logger,
-    IUnitOfWork _unitOfWork
+    IRepository<RecurringTransaction> recurringRepo,
+    IRepository<FinancialTransaction> transactionRepo,
+    IRepository<Wallet> walletRepo,
+    ILogger<RecurringTransactionProcessorService> logger,
+    IUnitOfWork unitOfWork
 )
 {
     public async Task<int> ProcessAsync(DateOnly today, CancellationToken ct = default)
     {
         var spec = new ActiveRecurringTransactionsSpec();
-        var activeRules = await _recurringRepo.ListAsync(spec, ct);
+        var activeRules = await recurringRepo.ListAsync(spec, ct);
 
         var created = 0;
 
@@ -30,7 +30,7 @@ public class RecurringTransactionProcessorService(
             }
             catch (Exception ex)
             {
-                _logger.LogError(
+                logger.LogError(
                     ex,
                     "Error processing recurring transaction {RecurringId}",
                     rule.Id
@@ -86,10 +86,10 @@ public class RecurringTransactionProcessorService(
                 }
 
                 var spec = new WalletByIdSpec(rule.WalletId);
-                var wallet = await _walletRepo.FirstOrDefaultAsync(spec, ct);
+                var wallet = await walletRepo.FirstOrDefaultAsync(spec, ct);
                 if (wallet is null || wallet.IsArchived)
                 {
-                    _logger.LogWarning(
+                    logger.LogWarning(
                         "Wallet {WalletId} not found or archived for recurring {RecurringId}. Skipping.",
                         rule.WalletId,
                         rule.Id
@@ -107,15 +107,15 @@ public class RecurringTransactionProcessorService(
                     continue;
                 }
 
-                await _transactionRepo.AddAsync(transaction, ct);
+                await transactionRepo.AddAsync(transaction, ct);
 
                 rule.MarkProcessed(operationDate);
 
-                await _unitOfWork.SaveChangesAsync(ct);
+                await unitOfWork.SaveChangesAsync(ct);
 
                 created++;
 
-                _logger.LogInformation(
+                logger.LogInformation(
                     "Created {Type} transaction {TransactionId} from recurring {RecurringId} for date {Date}",
                     rule.TransactionType.Name,
                     transaction.Id,
@@ -159,7 +159,7 @@ public class RecurringTransactionProcessorService(
         // For expense, skip if insufficient funds and negative balance is not allowed
         if (!wallet.AllowNegativeBalance && wallet.Balance < rule.Amount)
         {
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Insufficient funds for recurring expense {RecurringId} on wallet {WalletId}. Skipping.",
                 rule.Id,
                 rule.WalletId

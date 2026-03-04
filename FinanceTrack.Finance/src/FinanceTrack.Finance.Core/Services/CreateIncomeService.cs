@@ -6,8 +6,8 @@ using FinanceTrack.Finance.Core.WalletAggregate.Specifications;
 namespace FinanceTrack.Finance.Core.Services;
 
 public class CreateIncomeService(
-    IRepository<FinancialTransaction> _transactionRepo,
-    IRepository<Wallet> _walletRepo
+    IRepository<FinancialTransaction> transactionRepo,
+    IRepository<Wallet> walletRepo
 )
 {
     public async Task<Result<Guid>> Execute(
@@ -16,7 +16,7 @@ public class CreateIncomeService(
     )
     {
         var spec = new WalletByIdSpec(request.WalletId);
-        var wallet = await _walletRepo.FirstOrDefaultAsync(spec, ct);
+        var wallet = await walletRepo.FirstOrDefaultAsync(spec, ct);
         if (wallet is null)
             return Result.NotFound("Wallet not found.");
         if (!string.Equals(wallet.UserId, request.UserId, StringComparison.Ordinal))
@@ -36,7 +36,7 @@ public class CreateIncomeService(
 
         wallet.Credit(request.Amount);
 
-        await _transactionRepo.AddAsync(transaction, ct);
+        await transactionRepo.AddAsync(transaction, ct);
 
         return Result.Success(transaction.Id);
     }

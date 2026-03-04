@@ -1,12 +1,10 @@
-using FinanceTrack.Finance.Core.Interfaces;
+﻿using FinanceTrack.Finance.Core.Interfaces;
 using FinanceTrack.Finance.Core.Services;
 
 namespace FinanceTrack.Finance.UseCases.FinancialTransactions.Income;
 
-public sealed class CreateIncomeHandler(
-    CreateIncomeService _service,
-    IUnitOfWork _unitOfWork
-) : ICommandHandler<CreateIncomeCommand, Result<Guid>>
+public sealed class CreateIncomeHandler(CreateIncomeService service, IUnitOfWork unitOfWork)
+    : ICommandHandler<CreateIncomeCommand, Result<Guid>>
 {
     public async Task<Result<Guid>> Handle(CreateIncomeCommand request, CancellationToken ct)
     {
@@ -19,11 +17,11 @@ public sealed class CreateIncomeHandler(
             CategoryId: request.CategoryId
         );
 
-        var result = await _service.Execute(coreRequest, ct);
+        var result = await service.Execute(coreRequest, ct);
 
         if (result.IsSuccess)
         {
-            await _unitOfWork.SaveChangesAsync(ct);
+            await unitOfWork.SaveChangesAsync(ct);
         }
 
         return result;

@@ -4,7 +4,7 @@ using FinanceTrack.Finance.Core.Interfaces;
 
 namespace FinanceTrack.Finance.UseCases.Categories.Update;
 
-public sealed class UpdateCategoryHandler(IRepository<Category> _repo, IUnitOfWork _unitOfWork)
+public sealed class UpdateCategoryHandler(IRepository<Category> repo, IUnitOfWork unitOfWork)
     : ICommandHandler<UpdateCategoryCommand, Result<CategoryDto>>
 {
     public async Task<Result<CategoryDto>> Handle(
@@ -13,7 +13,7 @@ public sealed class UpdateCategoryHandler(IRepository<Category> _repo, IUnitOfWo
     )
     {
         var spec = new CategoryByIdSpec(request.CategoryId);
-        var category = await _repo.FirstOrDefaultAsync(spec, ct);
+        var category = await repo.FirstOrDefaultAsync(spec, ct);
         if (category is null)
             return Result.NotFound();
         if (!string.Equals(category.UserId, request.UserId, StringComparison.Ordinal))
@@ -21,7 +21,7 @@ public sealed class UpdateCategoryHandler(IRepository<Category> _repo, IUnitOfWo
 
         category.UpdateName(request.Name).UpdateIcon(request.Icon).UpdateColor(request.Color);
 
-        await _unitOfWork.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         return Result.Success(
             new CategoryDto(

@@ -4,13 +4,13 @@ using FinanceTrack.Finance.Core.WalletAggregate.Specifications;
 
 namespace FinanceTrack.Finance.UseCases.Wallets.Update;
 
-public sealed class UpdateWalletHandler(IRepository<Wallet> _repo, IUnitOfWork _unitOfWork)
+public sealed class UpdateWalletHandler(IRepository<Wallet> repo, IUnitOfWork unitOfWork)
     : ICommandHandler<UpdateWalletCommand, Result<WalletDto>>
 {
     public async Task<Result<WalletDto>> Handle(UpdateWalletCommand request, CancellationToken ct)
     {
         var spec = new WalletByIdSpec(request.WalletId);
-        var wallet = await _repo.FirstOrDefaultAsync(spec, ct);
+        var wallet = await repo.FirstOrDefaultAsync(spec, ct);
         if (wallet is null)
             return Result.NotFound();
         if (!string.Equals(wallet.UserId, request.UserId, StringComparison.Ordinal))
@@ -21,7 +21,7 @@ public sealed class UpdateWalletHandler(IRepository<Wallet> _repo, IUnitOfWork _
             .SetAllowNegativeBalance(request.AllowNegativeBalance)
             .UpdateTarget(request.TargetAmount, request.TargetDate);
 
-        await _unitOfWork.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         return Result.Success(
             new WalletDto(

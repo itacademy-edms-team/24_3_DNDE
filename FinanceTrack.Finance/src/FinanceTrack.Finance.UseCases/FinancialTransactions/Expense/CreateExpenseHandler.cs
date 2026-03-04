@@ -1,12 +1,10 @@
-using FinanceTrack.Finance.Core.Interfaces;
+﻿using FinanceTrack.Finance.Core.Interfaces;
 using FinanceTrack.Finance.Core.Services;
 
 namespace FinanceTrack.Finance.UseCases.FinancialTransactions.Expense;
 
-public sealed class CreateExpenseHandler(
-    CreateExpenseService _service,
-    IUnitOfWork _unitOfWork
-) : ICommandHandler<CreateExpenseCommand, Result<Guid>>
+public sealed class CreateExpenseHandler(CreateExpenseService service, IUnitOfWork unitOfWork)
+    : ICommandHandler<CreateExpenseCommand, Result<Guid>>
 {
     public async Task<Result<Guid>> Handle(CreateExpenseCommand request, CancellationToken ct)
     {
@@ -19,11 +17,11 @@ public sealed class CreateExpenseHandler(
             CategoryId: request.CategoryId
         );
 
-        var result = await _service.Execute(coreRequest, ct);
+        var result = await service.Execute(coreRequest, ct);
 
         if (result.IsSuccess)
         {
-            await _unitOfWork.SaveChangesAsync(ct);
+            await unitOfWork.SaveChangesAsync(ct);
         }
 
         return result;

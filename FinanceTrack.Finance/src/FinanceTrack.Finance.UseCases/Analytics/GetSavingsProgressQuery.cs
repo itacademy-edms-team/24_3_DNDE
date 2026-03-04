@@ -1,8 +1,8 @@
-namespace FinanceTrack.Finance.UseCases.Analytics;
+﻿namespace FinanceTrack.Finance.UseCases.Analytics;
 
 public sealed record GetSavingsProgressQuery(string UserId) : IQuery<SavingsProgressDto>;
 
-public sealed class GetSavingsProgressHandler(IAnalyticsQueryService _service)
+public sealed class GetSavingsProgressHandler(IAnalyticsQueryService service)
     : IQueryHandler<GetSavingsProgressQuery, SavingsProgressDto>
 {
     public async Task<SavingsProgressDto> Handle(
@@ -10,6 +10,6 @@ public sealed class GetSavingsProgressHandler(IAnalyticsQueryService _service)
         CancellationToken ct
     )
     {
-        return await _service.GetSavingsProgress(request.UserId, ct);
+        return await service.GetSavingsProgress(request.UserId, ct);
     }
 }

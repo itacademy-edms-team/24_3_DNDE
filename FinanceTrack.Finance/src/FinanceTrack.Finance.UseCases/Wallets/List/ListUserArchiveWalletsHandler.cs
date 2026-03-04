@@ -8,7 +8,7 @@ using FinanceTrack.Finance.Core.WalletAggregate.Specifications;
 
 namespace FinanceTrack.Finance.UseCases.Wallets.List;
 
-public sealed class ListUserArchiveWalletsHandler(IRepository<Wallet> _repo)
+public sealed class ListUserArchiveWalletsHandler(IRepository<Wallet> repo)
     : IQueryHandler<ListUserArchiveWalletsQuery, IReadOnlyList<WalletDto>>
 {
     public async Task<IReadOnlyList<WalletDto>> Handle(
@@ -17,7 +17,7 @@ public sealed class ListUserArchiveWalletsHandler(IRepository<Wallet> _repo)
     )
     {
         var spec = new UserArchiveWalletsSpec(request.userId);
-        var wallets = await _repo.ListAsync(spec, ct);
+        var wallets = await repo.ListAsync(spec, ct);
 
         return wallets
             .Select(w => new WalletDto(

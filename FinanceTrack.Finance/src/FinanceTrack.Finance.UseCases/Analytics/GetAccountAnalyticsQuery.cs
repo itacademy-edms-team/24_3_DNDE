@@ -1,4 +1,4 @@
-namespace FinanceTrack.Finance.UseCases.Analytics;
+﻿namespace FinanceTrack.Finance.UseCases.Analytics;
 
 public sealed record GetAccountAnalyticsQuery(
     string UserId,
@@ -7,7 +7,7 @@ public sealed record GetAccountAnalyticsQuery(
     DateOnly To
 ) : IQuery<Result<AccountAnalyticsDto>>;
 
-public sealed class GetAccountAnalyticsHandler(IAnalyticsQueryService _service)
+public sealed class GetAccountAnalyticsHandler(IAnalyticsQueryService service)
     : IQueryHandler<GetAccountAnalyticsQuery, Result<AccountAnalyticsDto>>
 {
     public async Task<Result<AccountAnalyticsDto>> Handle(
@@ -15,7 +15,7 @@ public sealed class GetAccountAnalyticsHandler(IAnalyticsQueryService _service)
         CancellationToken ct
     )
     {
-        return await _service.GetAccountAnalytics(
+        return await service.GetAccountAnalytics(
             request.UserId,
             request.WalletId,
             request.From,

@@ -6,8 +6,8 @@ using FinanceTrack.Finance.Core.WalletAggregate.Specifications;
 namespace FinanceTrack.Finance.Core.Services;
 
 public class TransferService(
-    IRepository<FinancialTransaction> _transactionRepo,
-    IRepository<Wallet> _walletRepo
+    IRepository<FinancialTransaction> transactionRepo,
+    IRepository<Wallet> walletRepo
 )
 {
     public async Task<Result<Guid>> Execute(
@@ -19,7 +19,7 @@ public class TransferService(
             return Result.Error("Cannot transfer to the same wallet.");
 
         var spec = new WalletByIdSpec(request.FromWalletId);
-        var fromWallet = await _walletRepo.FirstOrDefaultAsync(spec, ct);
+        var fromWallet = await walletRepo.FirstOrDefaultAsync(spec, ct);
         if (fromWallet is null)
             return Result.NotFound("Source wallet not found.");
         if (!string.Equals(fromWallet.UserId, request.UserId, StringComparison.Ordinal))
@@ -28,7 +28,7 @@ public class TransferService(
             return Result.Error("Cannot transfer from an archived wallet.");
 
         spec = new WalletByIdSpec(request.ToWalletId);
-        var toWallet = await _walletRepo.FirstOrDefaultAsync(spec, ct);
+        var toWallet = await walletRepo.FirstOrDefaultAsync(spec, ct);
         if (toWallet is null)
             return Result.NotFound("Destination wallet not found.");
         if (!string.Equals(toWallet.UserId, request.UserId, StringComparison.Ordinal))
@@ -58,7 +58,7 @@ public class TransferService(
             request.OperationDate,
             Guid.Empty // placeholder, will update after TransferIn is persisted
         );
-        await _transactionRepo.AddAsync(transferOut, ct);
+        await transactionRepo.AddAsync(transferOut, ct);
 
         // Now create TransferIn with TransferOut's real Id (assigned by DB)
         var transferIn = FinancialTransaction.CreateTransferIn(
@@ -69,7 +69,7 @@ public class TransferService(
             request.OperationDate,
             transferOut.Id
         );
-        await _transactionRepo.AddAsync(transferIn, ct);
+        await transactionRepo.AddAsync(transferIn, ct);
 
         // Set back-reference on TransferOut (still in Added state, no explicit Update needed)
         transferOut.SetRelatedTransactionId(transferIn.Id);

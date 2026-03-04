@@ -5,8 +5,8 @@ using FinanceTrack.Finance.Core.RecurringTransactionAggregate.Specifications;
 namespace FinanceTrack.Finance.UseCases.RecurringTransactions.Update;
 
 public sealed class UpdateRecurringTransactionHandler(
-    IRepository<RecurringTransaction> _repo,
-    IUnitOfWork _unitOfWork
+    IRepository<RecurringTransaction> repo,
+    IUnitOfWork unitOfWork
 ) : ICommandHandler<UpdateRecurringTransactionCommand, Result<RecurringTransactionDto>>
 {
     public async Task<Result<RecurringTransactionDto>> Handle(
@@ -15,7 +15,7 @@ public sealed class UpdateRecurringTransactionHandler(
     )
     {
         var spec = new RecurringTransactionByIdSpec(request.RecurringId);
-        var recurring = await _repo.FirstOrDefaultAsync(spec, ct);
+        var recurring = await repo.FirstOrDefaultAsync(spec, ct);
         if (recurring is null)
             return Result.NotFound();
         if (!string.Equals(recurring.UserId, request.UserId, StringComparison.Ordinal))
@@ -28,7 +28,7 @@ public sealed class UpdateRecurringTransactionHandler(
             .SetEndDate(request.EndDate)
             .SetCategory(request.CategoryId);
 
-        await _unitOfWork.SaveChangesAsync(ct);
+        await unitOfWork.SaveChangesAsync(ct);
 
         return Result.Success(
             new RecurringTransactionDto(

@@ -5,7 +5,7 @@ using FinanceTrack.Finance.UseCases.Analytics;
 
 namespace FinanceTrack.Finance.Infrastructure.Data.Queries;
 
-public class AnalyticsQueryService(AppDbContext _dbContext) : IAnalyticsQueryService
+public class AnalyticsQueryService(AppDbContext dbContext) : IAnalyticsQueryService
 {
     public async Task<OverviewAnalyticsDto> GetOverview(
         string userId,
@@ -14,11 +14,11 @@ public class AnalyticsQueryService(AppDbContext _dbContext) : IAnalyticsQuerySer
         CancellationToken ct = default
     )
     {
-        var wallets = await _dbContext
+        var wallets = await dbContext
             .Wallets.Where(w => w.UserId == userId && !w.IsArchived)
             .ToListAsync(ct);
 
-        var transactions = await _dbContext
+        var transactions = await dbContext
             .FinancialTransactions.Where(t =>
                 t.UserId == userId && t.OperationDate >= from && t.OperationDate <= to
             )
@@ -79,7 +79,7 @@ public class AnalyticsQueryService(AppDbContext _dbContext) : IAnalyticsQuerySer
         CancellationToken ct = default
     )
     {
-        var wallet = await _dbContext.Wallets.FirstOrDefaultAsync(
+        var wallet = await dbContext.Wallets.FirstOrDefaultAsync(
             w => w.Id == walletId && w.UserId == userId,
             ct
         );
@@ -87,7 +87,7 @@ public class AnalyticsQueryService(AppDbContext _dbContext) : IAnalyticsQuerySer
         if (wallet is null)
             return Result.NotFound("Wallet not found");
 
-        var transactions = await _dbContext
+        var transactions = await dbContext
             .FinancialTransactions.Where(t =>
                 t.WalletId == walletId
                 && t.UserId == userId
@@ -110,7 +110,7 @@ public class AnalyticsQueryService(AppDbContext _dbContext) : IAnalyticsQuerySer
             .Sum(t => t.Amount);
 
         // Category breakdowns
-        var categories = await _dbContext.Categories.Where(c => c.UserId == userId).ToListAsync(ct);
+        var categories = await dbContext.Categories.Where(c => c.UserId == userId).ToListAsync(ct);
         var categoryDict = categories.ToDictionary(c => c.Id, c => c.Name);
 
         var incomeByCategory = transactions
@@ -171,7 +171,7 @@ public class AnalyticsQueryService(AppDbContext _dbContext) : IAnalyticsQuerySer
         CancellationToken ct = default
     )
     {
-        var transactions = await _dbContext
+        var transactions = await dbContext
             .FinancialTransactions.Where(t =>
                 t.UserId == userId && t.OperationDate >= from && t.OperationDate <= to
             )
@@ -209,7 +209,7 @@ public class AnalyticsQueryService(AppDbContext _dbContext) : IAnalyticsQuerySer
         CancellationToken ct = default
     )
     {
-        var savingsWallets = await _dbContext
+        var savingsWallets = await dbContext
             .Wallets.Where(w =>
                 w.UserId == userId
                 && w.WalletType == WalletType.Savings
@@ -239,13 +239,13 @@ public class AnalyticsQueryService(AppDbContext _dbContext) : IAnalyticsQuerySer
         CancellationToken ct = default
     )
     {
-        var transactions = await _dbContext
+        var transactions = await dbContext
             .FinancialTransactions.Where(t =>
                 t.UserId == userId && t.OperationDate >= from && t.OperationDate <= to
             )
             .ToListAsync(ct);
 
-        var categories = await _dbContext.Categories.Where(c => c.UserId == userId).ToListAsync(ct);
+        var categories = await dbContext.Categories.Where(c => c.UserId == userId).ToListAsync(ct);
         var categoryDict = categories.ToDictionary(c => c.Id, c => c.Name);
 
         // Income by category

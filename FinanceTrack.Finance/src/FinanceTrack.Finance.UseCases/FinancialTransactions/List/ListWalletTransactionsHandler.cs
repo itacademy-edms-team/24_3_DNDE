@@ -6,8 +6,8 @@ using FinanceTrack.Finance.Core.WalletAggregate.Specifications;
 namespace FinanceTrack.Finance.UseCases.FinancialTransactions.List;
 
 public sealed class ListWalletTransactionsHandler(
-    IReadRepository<FinancialTransaction> _transactionRepo,
-    IReadRepository<Wallet> _walletRepo
+    IReadRepository<FinancialTransaction> transactionRepo,
+    IReadRepository<Wallet> walletRepo
 ) : IQueryHandler<ListWalletTransactionsQuery, Result<IReadOnlyList<FinancialTransactionDto>>>
 {
     public async Task<Result<IReadOnlyList<FinancialTransactionDto>>> Handle(
@@ -16,7 +16,7 @@ public sealed class ListWalletTransactionsHandler(
     )
     {
         var walletSpec = new WalletByIdSpec(request.WalletId);
-        var wallet = await _walletRepo.FirstOrDefaultAsync(walletSpec, ct);
+        var wallet = await walletRepo.FirstOrDefaultAsync(walletSpec, ct);
         if (wallet is null)
             return Result.NotFound();
         if (!string.Equals(wallet.UserId, request.UserId, StringComparison.Ordinal))
@@ -44,7 +44,7 @@ public sealed class ListWalletTransactionsHandler(
             request.To
         );
 
-        var transactions = await _transactionRepo.ListAsync(spec, ct);
+        var transactions = await transactionRepo.ListAsync(spec, ct);
 
         // Processing related transactions
         var relatedTransactionIds = transactions
@@ -57,7 +57,7 @@ public sealed class ListWalletTransactionsHandler(
         if (relatedTransactionIds.Any())
         {
             var relatedSpec = new TransactionsByIdsSpec(relatedTransactionIds);
-            var related = await _transactionRepo.ListAsync(relatedSpec, ct);
+            var related = await transactionRepo.ListAsync(relatedSpec, ct);
             relatedTransactions = related.ToDictionary(t => t.Id);
         }
 
@@ -69,7 +69,7 @@ public sealed class ListWalletTransactionsHandler(
         Dictionary<Guid, Wallet> relatedWallets = new();
         if (relatedWalletIds.Any())
         {
-            var wallets = await _walletRepo.ListAsync(new WalletsByIdsSpec(relatedWalletIds), ct);
+            var wallets = await walletRepo.ListAsync(new WalletsByIdsSpec(relatedWalletIds), ct);
             relatedWallets = wallets.ToDictionary(w => w.Id);
         }
         // End Processing related transactions
