@@ -1,21 +1,21 @@
-using FinanceTrack.Finance.Core.Services;
+﻿using FinanceTrack.Finance.Core.Services;
 
 namespace FinanceTrack.Finance.Web.BackgroundServices;
 
 public class RecurringTransactionBackgroundService(
-    IServiceScopeFactory _scopeFactory,
-    ILogger<RecurringTransactionBackgroundService> _logger
+    IServiceScopeFactory scopeFactory,
+    ILogger<RecurringTransactionBackgroundService> logger
 ) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("RecurringTransactionBackgroundService started.");
+        logger.LogInformation("RecurringTransactionBackgroundService started.");
 
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
-                using var scope = _scopeFactory.CreateScope();
+                using var scope = scopeFactory.CreateScope();
                 var processor =
                     scope.ServiceProvider.GetRequiredService<RecurringTransactionProcessorService>();
 
@@ -24,7 +24,7 @@ public class RecurringTransactionBackgroundService(
 
                 if (created > 0)
                 {
-                    _logger.LogInformation(
+                    logger.LogInformation(
                         "RecurringTransactionBackgroundService: created {Count} transactions for {Date}.",
                         created,
                         today
@@ -33,10 +33,7 @@ public class RecurringTransactionBackgroundService(
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                _logger.LogError(
-                    ex,
-                    "Error in RecurringTransactionBackgroundService."
-                );
+                logger.LogError(ex, "Error in RecurringTransactionBackgroundService.");
             }
 
             // Run every hour
