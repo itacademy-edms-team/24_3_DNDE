@@ -70,12 +70,15 @@ public class DeleteTransactionServiceTests : BaseEfRepoTestFixture
         await SaveChangesAsync();
 
         (await walletRepo.GetByIdAsync(wallet.Id))!.Balance.ShouldBe(800m);
+        var createdTransactions = await transactionRepo.ListAsync();
+        createdTransactions.Count.ShouldBe(1);
+        createdTransactions[0].Id.ShouldBe(createResult.Value);
 
         // Act
         var service = new DeleteTransactionService(transactionRepo, walletRepo);
         var result = await service.Execute(createResult.Value, UserId);
 
-        result.IsSuccess.ShouldBeTrue();
+        result.Status.ShouldBe(Ardalis.Result.ResultStatus.Ok);
         await SaveChangesAsync();
 
         // Verify: Expense reversed => balance should be 1000 again

@@ -49,18 +49,19 @@ public class TransferService(
         // Credit destination
         toWallet.Credit(request.Amount);
 
-        // Create and persist TransferOut first (with placeholder for related id)
+        // Create TransferOut first (with placeholder for related id)
         var transferOut = FinancialTransaction.CreateTransferOut(
             request.UserId,
             request.FromWalletId,
             request.Name,
             request.Amount,
             request.OperationDate,
-            Guid.Empty // placeholder, will update after TransferIn is persisted
+            Guid.Empty
         );
+        fromWallet.AddTransaction(transferOut);
         await transactionRepo.AddAsync(transferOut, ct);
 
-        // Now create TransferIn with TransferOut's real Id (assigned by DB)
+        // Now create TransferIn with TransferOut's real Id
         var transferIn = FinancialTransaction.CreateTransferIn(
             request.UserId,
             request.ToWalletId,
@@ -69,6 +70,7 @@ public class TransferService(
             request.OperationDate,
             transferOut.Id
         );
+        toWallet.AddTransaction(transferIn);
         await transactionRepo.AddAsync(transferIn, ct);
 
         // Set back-reference on TransferOut (still in Added state, no explicit Update needed)

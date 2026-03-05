@@ -36,7 +36,7 @@ public class FinancialTransactionConfiguration : IEntityTypeConfiguration<Financ
         // FK to Wallet
         builder
             .HasOne(t => t.Wallet)
-            .WithMany()
+            .WithMany(w => w.Transactions)
             .HasForeignKey(t => t.WalletId)
             .OnDelete(DeleteBehavior.Cascade);
 

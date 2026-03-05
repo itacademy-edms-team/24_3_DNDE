@@ -1,9 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿namespace FinanceTrack.Finance.Core.Shared;
 
-namespace FinanceTrack.Finance.Core.Shared;
-
-public abstract class GuidEntityBase : EntityBase<Guid> { }
+public abstract class GuidEntityBase : EntityBase<Guid>
+{
+    protected GuidEntityBase()
+    {
+        if (Id == Guid.Empty)
+        {
+            Id = Guid.NewGuid();
+        }
+    }
+}

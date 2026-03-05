@@ -153,6 +153,7 @@ public class RecurringTransactionProcessorService(
                 rule.Id
             );
             wallet.Credit(rule.Amount);
+            wallet.AddTransaction(transaction);
             return transaction;
         }
 
@@ -177,6 +178,7 @@ public class RecurringTransactionProcessorService(
             rule.Id
         );
         wallet.Debit(rule.Amount);
+        wallet.AddTransaction(expenseTransaction);
         return expenseTransaction;
     }
 }

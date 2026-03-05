@@ -24,6 +24,16 @@ public class CreateExpenseService(
         if (wallet.IsArchived)
             return Result.Error("Cannot add expense to an archived wallet.");
 
+        var transaction = FinancialTransaction.CreateExpense(
+            request.UserId,
+            request.WalletId,
+            request.Name,
+            request.Amount,
+            request.OperationDate,
+            request.CategoryId,
+            request.RecurringTransactionId
+        );
+
         // Debit will throw if insufficient funds and AllowNegativeBalance is false
         try
         {
@@ -34,15 +44,7 @@ public class CreateExpenseService(
             return Result.Error(ex.Message);
         }
 
-        var transaction = FinancialTransaction.CreateExpense(
-            request.UserId,
-            request.WalletId,
-            request.Name,
-            request.Amount,
-            request.OperationDate,
-            request.CategoryId,
-            request.RecurringTransactionId
-        );
+        wallet.AddTransaction(transaction);
 
         await transactionRepo.AddAsync(transaction, ct);
 

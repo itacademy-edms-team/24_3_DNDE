@@ -1,4 +1,5 @@
-﻿using FinanceTrack.Finance.Core.Shared;
+﻿using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
+using FinanceTrack.Finance.Core.Shared;
 
 namespace FinanceTrack.Finance.Core.WalletAggregate;
 
@@ -13,6 +14,9 @@ public sealed class Wallet : GuidEntityBase, IAggregateRoot
     public DateOnly? TargetDate { get; private set; }
     public bool IsArchived { get; private set; }
     public DateTime CreatedAtUtc { get; private set; }
+
+    private readonly List<FinancialTransaction> _transactions = new();
+    public IReadOnlyCollection<FinancialTransaction> Transactions => _transactions.AsReadOnly();
 
     // ORM
     private Wallet() { }
@@ -117,4 +121,19 @@ public sealed class Wallet : GuidEntityBase, IAggregateRoot
     public void Archive() => IsArchived = true;
 
     public void Unarchive() => IsArchived = false;
+
+    internal void AddTransaction(FinancialTransaction transaction)
+    {
+        Guard.Against.Null(transaction);
+
+        // Ensure consistency between the wallet and transaction
+        if (transaction.WalletId != Id)
+        {
+            throw new InvalidOperationException(
+                $"Transaction wallet id {transaction.WalletId} does not match wallet {Id}."
+            );
+        }
+
+        _transactions.Add(transaction);
+    }
 }
