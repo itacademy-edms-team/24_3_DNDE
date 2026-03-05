@@ -20,7 +20,7 @@ public sealed class RecurringTransaction : GuidEntityBase, IAggregateRoot
     public DateTime CreatedAtUtc { get; private set; }
 
     // Navigation
-    public Wallet? Wallet { get; private set; }
+    public Wallet Wallet { get; private set; } = default!;
     public Category? Category { get; private set; }
 
     // ORM

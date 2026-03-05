@@ -18,7 +18,7 @@ public sealed class FinancialTransaction : GuidEntityBase, IAggregateRoot
     public DateTime CreatedAtUtc { get; private set; }
 
     // Navigation properties
-    public Wallet? Wallet { get; private set; }
+    public Wallet Wallet { get; private set; } = default!;
     public Category? Category { get; private set; }
 
     // ORM

@@ -28,7 +28,7 @@ public class UpdateTransactionServiceTests : BaseEfRepoTestFixture
         await SaveChangesAsync();
 
         // Act: increase income to 800
-        var service = new UpdateTransactionService(transactionRepo, walletRepo);
+        var service = new UpdateTransactionService(transactionRepo);
         var request = new UpdateTransactionRequest(tx.Id, UserId, "Updated Salary", 800m, Today, null);
         var result = await service.Execute(request);
 
@@ -58,7 +58,7 @@ public class UpdateTransactionServiceTests : BaseEfRepoTestFixture
         await SaveChangesAsync();
 
         // Act: decrease expense to 100
-        var service = new UpdateTransactionService(transactionRepo, walletRepo);
+        var service = new UpdateTransactionService(transactionRepo);
         var request = new UpdateTransactionRequest(tx.Id, UserId, "Less Groceries", 100m, Today, null);
         var result = await service.Execute(request);
 
@@ -84,7 +84,7 @@ public class UpdateTransactionServiceTests : BaseEfRepoTestFixture
 
         await SaveChangesAsync();
 
-        var service = new UpdateTransactionService(transactionRepo, walletRepo);
+        var service = new UpdateTransactionService(transactionRepo);
         var request = new UpdateTransactionRequest(tx.Id, UserId, "Updated", 200m, Today, null);
         var result = await service.Execute(request);
 

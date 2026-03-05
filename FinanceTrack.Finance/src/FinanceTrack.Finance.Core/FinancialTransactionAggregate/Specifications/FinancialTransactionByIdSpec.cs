@@ -6,6 +6,8 @@ public class FinancialTransactionByIdSpec
 {
     public FinancialTransactionByIdSpec(Guid transactionId)
     {
-        Query.Where(t => t.Id == transactionId);
+        Query
+            .Where(t => t.Id == transactionId)
+            .Include(t => t.Wallet);
     }
 }

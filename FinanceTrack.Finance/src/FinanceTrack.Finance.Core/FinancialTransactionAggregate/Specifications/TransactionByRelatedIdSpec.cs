@@ -6,6 +6,8 @@ public class TransactionByRelatedIdSpec
 {
     public TransactionByRelatedIdSpec(Guid relatedTransactionId)
     {
-        Query.Where(t => t.RelatedTransactionId == relatedTransactionId);
+        Query
+            .Where(t => t.RelatedTransactionId == relatedTransactionId)
+            .Include(t => t.Wallet);
     }
 }

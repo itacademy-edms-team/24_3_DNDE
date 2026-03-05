@@ -34,7 +34,7 @@ public class DeleteTransactionServiceTests : BaseEfRepoTestFixture
         (await walletRepo.GetByIdAsync(wallet.Id))!.Balance.ShouldBe(1000m);
 
         // Act
-        var service = new DeleteTransactionService(transactionRepo, walletRepo);
+        var service = new DeleteTransactionService(transactionRepo);
         var result = await service.Execute(createResult.Value, UserId);
 
         result.IsSuccess.ShouldBeTrue();
@@ -75,7 +75,7 @@ public class DeleteTransactionServiceTests : BaseEfRepoTestFixture
         createdTransactions[0].Id.ShouldBe(createResult.Value);
 
         // Act
-        var service = new DeleteTransactionService(transactionRepo, walletRepo);
+        var service = new DeleteTransactionService(transactionRepo);
         var result = await service.Execute(createResult.Value, UserId);
 
         result.Status.ShouldBe(Ardalis.Result.ResultStatus.Ok);
@@ -94,7 +94,7 @@ public class DeleteTransactionServiceTests : BaseEfRepoTestFixture
         var walletRepo = GetWalletRepository();
         var transactionRepo = GetFinancialTransactionRepository();
 
-        var service = new DeleteTransactionService(transactionRepo, walletRepo);
+        var service = new DeleteTransactionService(transactionRepo);
         var result = await service.Execute(Guid.NewGuid(), UserId);
 
         result.Status.ShouldBe(Ardalis.Result.ResultStatus.NotFound);

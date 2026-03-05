@@ -5,10 +5,7 @@ using FinanceTrack.Finance.Core.WalletAggregate.Specifications;
 
 namespace FinanceTrack.Finance.Core.Services;
 
-public class DeleteTransactionService(
-    IRepository<FinancialTransaction> transactionRepo,
-    IRepository<Wallet> walletRepo
-)
+public class DeleteTransactionService(IRepository<FinancialTransaction> transactionRepo)
 {
     public async Task<Result> Execute(
         Guid transactionId,
@@ -23,8 +20,7 @@ public class DeleteTransactionService(
         if (!string.Equals(transaction.UserId, userId, StringComparison.Ordinal))
             return Result.Forbidden();
 
-        var walletSpec = new WalletByIdSpec(transaction.WalletId);
-        var wallet = await walletRepo.FirstOrDefaultAsync(walletSpec, ct);
+        var wallet = transaction.Wallet;
         if (wallet is null)
             return Result.NotFound("Wallet not found.");
 
@@ -94,9 +90,7 @@ public class DeleteTransactionService(
         if (related is null)
             return Result.Success();
 
-        var walletSpec = new WalletByIdSpec(related.WalletId);
-        var relatedWallet = await walletRepo.FirstOrDefaultAsync(walletSpec, ct);
-
+        var relatedWallet = related.Wallet;
         if (relatedWallet is not null)
         {
             var reverseError = ReverseWalletImpact(relatedWallet, related);
