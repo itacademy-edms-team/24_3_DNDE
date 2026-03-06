@@ -11,7 +11,6 @@ public class SmtpEmailSender(
     IOptions<MailserverConfiguration> mailserverOptions
 ) : IEmailSender
 {
-    private readonly ILogger<SmtpEmailSender> _logger = logger;
     private readonly MailserverConfiguration _mailserverConfiguration = mailserverOptions.Value!;
 
     public async Task SendEmailAsync(string to, string from, string subject, string body)
@@ -29,7 +28,7 @@ public class SmtpEmailSender(
         };
         message.To.Add(new MailAddress(to));
         await emailClient.SendMailAsync(message);
-        _logger.LogWarning(
+        logger.LogWarning(
             "Sending email to {to} from {from} with subject {subject} using {type}.",
             to,
             from,

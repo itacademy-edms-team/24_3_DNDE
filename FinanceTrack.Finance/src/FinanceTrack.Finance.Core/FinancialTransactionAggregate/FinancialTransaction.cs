@@ -1,100 +1,134 @@
-﻿namespace FinanceTrack.Finance.Core.FinancialTransactionAggregate;
+﻿using FinanceTrack.Finance.Core.CategoryAggregate;
+using FinanceTrack.Finance.Core.Shared;
+using FinanceTrack.Finance.Core.WalletAggregate;
 
-public sealed class FinancialTransaction : EntityBase<Guid>, IAggregateRoot
+namespace FinanceTrack.Finance.Core.FinancialTransactionAggregate;
+
+public sealed class FinancialTransaction : GuidEntityBase, IAggregateRoot
 {
-    // Keycloak sub is string
     public string UserId { get; private set; } = default!;
+    public Guid WalletId { get; private set; }
+    public Guid? CategoryId { get; private set; }
     public string Name { get; private set; } = default!;
-
-    // For Income - null, For Expense - reference to parent Income Transaction
-    public Guid? IncomeTransactionId { get; private set; }
-
     public FinancialTransactionType TransactionType { get; private set; } = default!;
-
     public decimal Amount { get; private set; }
-
     public DateOnly OperationDate { get; private set; }
-
-    public bool IsMonthly { get; private set; }
-
+    public Guid? RelatedTransactionId { get; private set; }
+    public Guid? RecurringTransactionId { get; private set; }
     public DateTime CreatedAtUtc { get; private set; }
 
-    public FinancialTransaction? IncomeTransaction { get; private set; }
+    // Navigation properties
+    public Wallet Wallet { get; private set; } = default!;
+    public Category? Category { get; private set; }
 
     // ORM
     private FinancialTransaction() { }
 
     private FinancialTransaction(
         string userId,
+        Guid walletId,
         string name,
         FinancialTransactionType type,
         decimal amount,
         DateOnly operationDate,
-        bool isMonthly,
-        Guid? incomeTransactionId,
+        Guid? categoryId = null,
+        Guid? relatedTransactionId = null,
+        Guid? recurringTransactionId = null,
         DateTime? createdAtUtc = null
     )
     {
         Guard.Against.NullOrWhiteSpace(userId);
+        Guard.Against.Default(walletId);
         Guard.Against.NullOrWhiteSpace(name);
-        // Validate original amount to reject values like 0.009 before rounding
         Guard.Against.OutOfRange(amount, nameof(amount), 0.01m, decimal.MaxValue);
-        var roundedAmount = decimal.Round(amount, 2);
         Guard.Against.Default(operationDate);
 
-        if (type == FinancialTransactionType.Income && incomeTransactionId.HasValue)
-            throw new InvalidOperationException(
-                "Income transaction cannot have IncomeTransactionId."
-            );
-
-        if (type == FinancialTransactionType.Expense && incomeTransactionId is null)
-            throw new InvalidOperationException(
-                "Expense transaction must have IncomeTransactionId."
-            );
-
         UserId = userId;
+        WalletId = walletId;
         Name = name;
         TransactionType = type;
-        Amount = roundedAmount;
+        Amount = decimal.Round(amount, 2);
         OperationDate = operationDate;
-        IsMonthly = isMonthly;
-        IncomeTransactionId = incomeTransactionId;
+        CategoryId = categoryId;
+        RelatedTransactionId = relatedTransactionId;
+        RecurringTransactionId = recurringTransactionId;
         CreatedAtUtc = createdAtUtc ?? DateTime.UtcNow;
     }
 
     public static FinancialTransaction CreateIncome(
         string userId,
+        Guid walletId,
         string name,
         decimal amount,
         DateOnly operationDate,
-        bool isMonthly
+        Guid? categoryId = null,
+        Guid? recurringTransactionId = null
     ) =>
         new(
-            userId: userId,
-            name: name,
-            type: FinancialTransactionType.Income,
-            amount: amount,
-            operationDate: operationDate,
-            isMonthly: isMonthly,
-            incomeTransactionId: null
+            userId,
+            walletId,
+            name,
+            FinancialTransactionType.Income,
+            amount,
+            operationDate,
+            categoryId: categoryId,
+            recurringTransactionId: recurringTransactionId
         );
 
     public static FinancialTransaction CreateExpense(
         string userId,
+        Guid walletId,
         string name,
         decimal amount,
         DateOnly operationDate,
-        bool isMonthly,
-        Guid incomeTransactionId
+        Guid? categoryId = null,
+        Guid? recurringTransactionId = null
     ) =>
         new(
-            userId: userId,
-            name: name,
-            type: FinancialTransactionType.Expense,
-            amount: amount,
-            operationDate: operationDate,
-            isMonthly: isMonthly,
-            incomeTransactionId: incomeTransactionId
+            userId,
+            walletId,
+            name,
+            FinancialTransactionType.Expense,
+            amount,
+            operationDate,
+            categoryId: categoryId,
+            recurringTransactionId: recurringTransactionId
+        );
+
+    public static FinancialTransaction CreateTransferOut(
+        string userId,
+        Guid walletId,
+        string name,
+        decimal amount,
+        DateOnly operationDate,
+        Guid relatedTransactionId
+    ) =>
+        new(
+            userId,
+            walletId,
+            name,
+            FinancialTransactionType.TransferOut,
+            amount,
+            operationDate,
+            relatedTransactionId: relatedTransactionId
+        );
+
+    public static FinancialTransaction CreateTransferIn(
+        string userId,
+        Guid walletId,
+        string name,
+        decimal amount,
+        DateOnly operationDate,
+        Guid relatedTransactionId
+    ) =>
+        new(
+            userId,
+            walletId,
+            name,
+            FinancialTransactionType.TransferIn,
+            amount,
+            operationDate,
+            relatedTransactionId: relatedTransactionId
         );
 
     public FinancialTransaction UpdateName(string name)
@@ -112,16 +146,21 @@ public sealed class FinancialTransaction : EntityBase<Guid>, IAggregateRoot
         return this;
     }
 
-    public FinancialTransaction SetMonthly(bool isMonthly)
-    {
-        IsMonthly = isMonthly;
-        return this;
-    }
-
     public FinancialTransaction SetOperationDate(DateOnly newDate)
     {
         Guard.Against.Default(newDate);
         OperationDate = newDate;
         return this;
+    }
+
+    public FinancialTransaction SetCategory(Guid? categoryId)
+    {
+        CategoryId = categoryId;
+        return this;
+    }
+
+    internal void SetRelatedTransactionId(Guid relatedId)
+    {
+        RelatedTransactionId = relatedId;
     }
 }

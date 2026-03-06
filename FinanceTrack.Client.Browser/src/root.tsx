@@ -7,20 +7,29 @@ import { Provider as JotaiProvider } from 'jotai';
 
 import ThemeProvider from '@/theme/Provider';
 
+import {
+  QueryClient,
+  QueryClientProvider,
+} from '@tanstack/react-query'
+
+const queryClient = new QueryClient()
+
 const container = document.getElementById('root') as HTMLElement;
 const root = createRoot(container);
 
 function render(App: ComponentType) {
   root.render(
-    <StrictMode>
-      <JotaiProvider>
-        <ThemeProvider>
-          <NotificationsProvider>
-            <App />
-          </NotificationsProvider>
-        </ThemeProvider>
-      </JotaiProvider>
-    </StrictMode>,
+    <QueryClientProvider client={queryClient}>
+      <StrictMode>
+        <JotaiProvider>
+          <ThemeProvider>
+            <NotificationsProvider>
+              <App />
+            </NotificationsProvider>
+          </ThemeProvider>
+        </JotaiProvider>
+      </StrictMode>
+    </QueryClientProvider>,
   );
 }
 

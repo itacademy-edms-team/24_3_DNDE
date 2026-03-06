@@ -1,0 +1,14 @@
+services:
+  traefik:
+    ports:
+      - "80:80"
+      - "9090:8080"
+    volumes:
+      - ./dynamic.yml:/etc/traefik/dynamic.yml:ro
+    networks:
+      - finance_track_network
+    restart: unless-stopped
+
+networks:
+  finance_track_network:
+    external: true

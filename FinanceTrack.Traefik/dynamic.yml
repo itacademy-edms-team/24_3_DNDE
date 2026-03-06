@@ -1,0 +1,25 @@
+http:
+  routers:
+    gateway:
+      rule: "Host(`app.ft.localhost`)"
+      service: gateway
+      entryPoints:
+        - web
+
+    keycloak:
+      rule: "Host(`auth.ft.localhost`)"
+      service: keycloak
+      entryPoints:
+        - web
+
+  services:
+    gateway:
+      loadBalancer:
+        servers:
+          - url: "http://financetrack.gateway:8080"
+
+    keycloak:
+      loadBalancer:
+        servers:
+          - url: "http://auth.ft.localhost"
+          # port is 80 (inherited from traefik config)

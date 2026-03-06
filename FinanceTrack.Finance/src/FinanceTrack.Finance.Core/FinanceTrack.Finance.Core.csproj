@@ -11,9 +11,4 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="FinancialTransactionAggregate\Events\" />
-    <Folder Include="FinancialTransactionAggregate\Handlers\" />
-  </ItemGroup>
-
 </Project>

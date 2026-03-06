@@ -2,9 +2,14 @@
 
 public sealed record FinancialTransactionDto(
     Guid Id,
+    Guid WalletId,
     string Name,
     decimal Amount,
     DateOnly OperationDate,
-    bool IsMonthly,
-    string Type
+    string Type,
+    Guid? CategoryId,
+    Guid? RelatedTransactionId,
+    Guid? RecurringTransactionId,
+    Guid? RelatedWalletId = null,
+    string? RelatedWalletName = null
 );

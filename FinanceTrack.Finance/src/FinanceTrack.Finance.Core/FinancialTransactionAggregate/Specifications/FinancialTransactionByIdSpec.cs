@@ -1,7 +1,13 @@
 ﻿namespace FinanceTrack.Finance.Core.FinancialTransactionAggregate.Specifications;
 
-public class FinancialTransactionByIdSpec : Specification<FinancialTransaction>
+public class FinancialTransactionByIdSpec
+    : Specification<FinancialTransaction>,
+        ISingleResultSpecification<FinancialTransaction>
 {
-    public FinancialTransactionByIdSpec(Guid transactionId) =>
-        Query.Where(transaction => transaction.Id == transactionId);
+    public FinancialTransactionByIdSpec(Guid transactionId)
+    {
+        Query
+            .Where(t => t.Id == transactionId)
+            .Include(t => t.Wallet);
+    }
 }

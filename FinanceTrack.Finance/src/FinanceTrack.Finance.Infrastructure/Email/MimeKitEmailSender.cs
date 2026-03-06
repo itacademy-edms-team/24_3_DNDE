@@ -7,12 +7,11 @@ public class MimeKitEmailSender(
     IOptions<MailserverConfiguration> mailserverOptions
 ) : IEmailSender
 {
-    private readonly ILogger<MimeKitEmailSender> _logger = logger;
     private readonly MailserverConfiguration _mailserverConfiguration = mailserverOptions.Value!;
 
     public async Task SendEmailAsync(string to, string from, string subject, string body)
     {
-        _logger.LogWarning(
+        logger.LogWarning(
             "Sending email to {to} from {from} with subject {subject} using {type}.",
             to,
             from,

@@ -1,0 +1,4 @@
+backups/
+exports/
+.env*
+!.env.example

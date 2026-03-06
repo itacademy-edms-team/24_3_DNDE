@@ -1,5 +1,7 @@
-﻿using FinanceTrack.Finance.Core.ContributorAggregate;
+﻿using FinanceTrack.Finance.Core.CategoryAggregate;
 using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
+using FinanceTrack.Finance.Core.RecurringTransactionAggregate;
+using FinanceTrack.Finance.Core.WalletAggregate;
 
 namespace FinanceTrack.Finance.Infrastructure.Data;
 
@@ -9,9 +11,10 @@ public class AppDbContext(
 ) : DbContext(options)
 {
     private readonly IDomainEventDispatcher? _dispatcher = dispatcher;
-
-    public DbSet<Contributor> Contributors => Set<Contributor>();
+    public DbSet<Wallet> Wallets => Set<Wallet>();
+    public DbSet<Category> Categories => Set<Category>();
     public DbSet<FinancialTransaction> FinancialTransactions => Set<FinancialTransaction>();
+    public DbSet<RecurringTransaction> RecurringTransactions => Set<RecurringTransaction>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

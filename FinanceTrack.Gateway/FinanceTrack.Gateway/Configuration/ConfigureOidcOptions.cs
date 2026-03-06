@@ -11,10 +11,12 @@ namespace FinanceTrack.Gateway.Configuration;
 public class ConfigureOidcOptions : IConfigureNamedOptions<OpenIdConnectOptions>
 {
     private readonly OidcOptions _oidcOptions;
+    private readonly IHostEnvironment _env;
 
-    public ConfigureOidcOptions(IOptions<OidcOptions> oidcOptions)
+    public ConfigureOidcOptions(IOptions<OidcOptions> oidcOptions, IHostEnvironment env)
     {
         _oidcOptions = oidcOptions.Value;
+        _env = env;
     }
 
     public void Configure(string? name, OpenIdConnectOptions options)
@@ -28,8 +30,6 @@ public class ConfigureOidcOptions : IConfigureNamedOptions<OpenIdConnectOptions>
     public void Configure(OpenIdConnectOptions options)
     {
         options.Authority = _oidcOptions.Bff.Authority;
-        options.RequireHttpsMetadata = false; // dev only
-
         options.ClientId = _oidcOptions.Bff.ClientId;
         options.ClientSecret = _oidcOptions.Bff.ClientSecret;
         options.ResponseType = OpenIdConnectResponseType.Code;
@@ -46,5 +46,16 @@ public class ConfigureOidcOptions : IConfigureNamedOptions<OpenIdConnectOptions>
         options.CallbackPath = "/signin-oidc";
         options.SignedOutCallbackPath = "/signout-callback-oidc";
         options.SignedOutRedirectUri = "/";
+
+        if (_env.IsDevelopment())
+        {
+            options.RequireHttpsMetadata = false;
+            // http bypass section (dev only)
+            options.NonceCookie.SameSite = SameSiteMode.Unspecified;
+            options.NonceCookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+
+            options.CorrelationCookie.SameSite = SameSiteMode.Lax;
+            options.CorrelationCookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        }
     }
 }

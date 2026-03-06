@@ -16,6 +16,8 @@ public static class ServiceConfigs
         WebApplicationBuilder builder
     )
     {
+        builder.Services.AddHealthChecks();
+
         services.AddInfrastructureServices(builder.Configuration, logger).AddMediatrConfigs();
 
         if (builder.Environment.IsDevelopment())

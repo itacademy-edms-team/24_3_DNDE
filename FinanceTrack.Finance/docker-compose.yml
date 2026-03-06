@@ -1,0 +1,17 @@
+﻿# name: see .env
+services:
+  finance-db:
+    image: postgres:16
+    container_name: ft-finance-db
+    restart: unless-stopped
+  
+  financetrack.finance.web:
+    image: ${DOCKER_REGISTRY-}financetrack-finance
+    build:
+      args:
+        BUILD_CONFIGURATION: Debug
+      context: .
+      dockerfile: src/FinanceTrack.Finance.Web/Dockerfile
+    depends_on:
+      finance-db:
+        condition: service_healthy

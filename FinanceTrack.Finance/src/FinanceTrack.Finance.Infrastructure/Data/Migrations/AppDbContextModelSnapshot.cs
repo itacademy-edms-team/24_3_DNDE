@@ -22,25 +22,43 @@ namespace FinanceTrack.Finance.Infrastructure.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("FinanceTrack.Finance.Core.ContributorAggregate.Contributor", b =>
+            modelBuilder.Entity("FinanceTrack.Finance.Core.CategoryAggregate.Category", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                        .HasColumnType("uuid");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    b.Property<string>("Color")
+                        .HasMaxLength(7)
+                        .HasColumnType("character varying(7)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW() AT TIME ZONE 'UTC'");
+
+                    b.Property<string>("Icon")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<int>("Status")
+                    b.Property<int>("Type")
                         .HasColumnType("integer");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
 
                     b.HasKey("Id");
 
-                    b.ToTable("Contributors");
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Categories");
                 });
 
             modelBuilder.Entity("FinanceTrack.Finance.Core.FinancialTransactionAggregate.FinancialTransaction", b =>
@@ -52,18 +70,13 @@ namespace FinanceTrack.Finance.Infrastructure.Data.Migrations
                     b.Property<decimal>("Amount")
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<Guid?>("CategoryId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("CreatedAtUtc")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("NOW() AT TIME ZONE 'UTC'");
-
-                    b.Property<Guid?>("IncomeTransactionId")
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("IsMonthly")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false);
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -71,6 +84,81 @@ namespace FinanceTrack.Finance.Infrastructure.Data.Migrations
                         .HasColumnType("character varying(50)");
 
                     b.Property<DateOnly>("OperationDate")
+                        .HasColumnType("date");
+
+                    b.Property<Guid?>("RecurringTransactionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("RelatedTransactionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("TransactionType")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<Guid>("WalletId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
+
+                    b.HasIndex("OperationDate");
+
+                    b.HasIndex("RecurringTransactionId");
+
+                    b.HasIndex("RelatedTransactionId");
+
+                    b.HasIndex("TransactionType");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("WalletId");
+
+                    b.ToTable("FinancialTransactions");
+                });
+
+            modelBuilder.Entity("FinanceTrack.Finance.Core.RecurringTransactionAggregate.RecurringTransaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid?>("CategoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW() AT TIME ZONE 'UTC'");
+
+                    b.Property<int>("DayOfMonth")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly?>("EndDate")
+                        .HasColumnType("date");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<DateOnly?>("LastProcessedDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateOnly>("StartDate")
                         .HasColumnType("date");
 
                     b.Property<int>("TransactionType")
@@ -81,56 +169,108 @@ namespace FinanceTrack.Finance.Infrastructure.Data.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
 
+                    b.Property<Guid>("WalletId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("IncomeTransactionId");
+                    b.HasIndex("CategoryId");
 
-                    b.HasIndex("OperationDate");
-
-                    b.HasIndex("TransactionType");
+                    b.HasIndex("IsActive");
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("FinancialTransactions");
+                    b.HasIndex("WalletId");
+
+                    b.ToTable("RecurringTransactions");
                 });
 
-            modelBuilder.Entity("FinanceTrack.Finance.Core.ContributorAggregate.Contributor", b =>
+            modelBuilder.Entity("FinanceTrack.Finance.Core.WalletAggregate.Wallet", b =>
                 {
-                    b.OwnsOne("FinanceTrack.Finance.Core.ContributorAggregate.PhoneNumber", "PhoneNumber", b1 =>
-                        {
-                            b1.Property<int>("ContributorId")
-                                .HasColumnType("integer");
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
 
-                            b1.Property<string>("CountryCode")
-                                .IsRequired()
-                                .HasColumnType("text");
+                    b.Property<bool>("AllowNegativeBalance")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
 
-                            b1.Property<string>("Extension")
-                                .HasColumnType("text");
+                    b.Property<decimal>("Balance")
+                        .HasColumnType("numeric(18,2)");
 
-                            b1.Property<string>("Number")
-                                .IsRequired()
-                                .HasColumnType("text");
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW() AT TIME ZONE 'UTC'");
 
-                            b1.HasKey("ContributorId");
+                    b.Property<bool>("IsArchived")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
 
-                            b1.ToTable("Contributors");
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
-                            b1.WithOwner()
-                                .HasForeignKey("ContributorId");
-                        });
+                    b.Property<decimal?>("TargetAmount")
+                        .HasColumnType("numeric(18,2)");
 
-                    b.Navigation("PhoneNumber");
+                    b.Property<DateOnly?>("TargetDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<int>("WalletType")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("WalletType");
+
+                    b.ToTable("Wallets");
                 });
 
             modelBuilder.Entity("FinanceTrack.Finance.Core.FinancialTransactionAggregate.FinancialTransaction", b =>
                 {
-                    b.HasOne("FinanceTrack.Finance.Core.FinancialTransactionAggregate.FinancialTransaction", "IncomeTransaction")
+                    b.HasOne("FinanceTrack.Finance.Core.CategoryAggregate.Category", "Category")
                         .WithMany()
-                        .HasForeignKey("IncomeTransactionId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
-                    b.Navigation("IncomeTransaction");
+                    b.HasOne("FinanceTrack.Finance.Core.WalletAggregate.Wallet", "Wallet")
+                        .WithMany()
+                        .HasForeignKey("WalletId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Category");
+
+                    b.Navigation("Wallet");
+                });
+
+            modelBuilder.Entity("FinanceTrack.Finance.Core.RecurringTransactionAggregate.RecurringTransaction", b =>
+                {
+                    b.HasOne("FinanceTrack.Finance.Core.CategoryAggregate.Category", "Category")
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("FinanceTrack.Finance.Core.WalletAggregate.Wallet", "Wallet")
+                        .WithMany()
+                        .HasForeignKey("WalletId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Category");
+
+                    b.Navigation("Wallet");
                 });
 #pragma warning restore 612, 618
         }

@@ -1,12 +1,10 @@
-﻿using FinanceTrack.Finance.UseCases.Contributors.Create;
+﻿using FinanceTrack.Finance.Web.BackgroundServices;
 using FinanceTrack.Finance.Web.Configurations;
+using FinanceTrack.Finance.Web.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var logger = Log.Logger = new LoggerConfiguration()
-    .Enrich.FromLogContext()
-    .WriteTo.Console()
-    .CreateLogger();
+var logger = Log.Logger = new LoggerConfiguration().Enrich.FromLogContext().CreateLogger();
 
 logger.Information("Starting web host");
 
@@ -28,8 +26,8 @@ builder
         c.Register(typeof(CommandLogger<,>));
     });
 
-// wire up commands
-//builder.Services.AddTransient<ICommandHandler<CreateContributorCommand2,Result<int>>, CreateContributorCommandHandler2>();
+// Background services
+builder.Services.AddHostedService<RecurringTransactionBackgroundService>();
 
 var app = builder.Build();
 

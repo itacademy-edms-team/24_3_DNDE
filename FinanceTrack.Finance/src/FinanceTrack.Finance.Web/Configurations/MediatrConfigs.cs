@@ -1,7 +1,7 @@
 ﻿using System.Reflection;
 using Ardalis.SharedKernel;
-using FinanceTrack.Finance.Core.ContributorAggregate;
-using FinanceTrack.Finance.UseCases.Contributors.Create;
+using FinanceTrack.Finance.Core.WalletAggregate;
+using FinanceTrack.Finance.UseCases.Wallets.Create;
 
 namespace FinanceTrack.Finance.Web.Configurations;
 
@@ -11,8 +11,8 @@ public static class MediatrConfigs
     {
         var mediatRAssemblies = new[]
         {
-            Assembly.GetAssembly(typeof(Contributor)), // Core
-            Assembly.GetAssembly(typeof(CreateContributorCommand)), // UseCases
+            Assembly.GetAssembly(typeof(Wallet)), // Core
+            Assembly.GetAssembly(typeof(CreateWalletCommand)), // UseCases
         };
 
         services

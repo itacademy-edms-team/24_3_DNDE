@@ -4,6 +4,7 @@ using FinanceTrack.Gateway.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,6 +16,7 @@ builder
     .ValidateOnStart();
 
 // Services
+builder.Services.AddHealthChecks();
 builder.Services.AddMemoryCache();
 builder.Services.AddHttpClient<ITokenExchangeService, TokenExchangeService>();
 
@@ -23,6 +25,17 @@ builder
     .Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
     .AddTokenExchangeTransform();
+
+//// Right scheme/host/port indent under Traefik
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders =
+        ForwardedHeaders.XForwardedFor
+        | ForwardedHeaders.XForwardedProto
+        | ForwardedHeaders.XForwardedHost;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 // BFF Authentication
 builder.Services.ConfigureOptions<ConfigureOidcOptions>();
@@ -47,9 +60,13 @@ builder
 
 var app = builder.Build();
 
+app.UseForwardedHeaders();
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseKeycloakTokenRefresh();
+
+app.MapHealthChecks("/healthz");
 
 // Yarp. Proxy all routes in configuration
 app.MapReverseProxy();

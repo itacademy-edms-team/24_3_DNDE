@@ -1,0 +1,6 @@
+﻿services:
+  financetrack.gateway:
+    image: ${DOCKER_REGISTRY-}financetrack-gateway
+    build:
+      context: .
+      dockerfile: FinanceTrack.Gateway/Dockerfile
