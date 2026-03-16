@@ -1,4 +1,5 @@
-using FinanceTrack.Finance.Core.RecurringTransactionAggregate;
+﻿using FinanceTrack.Finance.Core.RecurringTransactionAggregate;
+using NpgsqlTypes;
 
 namespace FinanceTrack.Finance.Infrastructure.Data.Config;
 
@@ -52,6 +53,13 @@ public class RecurringTransactionConfiguration : IEntityTypeConfiguration<Recurr
             .WithMany()
             .HasForeignKey(r => r.CategoryId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        // Full text search field
+        builder
+            .Property<NpgsqlTsVector>("SearchVector")
+            .HasColumnType("tsvector")
+            .HasComputedColumnSql("to_tsvector('russian', coalesce(\"Name\", ''))", stored: true);
+        builder.HasIndex("SearchVector").HasMethod("GIN");
 
         builder.HasIndex(r => r.UserId);
         builder.HasIndex(r => r.WalletId);

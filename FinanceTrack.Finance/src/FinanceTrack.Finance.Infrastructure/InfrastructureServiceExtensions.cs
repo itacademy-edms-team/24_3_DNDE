@@ -3,6 +3,7 @@ using FinanceTrack.Finance.Core.Services;
 using FinanceTrack.Finance.Infrastructure.Data;
 using FinanceTrack.Finance.Infrastructure.Data.Queries;
 using FinanceTrack.Finance.UseCases.Analytics;
+using FinanceTrack.Finance.UseCases.FullTextSearch;
 
 namespace FinanceTrack.Finance.Infrastructure;
 
@@ -31,7 +32,8 @@ public static class InfrastructureServiceExtensions
             .AddScoped<DeleteTransactionService>()
             .AddScoped<RecurringTransactionProcessorService>()
             // Query services
-            .AddScoped<IAnalyticsQueryService, AnalyticsQueryService>();
+            .AddScoped<IAnalyticsQueryService, AnalyticsQueryService>()
+            .AddScoped<IGlobalFullTextSearchQueryService, GlobalFullTextSearchQueryService>();
 
         logger.LogInformation("{Project} services registered", "Infrastructure");
 

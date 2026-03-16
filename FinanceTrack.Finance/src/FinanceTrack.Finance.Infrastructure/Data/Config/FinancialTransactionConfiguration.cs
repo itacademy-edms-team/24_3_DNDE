@@ -1,4 +1,5 @@
 ﻿using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
+using NpgsqlTypes;
 
 namespace FinanceTrack.Finance.Infrastructure.Data.Config;
 
@@ -52,6 +53,13 @@ public class FinancialTransactionConfiguration : IEntityTypeConfiguration<Financ
 
         // Reference to recurring rule
         builder.Property(t => t.RecurringTransactionId);
+
+        // Full text search field
+        builder
+            .Property<NpgsqlTsVector>("SearchVector")
+            .HasColumnType("tsvector")
+            .HasComputedColumnSql("to_tsvector('russian', coalesce(\"Name\", ''))", stored: true);
+        builder.HasIndex("SearchVector").HasMethod("GIN");
 
         builder.HasIndex(t => t.UserId);
         builder.HasIndex(t => t.WalletId);
