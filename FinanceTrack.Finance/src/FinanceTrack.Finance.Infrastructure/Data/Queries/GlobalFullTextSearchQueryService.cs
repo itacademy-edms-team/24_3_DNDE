@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Ardalis.Result;
 using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
+using FinanceTrack.Finance.Infrastructure.Data.Config;
 using FinanceTrack.Finance.UseCases.FinancialTransactions;
 using FinanceTrack.Finance.UseCases.FullTextSearch;
 using FinanceTrack.Finance.UseCases.RecurringTransactions;
@@ -27,11 +28,11 @@ public class GlobalFullTextSearchQueryService(AppDbContext appDbContext)
         var wallets = await appDbContext
             .Wallets.Where(w =>
                 w.UserId == userId
-                && EF.Functions.ToTsVector("russian", w.Name)
+                && EF.Property<NpgsqlTsVector>(w, DbConstants.FullTextSearchPropertyName)
                     .Matches(EF.Functions.WebSearchToTsQuery(userQuery))
             )
             .OrderByDescending(w =>
-                EF.Property<NpgsqlTsVector>(w, "SearchVector")
+                EF.Property<NpgsqlTsVector>(w, DbConstants.FullTextSearchPropertyName)
                     .Rank(EF.Functions.WebSearchToTsQuery(userQuery))
             )
             .Take(limitPerType)
@@ -51,11 +52,11 @@ public class GlobalFullTextSearchQueryService(AppDbContext appDbContext)
             .FinancialTransactions.Where(f =>
                 f.UserId == userId
                 && f.TransactionType == FinancialTransactionType.Income
-                && EF.Functions.ToTsVector("russian", f.Name)
+                && EF.Property<NpgsqlTsVector>(f, DbConstants.FullTextSearchPropertyName)
                     .Matches(EF.Functions.WebSearchToTsQuery(userQuery))
             )
             .OrderByDescending(f =>
-                EF.Property<NpgsqlTsVector>(f, "SearchVector")
+                EF.Property<NpgsqlTsVector>(f, DbConstants.FullTextSearchPropertyName)
                     .Rank(EF.Functions.WebSearchToTsQuery(userQuery))
             )
             .Take(limitPerType)
@@ -79,11 +80,11 @@ public class GlobalFullTextSearchQueryService(AppDbContext appDbContext)
             .FinancialTransactions.Where(f =>
                 f.UserId == userId
                 && f.TransactionType == FinancialTransactionType.Expense
-                && EF.Functions.ToTsVector("russian", f.Name)
+                && EF.Property<NpgsqlTsVector>(f, DbConstants.FullTextSearchPropertyName)
                     .Matches(EF.Functions.WebSearchToTsQuery(userQuery))
             )
             .OrderByDescending(f =>
-                EF.Property<NpgsqlTsVector>(f, "SearchVector")
+                EF.Property<NpgsqlTsVector>(f, DbConstants.FullTextSearchPropertyName)
                     .Rank(EF.Functions.WebSearchToTsQuery(userQuery))
             )
             .Take(limitPerType)
@@ -107,11 +108,11 @@ public class GlobalFullTextSearchQueryService(AppDbContext appDbContext)
             .FinancialTransactions.Where(f =>
                 f.UserId == userId
                 && f.TransactionType == FinancialTransactionType.TransferIn
-                && EF.Functions.ToTsVector("russian", f.Name)
+                && EF.Property<NpgsqlTsVector>(f, DbConstants.FullTextSearchPropertyName)
                     .Matches(EF.Functions.WebSearchToTsQuery(userQuery))
             )
             .OrderByDescending(f =>
-                EF.Property<NpgsqlTsVector>(f, "SearchVector")
+                EF.Property<NpgsqlTsVector>(f, DbConstants.FullTextSearchPropertyName)
                     .Rank(EF.Functions.WebSearchToTsQuery(userQuery))
             )
             .Take(limitPerType)
@@ -134,11 +135,11 @@ public class GlobalFullTextSearchQueryService(AppDbContext appDbContext)
         var recurringTransactions = await appDbContext
             .RecurringTransactions.Where(r =>
                 r.UserId == userId
-                && EF.Functions.ToTsVector("russian", r.Name)
+                && EF.Property<NpgsqlTsVector>(r, DbConstants.FullTextSearchPropertyName)
                     .Matches(EF.Functions.WebSearchToTsQuery(userQuery))
             )
             .OrderByDescending(r =>
-                EF.Property<NpgsqlTsVector>(r, "SearchVector")
+                EF.Property<NpgsqlTsVector>(r, DbConstants.FullTextSearchPropertyName)
                     .Rank(EF.Functions.WebSearchToTsQuery(userQuery))
             )
             .Take(limitPerType)

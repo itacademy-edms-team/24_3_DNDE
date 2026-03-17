@@ -64,7 +64,11 @@ public class FinancialTransactionConfiguration : IEntityTypeConfiguration<Financ
         builder
             .Property<NpgsqlTsVector>("SearchVector")
             .HasColumnType("tsvector")
-            .HasComputedColumnSql("to_tsvector('russian', coalesce(\"Name\", ''))", stored: true);
+            .HasComputedColumnSql(
+                $"to_tsvector('{DbConstants.FullTextSearchLanguage}', "
+                    + "coalesce(\"Name\", '') || ' ' || coalesce(\"Description\", ''))",
+                stored: true
+            );
         builder.HasIndex("SearchVector").HasMethod("GIN");
 
         builder.HasIndex(t => t.UserId);
