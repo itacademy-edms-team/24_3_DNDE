@@ -1,3 +1,4 @@
+﻿using FinanceTrack.Finance.Infrastructure.Data.Config;
 using FinanceTrack.Finance.UseCases.RecurringTransactions.Create;
 using FinanceTrack.Finance.Web.Extensions;
 using FluentValidation;
@@ -10,6 +11,7 @@ public class CreateRecurringTransactionRequest
     public Guid WalletId { get; set; }
     public Guid? CategoryId { get; set; }
     public string Name { get; set; } = null!;
+    public string? Description { get; set; }
     public string Type { get; set; } = null!; // "Income" or "Expense"
     public decimal Amount { get; set; }
     public int DayOfMonth { get; set; }
@@ -28,9 +30,18 @@ public class CreateRecurringTransactionValidator : Validator<CreateRecurringTran
     {
         RuleFor(x => x.WalletId).Must(id => id != Guid.Empty).WithMessage("WalletId is required.");
         RuleFor(x => x.Name).NotEmpty().WithMessage("Name is required.");
+        RuleFor(x => x.Description)
+            .MaximumLength(
+                FinancialTransactionDataSchemaConstants.TRANSACTION_DESCRIPTION_MAX_LENGTH
+            )
+            .WithMessage("Description length must be less than 501");
         RuleFor(x => x.Type).NotEmpty().WithMessage("Type is required.");
-        RuleFor(x => x.Amount).GreaterThanOrEqualTo(0.01m).WithMessage("Amount must be at least 0.01.");
-        RuleFor(x => x.DayOfMonth).InclusiveBetween(1, 28).WithMessage("DayOfMonth must be between 1 and 28.");
+        RuleFor(x => x.Amount)
+            .GreaterThanOrEqualTo(0.01m)
+            .WithMessage("Amount must be at least 0.01.");
+        RuleFor(x => x.DayOfMonth)
+            .InclusiveBetween(1, 28)
+            .WithMessage("DayOfMonth must be between 1 and 28.");
         RuleFor(x => x.StartDate).Must(d => d != default).WithMessage("StartDate is required.");
     }
 }
@@ -44,7 +55,10 @@ public class CreateRecurringTransaction(IMediator mediator)
         Roles("user");
     }
 
-    public override async Task HandleAsync(CreateRecurringTransactionRequest req, CancellationToken ct)
+    public override async Task HandleAsync(
+        CreateRecurringTransactionRequest req,
+        CancellationToken ct
+    )
     {
         var userId = User.GetUserId();
         if (string.IsNullOrWhiteSpace(userId))
@@ -54,8 +68,16 @@ public class CreateRecurringTransaction(IMediator mediator)
         }
 
         var command = new CreateRecurringTransactionCommand(
-            userId, req.WalletId, req.CategoryId, req.Name, req.Type,
-            req.Amount, req.DayOfMonth, req.StartDate, req.EndDate
+            userId,
+            req.WalletId,
+            req.CategoryId,
+            req.Name,
+            req.Description,
+            req.Type,
+            req.Amount,
+            req.DayOfMonth,
+            req.StartDate,
+            req.EndDate
         );
         var result = await mediator.Send(command, ct);
 

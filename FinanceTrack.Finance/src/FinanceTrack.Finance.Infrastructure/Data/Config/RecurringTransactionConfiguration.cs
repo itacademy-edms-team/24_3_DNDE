@@ -20,6 +20,12 @@ public class RecurringTransactionConfiguration : IEntityTypeConfiguration<Recurr
             .HasMaxLength(FinancialTransactionDataSchemaConstants.TRANSACTION_NAME_MAX_LENGTH);
 
         builder
+            .Property(r => r.Description)
+            .HasMaxLength(
+                FinancialTransactionDataSchemaConstants.TRANSACTION_DESCRIPTION_MAX_LENGTH
+            );
+
+        builder
             .Property(r => r.TransactionType)
             .HasConversion(x => x.Value, x => RecurringTransactionType.FromValue(x))
             .IsRequired();

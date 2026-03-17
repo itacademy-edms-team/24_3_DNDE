@@ -32,6 +32,7 @@ public sealed class CreateRecurringTransactionHandler(
             request.UserId,
             request.WalletId,
             request.Name,
+            request.Description,
             txType,
             request.Amount,
             request.DayOfMonth,

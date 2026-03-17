@@ -104,6 +104,7 @@ public sealed class ListWalletTransactionsHandler(
                     t.Id,
                     t.WalletId,
                     t.Name,
+                    t.Description,
                     t.Amount,
                     t.OperationDate,
                     t.TransactionType.Name,

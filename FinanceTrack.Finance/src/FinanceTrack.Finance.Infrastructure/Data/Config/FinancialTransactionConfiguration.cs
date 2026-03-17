@@ -20,6 +20,12 @@ public class FinancialTransactionConfiguration : IEntityTypeConfiguration<Financ
             .HasMaxLength(FinancialTransactionDataSchemaConstants.TRANSACTION_NAME_MAX_LENGTH);
 
         builder
+            .Property(t => t.Description)
+            .HasMaxLength(
+                FinancialTransactionDataSchemaConstants.TRANSACTION_DESCRIPTION_MAX_LENGTH
+            );
+
+        builder
             .Property(t => t.TransactionType)
             .HasConversion(x => x.Value, x => FinancialTransactionType.FromValue(x))
             .IsRequired();

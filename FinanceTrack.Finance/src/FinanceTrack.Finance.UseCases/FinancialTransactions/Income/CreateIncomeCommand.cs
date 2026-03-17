@@ -1,4 +1,4 @@
-using FinanceTrack.Finance.Core.Interfaces;
+﻿using FinanceTrack.Finance.Core.Interfaces;
 
 namespace FinanceTrack.Finance.UseCases.FinancialTransactions.Income;
 
@@ -6,6 +6,7 @@ public sealed record CreateIncomeCommand(
     string UserId,
     Guid WalletId,
     string Name,
+    string? Description,
     decimal Amount,
     DateOnly OperationDate,
     Guid? CategoryId = null,
@@ -15,6 +16,7 @@ public sealed record CreateIncomeCommand(
         UserId,
         WalletId,
         Name,
+        Description,
         Amount,
         OperationDate,
         CategoryId,

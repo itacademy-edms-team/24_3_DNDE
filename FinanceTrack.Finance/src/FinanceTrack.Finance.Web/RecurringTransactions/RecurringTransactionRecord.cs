@@ -1,10 +1,11 @@
-namespace FinanceTrack.Finance.Web.RecurringTransactions;
+﻿namespace FinanceTrack.Finance.Web.RecurringTransactions;
 
 public sealed record RecurringTransactionRecord(
     Guid Id,
     Guid WalletId,
     Guid? CategoryId,
     string Name,
+    string? Description,
     string Type,
     decimal Amount,
     int DayOfMonth,

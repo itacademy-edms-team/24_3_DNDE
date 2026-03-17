@@ -10,6 +10,7 @@ public sealed class FinancialTransaction : GuidEntityBase, IAggregateRoot
     public Guid WalletId { get; private set; }
     public Guid? CategoryId { get; private set; }
     public string Name { get; private set; } = default!;
+    public string? Description { get; private set; }
     public FinancialTransactionType TransactionType { get; private set; } = default!;
     public decimal Amount { get; private set; }
     public DateOnly OperationDate { get; private set; }
@@ -28,6 +29,7 @@ public sealed class FinancialTransaction : GuidEntityBase, IAggregateRoot
         string userId,
         Guid walletId,
         string name,
+        string? description,
         FinancialTransactionType type,
         decimal amount,
         DateOnly operationDate,
@@ -46,6 +48,7 @@ public sealed class FinancialTransaction : GuidEntityBase, IAggregateRoot
         UserId = userId;
         WalletId = walletId;
         Name = name;
+        Description = description;
         TransactionType = type;
         Amount = decimal.Round(amount, 2);
         OperationDate = operationDate;
@@ -59,6 +62,7 @@ public sealed class FinancialTransaction : GuidEntityBase, IAggregateRoot
         string userId,
         Guid walletId,
         string name,
+        string? description,
         decimal amount,
         DateOnly operationDate,
         Guid? categoryId = null,
@@ -68,6 +72,7 @@ public sealed class FinancialTransaction : GuidEntityBase, IAggregateRoot
             userId,
             walletId,
             name,
+            description,
             FinancialTransactionType.Income,
             amount,
             operationDate,
@@ -79,6 +84,7 @@ public sealed class FinancialTransaction : GuidEntityBase, IAggregateRoot
         string userId,
         Guid walletId,
         string name,
+        string? description,
         decimal amount,
         DateOnly operationDate,
         Guid? categoryId = null,
@@ -88,6 +94,7 @@ public sealed class FinancialTransaction : GuidEntityBase, IAggregateRoot
             userId,
             walletId,
             name,
+            description,
             FinancialTransactionType.Expense,
             amount,
             operationDate,
@@ -99,6 +106,7 @@ public sealed class FinancialTransaction : GuidEntityBase, IAggregateRoot
         string userId,
         Guid walletId,
         string name,
+        string? description,
         decimal amount,
         DateOnly operationDate,
         Guid relatedTransactionId
@@ -107,6 +115,7 @@ public sealed class FinancialTransaction : GuidEntityBase, IAggregateRoot
             userId,
             walletId,
             name,
+            description,
             FinancialTransactionType.TransferOut,
             amount,
             operationDate,
@@ -117,6 +126,7 @@ public sealed class FinancialTransaction : GuidEntityBase, IAggregateRoot
         string userId,
         Guid walletId,
         string name,
+        string? description,
         decimal amount,
         DateOnly operationDate,
         Guid relatedTransactionId
@@ -125,6 +135,7 @@ public sealed class FinancialTransaction : GuidEntityBase, IAggregateRoot
             userId,
             walletId,
             name,
+            description,
             FinancialTransactionType.TransferIn,
             amount,
             operationDate,
@@ -135,6 +146,12 @@ public sealed class FinancialTransaction : GuidEntityBase, IAggregateRoot
     {
         Guard.Against.NullOrWhiteSpace(name);
         Name = name;
+        return this;
+    }
+
+    public FinancialTransaction UpdateDescription(string? description)
+    {
+        Description = description;
         return this;
     }
 

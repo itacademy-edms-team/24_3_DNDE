@@ -1,4 +1,5 @@
-﻿using FinanceTrack.Finance.UseCases.FinancialTransactions.Update;
+﻿using FinanceTrack.Finance.Infrastructure.Data.Config;
+using FinanceTrack.Finance.UseCases.FinancialTransactions.Update;
 using FinanceTrack.Finance.Web.Extensions;
 using FluentValidation;
 
@@ -9,6 +10,7 @@ public class UpdateTransactionRequest
     public const string Route = "/Transactions/{TransactionId:guid}";
     public Guid TransactionId { get; set; }
     public string Name { get; set; } = null!;
+    public string? Description { get; set; }
     public decimal Amount { get; set; }
     public DateOnly OperationDate { get; set; }
     public Guid? CategoryId { get; set; }
@@ -19,6 +21,11 @@ public class UpdateTransactionValidator : Validator<UpdateTransactionRequest>
     public UpdateTransactionValidator()
     {
         RuleFor(x => x.Name).NotEmpty().WithMessage("Name is required.");
+        RuleFor(x => x.Description)
+            .MaximumLength(
+                FinancialTransactionDataSchemaConstants.TRANSACTION_DESCRIPTION_MAX_LENGTH
+            )
+            .WithMessage("Description length must be less than 501");
         RuleFor(x => x.Amount)
             .GreaterThanOrEqualTo(0.01m)
             .WithMessage("Amount must be at least 0.01.");
@@ -50,6 +57,7 @@ public class UpdateTransaction(IMediator mediator)
             req.TransactionId,
             userId,
             req.Name,
+            req.Description,
             req.Amount,
             req.OperationDate,
             req.CategoryId
@@ -64,6 +72,7 @@ public class UpdateTransaction(IMediator mediator)
             dto.Id,
             dto.WalletId,
             dto.Name,
+            dto.Description,
             dto.Amount,
             dto.OperationDate,
             dto.Type,

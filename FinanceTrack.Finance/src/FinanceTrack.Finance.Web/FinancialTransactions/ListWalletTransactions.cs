@@ -60,6 +60,7 @@ public class ListWalletTransactions(IMediator mediator)
                     t.Id,
                     t.WalletId,
                     t.Name,
+                    t.Description,
                     t.Amount,
                     t.OperationDate,
                     t.Type,
