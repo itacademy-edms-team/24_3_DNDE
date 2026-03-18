@@ -11,7 +11,7 @@ public interface IGlobalFullTextSearchQueryService
     Task<Result<GlobalSearchResult>> SearchAsync(
         string userId,
         string userQuery,
-        int takeLimit,
+        int limitPerType,
         CancellationToken ct
     );
 }
