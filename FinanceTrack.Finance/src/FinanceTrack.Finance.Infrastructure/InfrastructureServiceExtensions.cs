@@ -19,7 +19,6 @@ public static class InfrastructureServiceExtensions
             config.GetConnectionString("DefaultConnection")
         );
         services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
-        services.AddDbContextFactory<AppDbContext>(options => options.UseNpgsql(connectionString));
 
         services
             .AddScoped(typeof(IRepository<>), typeof(EfRepository<>))

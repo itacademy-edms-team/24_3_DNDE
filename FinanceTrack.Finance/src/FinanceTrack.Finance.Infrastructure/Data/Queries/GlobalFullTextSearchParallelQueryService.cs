@@ -14,9 +14,8 @@ using NpgsqlTypes;
 
 namespace FinanceTrack.Finance.Infrastructure.Data.Queries;
 
-public class GlobalFullTextSearchParallelQueryService(
-    IDbContextFactory<AppDbContext> dbContextFactory
-) : IGlobalFullTextSearchQueryService
+public class GlobalFullTextSearchParallelQueryService(IServiceScopeFactory serviceScopeFactory)
+    : IGlobalFullTextSearchQueryService
 {
     public async Task<Result<GlobalSearchResult>> SearchAsync(
         string userId,
@@ -55,7 +54,8 @@ public class GlobalFullTextSearchParallelQueryService(
         CancellationToken ct
     )
     {
-        await using AppDbContext appDbContext = await dbContextFactory.CreateDbContextAsync(ct);
+        using var scope = serviceScopeFactory.CreateScope();
+        var appDbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         return await appDbContext
             .Wallets.Where(w =>
                 w.UserId == userId
@@ -87,7 +87,8 @@ public class GlobalFullTextSearchParallelQueryService(
         CancellationToken ct
     )
     {
-        await using AppDbContext appDbContext = await dbContextFactory.CreateDbContextAsync(ct);
+        using var scope = serviceScopeFactory.CreateScope();
+        var appDbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         return await appDbContext
             .FinancialTransactions.Where(f =>
                 f.UserId == userId
@@ -124,7 +125,8 @@ public class GlobalFullTextSearchParallelQueryService(
         CancellationToken ct
     )
     {
-        await using AppDbContext appDbContext = await dbContextFactory.CreateDbContextAsync(ct);
+        using var scope = serviceScopeFactory.CreateScope();
+        var appDbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         return await appDbContext
             .FinancialTransactions.Where(f =>
                 f.UserId == userId
@@ -161,7 +163,8 @@ public class GlobalFullTextSearchParallelQueryService(
         CancellationToken ct
     )
     {
-        await using AppDbContext appDbContext = await dbContextFactory.CreateDbContextAsync(ct);
+        using var scope = serviceScopeFactory.CreateScope();
+        var appDbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         return await appDbContext
             .FinancialTransactions.Where(f =>
                 f.UserId == userId
@@ -198,7 +201,8 @@ public class GlobalFullTextSearchParallelQueryService(
         CancellationToken ct
     )
     {
-        await using AppDbContext appDbContext = await dbContextFactory.CreateDbContextAsync(ct);
+        using var scope = serviceScopeFactory.CreateScope();
+        var appDbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         return await appDbContext
             .RecurringTransactions.Where(r =>
                 r.UserId == userId
