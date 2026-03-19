@@ -1,4 +1,4 @@
-using FinanceTrack.Finance.UseCases.RecurringTransactions.List;
+﻿using FinanceTrack.Finance.UseCases.RecurringTransactions.List;
 using FinanceTrack.Finance.Web.Extensions;
 
 namespace FinanceTrack.Finance.Web.RecurringTransactions;
@@ -32,9 +32,18 @@ public class ListUserRecurringTransactions(IMediator mediator)
         {
             RecurringTransactions = items
                 .Select(r => new RecurringTransactionRecord(
-                    r.Id, r.WalletId, r.CategoryId, r.Name, r.Type,
-                    r.Amount, r.DayOfMonth, r.StartDate, r.EndDate,
-                    r.IsActive, r.LastProcessedDate
+                    r.Id,
+                    r.WalletId,
+                    r.CategoryId,
+                    r.Name,
+                    r.Description,
+                    r.Type,
+                    r.Amount,
+                    r.DayOfMonth,
+                    r.StartDate,
+                    r.EndDate,
+                    r.IsActive,
+                    r.LastProcessedDate
                 ))
                 .ToList(),
         };

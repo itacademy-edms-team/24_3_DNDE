@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
+using NpgsqlTypes;
 
 #nullable disable
 
@@ -78,6 +79,10 @@ namespace FinanceTrack.Finance.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("NOW() AT TIME ZONE 'UTC'");
 
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -91,6 +96,11 @@ namespace FinanceTrack.Finance.Infrastructure.Data.Migrations
 
                     b.Property<Guid?>("RelatedTransactionId")
                         .HasColumnType("uuid");
+
+                    b.Property<NpgsqlTsVector>("SearchVector")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("tsvector")
+                        .HasComputedColumnSql("to_tsvector('russian', coalesce(\"Name\", '') || ' ' || coalesce(\"Description\", ''))", true);
 
                     b.Property<int>("TransactionType")
                         .HasColumnType("integer");
@@ -112,6 +122,10 @@ namespace FinanceTrack.Finance.Infrastructure.Data.Migrations
                     b.HasIndex("RecurringTransactionId");
 
                     b.HasIndex("RelatedTransactionId");
+
+                    b.HasIndex("SearchVector");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("SearchVector"), "GIN");
 
                     b.HasIndex("TransactionType");
 
@@ -142,6 +156,10 @@ namespace FinanceTrack.Finance.Infrastructure.Data.Migrations
                     b.Property<int>("DayOfMonth")
                         .HasColumnType("integer");
 
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<DateOnly?>("EndDate")
                         .HasColumnType("date");
 
@@ -157,6 +175,11 @@ namespace FinanceTrack.Finance.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
+
+                    b.Property<NpgsqlTsVector>("SearchVector")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("tsvector")
+                        .HasComputedColumnSql("to_tsvector('russian', coalesce(\"Name\", '') || ' ' || coalesce(\"Description\", ''))", true);
 
                     b.Property<DateOnly>("StartDate")
                         .HasColumnType("date");
@@ -177,6 +200,10 @@ namespace FinanceTrack.Finance.Infrastructure.Data.Migrations
                     b.HasIndex("CategoryId");
 
                     b.HasIndex("IsActive");
+
+                    b.HasIndex("SearchVector");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("SearchVector"), "GIN");
 
                     b.HasIndex("UserId");
 
@@ -214,6 +241,11 @@ namespace FinanceTrack.Finance.Infrastructure.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<NpgsqlTsVector>("SearchVector")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("tsvector")
+                        .HasComputedColumnSql("to_tsvector('russian', coalesce(\"Name\", ''))", true);
+
                     b.Property<decimal?>("TargetAmount")
                         .HasColumnType("numeric(18,2)");
 
@@ -230,6 +262,10 @@ namespace FinanceTrack.Finance.Infrastructure.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("SearchVector");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("SearchVector"), "GIN");
+
                     b.HasIndex("UserId");
 
                     b.HasIndex("WalletType");
@@ -245,7 +281,7 @@ namespace FinanceTrack.Finance.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("FinanceTrack.Finance.Core.WalletAggregate.Wallet", "Wallet")
-                        .WithMany()
+                        .WithMany("Transactions")
                         .HasForeignKey("WalletId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -271,6 +307,11 @@ namespace FinanceTrack.Finance.Infrastructure.Data.Migrations
                     b.Navigation("Category");
 
                     b.Navigation("Wallet");
+                });
+
+            modelBuilder.Entity("FinanceTrack.Finance.Core.WalletAggregate.Wallet", b =>
+                {
+                    b.Navigation("Transactions");
                 });
 #pragma warning restore 612, 618
         }

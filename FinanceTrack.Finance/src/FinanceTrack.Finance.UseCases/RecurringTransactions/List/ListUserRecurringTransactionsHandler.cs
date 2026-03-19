@@ -20,6 +20,7 @@ public sealed class ListUserRecurringTransactionsHandler(IReadRepository<Recurri
                 r.WalletId,
                 r.CategoryId,
                 r.Name,
+                r.Description,
                 r.TransactionType.Name,
                 r.Amount,
                 r.DayOfMonth,

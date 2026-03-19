@@ -10,6 +10,7 @@ public sealed class RecurringTransaction : GuidEntityBase, IAggregateRoot
     public Guid WalletId { get; private set; }
     public Guid? CategoryId { get; private set; }
     public string Name { get; private set; } = default!;
+    public string? Description { get; private set; }
     public RecurringTransactionType TransactionType { get; private set; } = default!;
     public decimal Amount { get; private set; }
     public int DayOfMonth { get; private set; }
@@ -30,6 +31,7 @@ public sealed class RecurringTransaction : GuidEntityBase, IAggregateRoot
         string userId,
         Guid walletId,
         string name,
+        string? description,
         RecurringTransactionType type,
         decimal amount,
         int dayOfMonth,
@@ -56,6 +58,7 @@ public sealed class RecurringTransaction : GuidEntityBase, IAggregateRoot
             WalletId = walletId,
             CategoryId = categoryId,
             Name = name,
+            Description = description,
             TransactionType = type,
             Amount = decimal.Round(amount, 2),
             DayOfMonth = dayOfMonth,
@@ -76,6 +79,12 @@ public sealed class RecurringTransaction : GuidEntityBase, IAggregateRoot
     {
         Guard.Against.NullOrWhiteSpace(name);
         Name = name;
+        return this;
+    }
+
+    public RecurringTransaction UpdateDescription(string? description)
+    {
+        Description = description;
         return this;
     }
 

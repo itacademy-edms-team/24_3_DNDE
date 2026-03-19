@@ -4,6 +4,7 @@ public sealed record FinancialTransactionDto(
     Guid Id,
     Guid WalletId,
     string Name,
+    string? Description,
     decimal Amount,
     DateOnly OperationDate,
     string Type,
@@ -11,5 +12,6 @@ public sealed record FinancialTransactionDto(
     Guid? RelatedTransactionId,
     Guid? RecurringTransactionId,
     Guid? RelatedWalletId = null,
-    string? RelatedWalletName = null
+    string? RelatedWalletName = null,
+    string? WalletName = null
 );

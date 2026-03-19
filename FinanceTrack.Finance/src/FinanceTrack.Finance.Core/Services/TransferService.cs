@@ -54,6 +54,7 @@ public class TransferService(
             request.UserId,
             request.FromWalletId,
             request.Name,
+            request.Description,
             request.Amount,
             request.OperationDate,
             Guid.Empty
@@ -66,6 +67,7 @@ public class TransferService(
             request.UserId,
             request.ToWalletId,
             request.Name,
+            request.Description,
             request.Amount,
             request.OperationDate,
             transferOut.Id

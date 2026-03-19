@@ -23,6 +23,7 @@ public sealed class UpdateRecurringTransactionHandler(
 
         recurring
             .UpdateName(request.Name)
+            .UpdateDescription(request.Description)
             .UpdateAmount(request.Amount)
             .SetDayOfMonth(request.DayOfMonth)
             .SetEndDate(request.EndDate)
@@ -36,6 +37,7 @@ public sealed class UpdateRecurringTransactionHandler(
                 recurring.WalletId,
                 recurring.CategoryId,
                 recurring.Name,
+                recurring.Description,
                 recurring.TransactionType.Name,
                 recurring.Amount,
                 recurring.DayOfMonth,

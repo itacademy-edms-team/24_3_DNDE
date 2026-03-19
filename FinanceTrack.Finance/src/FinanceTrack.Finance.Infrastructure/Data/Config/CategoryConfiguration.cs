@@ -1,4 +1,4 @@
-using FinanceTrack.Finance.Core.CategoryAggregate;
+﻿using FinanceTrack.Finance.Core.CategoryAggregate;
 
 namespace FinanceTrack.Finance.Infrastructure.Data.Config;
 
@@ -11,21 +11,21 @@ public class CategoryConfiguration : IEntityTypeConfiguration<Category>
         builder
             .Property(c => c.UserId)
             .IsRequired()
-            .HasMaxLength(CategoryDataSchemaConstants.USER_ID_MAX_LENGTH);
+            .HasMaxLength(CategoryDataSchemaConstants.UserIdMaxLength);
 
         builder
             .Property(c => c.Name)
             .IsRequired()
-            .HasMaxLength(CategoryDataSchemaConstants.CATEGORY_NAME_MAX_LENGTH);
+            .HasMaxLength(CategoryDataSchemaConstants.CategoryNameMaxLength);
 
         builder
             .Property(c => c.Type)
             .HasConversion(x => x.Value, x => CategoryType.FromValue(x))
             .IsRequired();
 
-        builder.Property(c => c.Icon).HasMaxLength(CategoryDataSchemaConstants.ICON_MAX_LENGTH);
+        builder.Property(c => c.Icon).HasMaxLength(CategoryDataSchemaConstants.IconMaxLength);
 
-        builder.Property(c => c.Color).HasMaxLength(CategoryDataSchemaConstants.COLOR_MAX_LENGTH);
+        builder.Property(c => c.Color).HasMaxLength(CategoryDataSchemaConstants.ColorMaxLength);
 
         builder
             .Property(c => c.CreatedAtUtc)

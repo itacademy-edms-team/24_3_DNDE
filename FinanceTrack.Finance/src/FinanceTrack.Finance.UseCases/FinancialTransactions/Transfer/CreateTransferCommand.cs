@@ -1,4 +1,4 @@
-using FinanceTrack.Finance.Core.Interfaces;
+﻿using FinanceTrack.Finance.Core.Interfaces;
 
 namespace FinanceTrack.Finance.UseCases.FinancialTransactions.Transfer;
 
@@ -7,6 +7,7 @@ public sealed record CreateTransferCommand(
     Guid FromWalletId,
     Guid ToWalletId,
     string Name,
+    string? Description,
     decimal Amount,
     DateOnly OperationDate
 )
@@ -15,6 +16,7 @@ public sealed record CreateTransferCommand(
         FromWalletId,
         ToWalletId,
         Name,
+        Description,
         Amount,
         OperationDate
     ),

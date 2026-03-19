@@ -3,6 +3,7 @@ import GitHubIcon from '@mui/icons-material/GitHub';
 import HomeIcon from '@mui/icons-material/Home';
 import TerrainIcon from '@mui/icons-material/Terrain';
 import CategoryIcon from '@mui/icons-material/Category';
+import SearchIcon from '@mui/icons-material/Search';
 
 import asyncComponentLoader from '@/utils/loader';
 
@@ -20,6 +21,13 @@ const routes: Routes = [
     path: '/account',
     title: 'Аккаунт',
     icon: GitHubIcon,
+    protected: true,
+  },
+  {
+    component: asyncComponentLoader(() => import('@/pages/GlobalSearchPage')),
+    path: '/global-search',
+    title: 'Поиск',
+    icon: SearchIcon,
     protected: true,
   },
   {

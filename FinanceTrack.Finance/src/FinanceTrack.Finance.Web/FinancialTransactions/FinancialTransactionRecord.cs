@@ -4,6 +4,7 @@ public sealed record FinancialTransactionRecord(
     Guid Id,
     Guid WalletId,
     string Name,
+    string? Description,
     decimal Amount,
     DateOnly OperationDate,
     string Type,

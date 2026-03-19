@@ -341,6 +341,7 @@ type UpdateTransactionPayload = {
   amount: number;
   operationDate: string;
   categoryId?: string | null;
+  description?: string | null;
 };
 
 const updateTransaction = async (transactionId: string, payload: UpdateTransactionPayload): Promise<void> => {
@@ -377,6 +378,7 @@ type Transaction = {
   recurringTransactionId: string | null;
   relatedWalletId: string | null;
   relatedWalletName: string | null;
+  description: string | null;
 };
 
 type TransactionsResponse = {
@@ -389,6 +391,7 @@ type CreateIncomePayload = {
   amount: number;
   operationDate: string;
   categoryId?: string | null;
+  description?: string | null;
 };
 
 type CreateExpensePayload = {
@@ -397,6 +400,7 @@ type CreateExpensePayload = {
   amount: number;
   operationDate: string;
   categoryId?: string | null;
+  description?: string | null;
 };
 
 type CreateTransferPayload = {
@@ -405,6 +409,7 @@ type CreateTransferPayload = {
   name: string;
   amount: number;
   operationDate: string;
+  description?: string | null;
 };
 
 type Category = {
@@ -428,6 +433,7 @@ type TransactionFormState = {
   amount: string;
   operationDate: string;
   categoryId: string;
+  description: string;
 };
 
 type TransferFormState = {
@@ -436,6 +442,7 @@ type TransferFormState = {
   name: string;
   amount: string;
   operationDate: string;
+  description: string;
 };
 
 type RecurringTransaction = {
@@ -450,6 +457,7 @@ type RecurringTransaction = {
   endDate: string | null;
   isActive: boolean;
   lastProcessedDate: string | null;
+  description: string | null;
 };
 
 type RecurringTransactionsResponse = {
@@ -465,6 +473,7 @@ type CreateRecurringTransactionPayload = {
   dayOfMonth: number;
   startDate: string;
   endDate?: string | null;
+  description?: string | null;
 };
 
 type UpdateRecurringTransactionPayload = {
@@ -473,6 +482,7 @@ type UpdateRecurringTransactionPayload = {
   dayOfMonth: number;
   endDate: string | null;
   categoryId: string | null;
+  description?: string | null;
 };
 
 type RecurringTransactionFormState = {
@@ -484,6 +494,7 @@ type RecurringTransactionFormState = {
   endDate: string;
   categoryId: string;
   hasEndDate: boolean;
+  description: string;
 };
 
 function WalletPage() {
@@ -506,6 +517,7 @@ function WalletPage() {
     name: '',
     amount: '',
     operationDate: new Date().toISOString().split('T')[0],
+    description: '',
   });
   const [formState, setFormState] = useState<WalletFormState>({
     name: '',
@@ -526,6 +538,7 @@ function WalletPage() {
     amount: '',
     operationDate: new Date().toISOString().split('T')[0],
     categoryId: '',
+    description: '',
   });
 
   // Состояние для рекуррентных транзакций
@@ -543,6 +556,7 @@ function WalletPage() {
     endDate: '',
     categoryId: '',
     hasEndDate: false,
+    description: '',
   });
 
   const { data: wallet, isLoading, isPending, error } = useQuery({
@@ -717,6 +731,7 @@ function WalletPage() {
         amount: '',
         operationDate: new Date().toISOString().split('T')[0],
         categoryId: '',
+        description: '',
       });
       setTransactionEditMode('create');
       setTransactionToEdit(null);
@@ -740,6 +755,7 @@ function WalletPage() {
         amount: '',
         operationDate: new Date().toISOString().split('T')[0],
         categoryId: '',
+        description: '',
       });
       setTransactionEditMode('create');
       setTransactionToEdit(null);
@@ -778,6 +794,7 @@ function WalletPage() {
         name: '',
         amount: '',
         operationDate: new Date().toISOString().split('T')[0],
+        description: '',
       });
     },
     onError: (error: Error) => {
@@ -801,6 +818,7 @@ function WalletPage() {
         endDate: '',
         categoryId: '',
         hasEndDate: false,
+        description: '',
       });
       setRecurringEditMode('create');
       setRecurringToEdit(null);
@@ -826,6 +844,7 @@ function WalletPage() {
         endDate: '',
         categoryId: '',
         hasEndDate: false,
+        description: '',
       });
       setRecurringEditMode('create');
       setRecurringToEdit(null);
@@ -927,6 +946,7 @@ function WalletPage() {
       amount: '',
       operationDate: new Date().toISOString().split('T')[0],
       categoryId: '',
+      description: '',
     });
     setTransactionDialogOpen(true);
   };
@@ -944,6 +964,7 @@ function WalletPage() {
       amount: transaction.amount.toString(),
       operationDate: transaction.operationDate,
       categoryId: transaction.categoryId || '',
+      description: transaction.description || '',
     });
     setTransactionDialogOpen(true);
   };
@@ -957,6 +978,7 @@ function WalletPage() {
       amount: '',
       operationDate: new Date().toISOString().split('T')[0],
       categoryId: '',
+      description: '',
     });
   };
 
@@ -985,6 +1007,7 @@ function WalletPage() {
         amount,
         operationDate: transactionForm.operationDate,
         categoryId: transactionForm.categoryId || null,
+        description: transactionForm.description.trim() || null,
       };
       updateTransactionMutation.mutate({ transactionId: transactionToEdit.id, payload });
     } else {
@@ -994,6 +1017,7 @@ function WalletPage() {
         amount,
         operationDate: transactionForm.operationDate,
         categoryId: transactionForm.categoryId || null,
+        description: transactionForm.description.trim() || null,
       };
       createTransactionMutation.mutate(payload);
     }
@@ -1017,6 +1041,7 @@ function WalletPage() {
       name: '',
       amount: '',
       operationDate: new Date().toISOString().split('T')[0],
+      description: '',
     });
     setTransferDialogOpen(true);
   };
@@ -1029,6 +1054,7 @@ function WalletPage() {
       name: '',
       amount: '',
       operationDate: new Date().toISOString().split('T')[0],
+      description: '',
     });
   };
 
@@ -1065,6 +1091,7 @@ function WalletPage() {
       name: transferForm.name.trim(),
       amount,
       operationDate: transferForm.operationDate,
+      description: transferForm.description.trim() || null,
     };
 
     createTransferMutation.mutate(payload);
@@ -1090,6 +1117,7 @@ function WalletPage() {
       endDate: '',
       categoryId: '',
       hasEndDate: false,
+      description: '',
     });
     setRecurringEditMode('create');
     setRecurringToEdit(null);
@@ -1107,6 +1135,7 @@ function WalletPage() {
       endDate: '',
       categoryId: '',
       hasEndDate: false,
+      description: '',
     });
     setRecurringEditMode('create');
     setRecurringToEdit(null);
@@ -1123,6 +1152,7 @@ function WalletPage() {
       endDate: recurring.endDate || '',
       categoryId: recurring.categoryId || '',
       hasEndDate: !!recurring.endDate,
+      description: recurring.description || '',
     });
     setRecurringEditMode('edit');
     setRecurringDialogOpen(true);
@@ -1161,6 +1191,7 @@ function WalletPage() {
         startDate: recurringForm.startDate,
         categoryId: recurringForm.categoryId || null,
         endDate: recurringForm.hasEndDate && recurringForm.endDate ? recurringForm.endDate : null,
+        description: recurringForm.description.trim() || null,
       };
       createRecurringTransactionMutation.mutate(payload);
     } else if (recurringToEdit) {
@@ -1170,6 +1201,7 @@ function WalletPage() {
         dayOfMonth,
         endDate: recurringForm.hasEndDate && recurringForm.endDate ? recurringForm.endDate : null,
         categoryId: recurringForm.categoryId || null,
+        description: recurringForm.description.trim() || null,
       };
       updateRecurringTransactionMutation.mutate({ recurringId: recurringToEdit.id, payload });
     }
@@ -1857,6 +1889,17 @@ function WalletPage() {
                 ))}
               </Select>
             </FormControl>
+
+            <TextField
+              label="Описание (опционально)"
+              value={transactionForm.description}
+              onChange={(e) => setTransactionForm({ ...transactionForm, description: e.target.value })}
+              fullWidth
+              multiline
+              minRows={2}
+              maxRows={4}
+              inputProps={{ maxLength: 500 }}
+            />
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -1944,6 +1987,17 @@ function WalletPage() {
               fullWidth
               required
               autoFocus
+            />
+
+            <TextField
+              label="Описание (опционально)"
+              value={transferForm.description}
+              onChange={(e) => setTransferForm({ ...transferForm, description: e.target.value })}
+              fullWidth
+              multiline
+              minRows={2}
+              maxRows={4}
+              inputProps={{ maxLength: 500 }}
             />
 
             <TextField
@@ -2091,6 +2145,17 @@ function WalletPage() {
                 ))}
               </Select>
             </FormControl>
+
+            <TextField
+              label="Описание (опционально)"
+              value={recurringForm.description}
+              onChange={(e) => setRecurringForm({ ...recurringForm, description: e.target.value })}
+              fullWidth
+              multiline
+              minRows={2}
+              maxRows={4}
+              inputProps={{ maxLength: 500 }}
+            />
           </Stack>
         </DialogContent>
         <DialogActions>

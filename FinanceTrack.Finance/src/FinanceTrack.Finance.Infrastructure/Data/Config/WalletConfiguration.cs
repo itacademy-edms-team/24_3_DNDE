@@ -1,4 +1,5 @@
-using FinanceTrack.Finance.Core.WalletAggregate;
+﻿using FinanceTrack.Finance.Core.WalletAggregate;
+using NpgsqlTypes;
 
 namespace FinanceTrack.Finance.Infrastructure.Data.Config;
 
@@ -11,12 +12,12 @@ public class WalletConfiguration : IEntityTypeConfiguration<Wallet>
         builder
             .Property(w => w.UserId)
             .IsRequired()
-            .HasMaxLength(WalletDataSchemaConstants.USER_ID_MAX_LENGTH);
+            .HasMaxLength(WalletDataSchemaConstants.UserIdMaxLength);
 
         builder
             .Property(w => w.Name)
             .IsRequired()
-            .HasMaxLength(WalletDataSchemaConstants.WALLET_NAME_MAX_LENGTH);
+            .HasMaxLength(WalletDataSchemaConstants.WalletNameMaxLength);
 
         builder
             .Property(w => w.WalletType)
@@ -38,6 +39,13 @@ public class WalletConfiguration : IEntityTypeConfiguration<Wallet>
             .HasColumnType("timestamp with time zone")
             .HasDefaultValueSql("NOW() AT TIME ZONE 'UTC'")
             .IsRequired();
+
+        // Full text search field
+        builder
+            .Property<NpgsqlTsVector>("SearchVector")
+            .HasColumnType("tsvector")
+            .HasComputedColumnSql("to_tsvector('russian', coalesce(\"Name\", ''))", stored: true);
+        builder.HasIndex("SearchVector").HasMethod("GIN");
 
         builder.HasIndex(w => w.UserId);
         builder.HasIndex(w => w.WalletType);

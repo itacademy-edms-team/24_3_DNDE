@@ -28,6 +28,7 @@ public class CreateIncomeService(
             request.UserId,
             request.WalletId,
             request.Name,
+            request.Description,
             request.Amount,
             request.OperationDate,
             request.CategoryId,

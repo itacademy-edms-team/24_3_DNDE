@@ -1,4 +1,5 @@
 ﻿using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
+using NpgsqlTypes;
 
 namespace FinanceTrack.Finance.Infrastructure.Data.Config;
 
@@ -11,12 +12,16 @@ public class FinancialTransactionConfiguration : IEntityTypeConfiguration<Financ
         builder
             .Property(t => t.UserId)
             .IsRequired()
-            .HasMaxLength(FinancialTransactionDataSchemaConstants.USER_ID_MAX_LENGTH);
+            .HasMaxLength(FinancialTransactionDataSchemaConstants.UserIdMaxLength);
 
         builder
             .Property(t => t.Name)
             .IsRequired()
-            .HasMaxLength(FinancialTransactionDataSchemaConstants.TRANSACTION_NAME_MAX_LENGTH);
+            .HasMaxLength(FinancialTransactionDataSchemaConstants.TransactionNameMaxLength);
+
+        builder
+            .Property(t => t.Description)
+            .HasMaxLength(FinancialTransactionDataSchemaConstants.TransactionDescriptionMaxLength);
 
         builder
             .Property(t => t.TransactionType)
@@ -52,6 +57,17 @@ public class FinancialTransactionConfiguration : IEntityTypeConfiguration<Financ
 
         // Reference to recurring rule
         builder.Property(t => t.RecurringTransactionId);
+
+        // Full text search field
+        builder
+            .Property<NpgsqlTsVector>("SearchVector")
+            .HasColumnType("tsvector")
+            .HasComputedColumnSql(
+                $"to_tsvector('{DbConstants.FullTextSearchLanguage}', "
+                    + "coalesce(\"Name\", '') || ' ' || coalesce(\"Description\", ''))",
+                stored: true
+            );
+        builder.HasIndex("SearchVector").HasMethod("GIN");
 
         builder.HasIndex(t => t.UserId);
         builder.HasIndex(t => t.WalletId);

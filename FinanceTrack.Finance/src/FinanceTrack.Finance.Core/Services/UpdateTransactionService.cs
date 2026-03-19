@@ -43,6 +43,7 @@ public class UpdateTransactionService(IRepository<FinancialTransaction> transact
 
         transaction
             .UpdateName(request.Name)
+            .UpdateDescription(request.Description)
             .UpdateAmount(request.Amount)
             .SetOperationDate(request.OperationDate)
             .SetCategory(request.CategoryId);

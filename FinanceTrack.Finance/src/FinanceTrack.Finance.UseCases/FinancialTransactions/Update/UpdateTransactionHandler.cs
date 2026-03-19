@@ -17,6 +17,7 @@ public sealed class UpdateTransactionHandler(
             TransactionId: request.TransactionId,
             UserId: request.UserId,
             Name: request.Name,
+            Description: request.Description,
             Amount: request.Amount,
             OperationDate: request.OperationDate,
             CategoryId: request.CategoryId
@@ -33,6 +34,7 @@ public sealed class UpdateTransactionHandler(
             t.Id,
             t.WalletId,
             t.Name,
+            t.Description,
             t.Amount,
             t.OperationDate,
             t.TransactionType.Name,

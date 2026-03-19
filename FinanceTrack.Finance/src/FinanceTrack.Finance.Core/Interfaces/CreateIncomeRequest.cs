@@ -1,9 +1,10 @@
-namespace FinanceTrack.Finance.Core.Interfaces;
+﻿namespace FinanceTrack.Finance.Core.Interfaces;
 
 public record CreateIncomeRequest(
     string UserId,
     Guid WalletId,
     string Name,
+    string? Description,
     decimal Amount,
     DateOnly OperationDate,
     Guid? CategoryId = null,
