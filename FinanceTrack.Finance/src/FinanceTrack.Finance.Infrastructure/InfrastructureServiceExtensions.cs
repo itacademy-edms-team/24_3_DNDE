@@ -34,7 +34,10 @@ public static class InfrastructureServiceExtensions
             .AddScoped<RecurringTransactionProcessorService>()
             // Query services
             .AddScoped<IAnalyticsQueryService, AnalyticsQueryService>()
-            .AddScoped<IGlobalFullTextSearchQueryService, GlobalFullTextSearchQueryService>();
+            .AddScoped<
+                IGlobalFullTextSearchQueryService,
+                GlobalFullTextSearchParallelQueryService
+            >();
 
         logger.LogInformation("{Project} services registered", "Infrastructure");
 
