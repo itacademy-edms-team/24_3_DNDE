@@ -10,7 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace FinanceTrack.Finance.Benchmarks.Benchmarks;
 
 [MemoryDiagnoser]
-public class Fts_SequentialVsParallel
+public class GlobalFullTextSearchQueryServiceSequentialVsParallelBenchmarkTests
 {
     private const string UserId = "d7a69a57-38b0-4031-9a27-185f4f460535";
     private const string UserQuery = "Красн";

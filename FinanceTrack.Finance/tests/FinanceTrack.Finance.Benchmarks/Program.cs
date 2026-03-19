@@ -20,7 +20,10 @@ public static class Program
     public static void Main(string[] args)
     {
         var config = DefaultConfig.Instance;
-        BenchmarkRunner.Run<Fts_SequentialVsParallel>(config, args);
+        BenchmarkRunner.Run<GlobalFullTextSearchQueryServiceSequentialVsParallelBenchmarkTests>(
+            config,
+            args
+        );
 
         // Use this to select benchmarks from the console:
         // var summaries = BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args, config);
