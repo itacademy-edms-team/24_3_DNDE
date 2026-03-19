@@ -12,12 +12,12 @@ public class WalletConfiguration : IEntityTypeConfiguration<Wallet>
         builder
             .Property(w => w.UserId)
             .IsRequired()
-            .HasMaxLength(WalletDataSchemaConstants.USER_ID_MAX_LENGTH);
+            .HasMaxLength(WalletDataSchemaConstants.UserIdMaxLength);
 
         builder
             .Property(w => w.Name)
             .IsRequired()
-            .HasMaxLength(WalletDataSchemaConstants.WALLET_NAME_MAX_LENGTH);
+            .HasMaxLength(WalletDataSchemaConstants.WalletNameMaxLength);
 
         builder
             .Property(w => w.WalletType)

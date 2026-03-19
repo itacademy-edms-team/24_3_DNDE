@@ -23,9 +23,7 @@ public class UpdateRecurringTransactionValidator : Validator<UpdateRecurringTran
     {
         RuleFor(x => x.Name).NotEmpty().WithMessage("Name is required.");
         RuleFor(x => x.Description)
-            .MaximumLength(
-                FinancialTransactionDataSchemaConstants.TRANSACTION_DESCRIPTION_MAX_LENGTH
-            )
+            .MaximumLength(FinancialTransactionDataSchemaConstants.TransactionDescriptionMaxLength)
             .WithMessage("Description length must be less than 501");
         RuleFor(x => x.Amount)
             .GreaterThanOrEqualTo(0.01m)

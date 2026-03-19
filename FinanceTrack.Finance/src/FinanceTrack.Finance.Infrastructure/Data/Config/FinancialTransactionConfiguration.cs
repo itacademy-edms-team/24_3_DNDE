@@ -17,13 +17,11 @@ public class FinancialTransactionConfiguration : IEntityTypeConfiguration<Financ
         builder
             .Property(t => t.Name)
             .IsRequired()
-            .HasMaxLength(FinancialTransactionDataSchemaConstants.TRANSACTION_NAME_MAX_LENGTH);
+            .HasMaxLength(FinancialTransactionDataSchemaConstants.TransactionNameMaxLength);
 
         builder
             .Property(t => t.Description)
-            .HasMaxLength(
-                FinancialTransactionDataSchemaConstants.TRANSACTION_DESCRIPTION_MAX_LENGTH
-            );
+            .HasMaxLength(FinancialTransactionDataSchemaConstants.TransactionDescriptionMaxLength);
 
         builder
             .Property(t => t.TransactionType)
