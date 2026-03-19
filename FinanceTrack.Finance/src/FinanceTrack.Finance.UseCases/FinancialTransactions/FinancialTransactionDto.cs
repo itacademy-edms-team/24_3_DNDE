@@ -12,5 +12,6 @@ public sealed record FinancialTransactionDto(
     Guid? RelatedTransactionId,
     Guid? RecurringTransactionId,
     Guid? RelatedWalletId = null,
-    string? RelatedWalletName = null
+    string? RelatedWalletName = null,
+    string? WalletName = null
 );

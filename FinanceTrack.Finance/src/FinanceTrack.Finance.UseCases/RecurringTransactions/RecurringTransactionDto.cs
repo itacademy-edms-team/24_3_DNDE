@@ -12,5 +12,6 @@ public sealed record RecurringTransactionDto(
     DateOnly StartDate,
     DateOnly? EndDate,
     bool IsActive,
-    DateOnly? LastProcessedDate
+    DateOnly? LastProcessedDate,
+    string? WalletName = null
 );

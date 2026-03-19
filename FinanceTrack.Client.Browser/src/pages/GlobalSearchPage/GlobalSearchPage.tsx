@@ -35,6 +35,17 @@ const formatMoney = (value: number): string => {
   }).format(value);
 };
 
+const formatWalletType = (walletType: string): string => {
+  switch (walletType) {
+    case 'Checking':
+      return 'Расчётный';
+    case 'Savings':
+      return 'Накопительный';
+    default:
+      return walletType;
+  }
+};
+
 type GlobalSearchWallet = {
   id: string;
   name: string;
@@ -58,6 +69,7 @@ type GlobalSearchTransaction = {
   recurringTransactionId: string | null;
   relatedWalletId: string | null;
   relatedWalletName: string | null;
+  walletName: string;
 };
 
 type GlobalSearchRecurringTransaction = {
@@ -82,7 +94,7 @@ type GlobalSearchResponse = {
   recurringTransactions: GlobalSearchRecurringTransaction[];
 };
 
-type ResultFilter = 'all' | 'income' | 'expense' | 'transfer' | 'recurring';
+type ResultFilter = 'all' | 'wallets' | 'income' | 'expense' | 'transfer' | 'recurring';
 
 const fetchGlobalSearch = async (
   query: string,
@@ -152,6 +164,7 @@ function GlobalSearchPage() {
 
   const renderWalletsSection = () => {
     if (!data || data.wallets.length === 0) return null;
+    if (!(filter === 'all' || filter === 'wallets')) return null;
 
     return (
       <Card variant="outlined" sx={{ mb: 3 }}>
@@ -177,7 +190,7 @@ function GlobalSearchPage() {
                   secondary={
                     <Stack direction="row" spacing={2} sx={{ mt: 0.5 }}>
                       <Typography variant="body2" color="text.secondary">
-                        Тип: {wallet.walletType}
+                        Тип: {formatWalletType(wallet.walletType)}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         Баланс: {formatMoney(wallet.balance)}
@@ -217,12 +230,15 @@ function GlobalSearchPage() {
                     </Box>
                   }
                   secondary={
-                    <Stack direction="row" spacing={2} sx={{ mt: 0.5 }}>
+                    <Stack direction="row" spacing={2} sx={{ mt: 0.5, flexWrap: 'wrap' }}>
                       <Typography variant="body2" color="text.secondary">
                         Сумма: {formatMoney(item.amount)}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         Дата: {new Date(item.operationDate).toLocaleDateString('ru-RU')}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Кошелёк: {item.walletName}
                       </Typography>
                     </Stack>
                   }
@@ -260,12 +276,15 @@ function GlobalSearchPage() {
                     </Box>
                   }
                   secondary={
-                    <Stack direction="row" spacing={2} sx={{ mt: 0.5 }}>
+                    <Stack direction="row" spacing={2} sx={{ mt: 0.5, flexWrap: 'wrap' }}>
                       <Typography variant="body2" color="text.secondary">
                         Сумма: {formatMoney(item.amount)}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         Дата: {new Date(item.operationDate).toLocaleDateString('ru-RU')}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Кошелёк: {item.walletName}
                       </Typography>
                     </Stack>
                   }
@@ -309,6 +328,9 @@ function GlobalSearchPage() {
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         Дата: {new Date(item.operationDate).toLocaleDateString('ru-RU')}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Кошелёк: {item.walletName}
                       </Typography>
                       {item.relatedWalletName && (
                         <Typography variant="body2" color="text.secondary">
@@ -425,6 +447,7 @@ function GlobalSearchPage() {
               scrollButtons="auto"
             >
               <Tab label="Все" value="all" />
+              <Tab label="Кошельки" value="wallets" />
               <Tab label="Доходы" value="income" />
               <Tab label="Расходы" value="expense" />
               <Tab label="Переводы" value="transfer" />

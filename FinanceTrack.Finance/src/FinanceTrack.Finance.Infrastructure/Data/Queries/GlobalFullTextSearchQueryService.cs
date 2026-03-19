@@ -72,7 +72,8 @@ public class GlobalFullTextSearchQueryService(AppDbContext appDbContext)
                 f.RelatedTransactionId,
                 f.RecurringTransactionId,
                 null,
-                null
+                null,
+                f.Wallet.Name
             ))
             .ToListAsync(ct);
 
@@ -100,7 +101,8 @@ public class GlobalFullTextSearchQueryService(AppDbContext appDbContext)
                 f.RelatedTransactionId,
                 f.RecurringTransactionId,
                 null,
-                null
+                null,
+                f.Wallet.Name
             ))
             .ToListAsync(ct);
 
@@ -128,7 +130,8 @@ public class GlobalFullTextSearchQueryService(AppDbContext appDbContext)
                 f.RelatedTransactionId,
                 f.RecurringTransactionId,
                 null,
-                null
+                null,
+                f.Wallet.Name
             ))
             .ToListAsync(ct);
 
@@ -155,7 +158,8 @@ public class GlobalFullTextSearchQueryService(AppDbContext appDbContext)
                 r.StartDate,
                 r.EndDate,
                 r.IsActive,
-                r.LastProcessedDate
+                r.LastProcessedDate,
+                r.Wallet.Name
             ))
             .ToListAsync(ct);
 
