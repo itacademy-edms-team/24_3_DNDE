@@ -12,7 +12,7 @@ public class RecurringTransactionConfiguration : IEntityTypeConfiguration<Recurr
         builder
             .Property(r => r.UserId)
             .IsRequired()
-            .HasMaxLength(FinancialTransactionDataSchemaConstants.USER_ID_MAX_LENGTH);
+            .HasMaxLength(FinancialTransactionDataSchemaConstants.UserIdMaxLength);
 
         builder
             .Property(r => r.Name)

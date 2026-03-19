@@ -12,7 +12,7 @@ public class FinancialTransactionConfiguration : IEntityTypeConfiguration<Financ
         builder
             .Property(t => t.UserId)
             .IsRequired()
-            .HasMaxLength(FinancialTransactionDataSchemaConstants.USER_ID_MAX_LENGTH);
+            .HasMaxLength(FinancialTransactionDataSchemaConstants.UserIdMaxLength);
 
         builder
             .Property(t => t.Name)
