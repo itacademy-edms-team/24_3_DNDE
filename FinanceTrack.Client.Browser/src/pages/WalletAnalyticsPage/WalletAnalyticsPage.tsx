@@ -98,6 +98,11 @@ type WalletCategoriesAnalyticsResponse = {
   expenseByCategory: WalletCategoryAnalytics[];
 };
 
+type YearMinMaxResponse = {
+  minYear: string;
+  maxYear: string;
+};
+
 const fetchWalletOverview = async (
   walletId: string,
   from: string,
@@ -136,6 +141,16 @@ const fetchWalletCategoriesAnalytics = async (
   });
   if (!res.ok) {
     throw new Error(getErrorMessage('загрузки аналитики кошелька по категориям', res.status));
+  }
+  return await res.json();
+};
+
+const fetchWalletYearMinMax = async (walletId: string): Promise<YearMinMaxResponse> => {
+  const res = await fetch(`/api/finance/Analytics/Wallets/${walletId}/Meta/YearMinMax`, {
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    throw new Error(getErrorMessage('загрузки границ дат аналитики кошелька', res.status));
   }
   return await res.json();
 };
@@ -194,13 +209,25 @@ function WalletAnalyticsPage() {
     retry: false,
   });
 
+  const { data: yearMinMax } = useQuery({
+    queryKey: ['wallet-analytics', walletId, 'meta', 'year-min-max'],
+    queryFn: () => fetchWalletYearMinMax(walletId!),
+    enabled: !!walletId,
+    retry: false,
+  });
+
   const availableYears = useMemo(() => {
     const years: number[] = [];
-    for (let year = now.getFullYear(); year >= now.getFullYear() - 5; year--) {
+    const minDataYear = yearMinMax ? new Date(yearMinMax.minYear).getFullYear() : now.getFullYear() - 5;
+    const maxDataYear = yearMinMax ? new Date(yearMinMax.maxYear).getFullYear() : now.getFullYear();
+    const minYear = Math.min(minDataYear, filterStartYear, filterEndYear);
+    const maxYear = Math.max(maxDataYear, filterStartYear, filterEndYear);
+
+    for (let year = maxYear; year >= minYear; year--) {
       years.push(year);
     }
     return years;
-  }, [now]);
+  }, [now, yearMinMax, filterStartYear, filterEndYear]);
 
   const cashFlowChartData = useMemo(() => {
     if (!cashFlow?.periods) return [];

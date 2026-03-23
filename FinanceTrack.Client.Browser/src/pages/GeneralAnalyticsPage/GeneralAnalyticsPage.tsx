@@ -86,6 +86,11 @@ type CategoriesAnalyticsResponse = {
   expenseByCategory: CategoryAnalytics[];
 };
 
+type YearMinMaxResponse = {
+  minYear: string;
+  maxYear: string;
+};
+
 const fetchOverview = async (from: string, to: string): Promise<OverviewResponse> => {
   const res = await fetch(`/api/finance/Analytics/Overview?from=${from}&to=${to}`, {
     credentials: 'include',
@@ -112,6 +117,16 @@ const fetchCategoriesAnalytics = async (from: string, to: string): Promise<Categ
   });
   if (!res.ok) {
     throw new Error(getErrorMessage('загрузки аналитики по категориям', res.status));
+  }
+  return await res.json();
+};
+
+const fetchYearMinMax = async (): Promise<YearMinMaxResponse> => {
+  const res = await fetch('/api/finance/Analytics/Meta/YearMinMax', {
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    throw new Error(getErrorMessage('загрузки границ дат аналитики', res.status));
   }
   return await res.json();
 };
@@ -170,6 +185,12 @@ function GeneralAnalyticsPage() {
     retry: false,
   });
 
+  const { data: yearMinMax } = useQuery({
+    queryKey: ['analytics', 'meta', 'year-min-max'],
+    queryFn: fetchYearMinMax,
+    retry: false,
+  });
+
   // Форматируем данные для Bar Chart (overlapping bars - оба положительные, наложение)
   const cashFlowChartData = useMemo(() => {
     if (!cashFlow?.periods) return [];
@@ -219,11 +240,16 @@ function GeneralAnalyticsPage() {
   // Генерируем список доступных годов
   const availableYears = useMemo(() => {
     const years: number[] = [];
-    for (let year = now.getFullYear(); year >= now.getFullYear() - 5; year--) {
+    const minDataYear = yearMinMax ? new Date(yearMinMax.minYear).getFullYear() : now.getFullYear() - 5;
+    const maxDataYear = yearMinMax ? new Date(yearMinMax.maxYear).getFullYear() : now.getFullYear();
+    const minYear = Math.min(minDataYear, filterStartYear, filterEndYear);
+    const maxYear = Math.max(maxDataYear, filterStartYear, filterEndYear);
+
+    for (let year = maxYear; year >= minYear; year--) {
       years.push(year);
     }
     return years;
-  }, [now]);
+  }, [now, yearMinMax, filterStartYear, filterEndYear]);
 
   const isLoading = isLoadingOverview || isLoadingCashFlow || isLoadingCategories;
 

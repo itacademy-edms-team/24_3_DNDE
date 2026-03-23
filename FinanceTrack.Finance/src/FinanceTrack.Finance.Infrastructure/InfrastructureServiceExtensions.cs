@@ -1,9 +1,10 @@
-﻿using FinanceTrack.Finance.Core.Interfaces;
+using FinanceTrack.Finance.Core.Interfaces;
 using FinanceTrack.Finance.Core.Services;
 using FinanceTrack.Finance.Infrastructure.Data;
 using FinanceTrack.Finance.Infrastructure.Data.Queries;
 using FinanceTrack.Finance.UseCases.Analytics;
 using FinanceTrack.Finance.UseCases.FullTextSearch;
+using FinanceTrack.Finance.UseCases.Wallets;
 
 namespace FinanceTrack.Finance.Infrastructure;
 
@@ -34,6 +35,7 @@ public static class InfrastructureServiceExtensions
             // Query services
             .AddScoped<IGeneralAnalyticsQueryService, GeneralAnalyticsQueryService>()
             .AddScoped<IWalletAnalyticsQueryService, WalletAnalyticsQueryService>()
+            .AddScoped<IWalletMetadataQueryService, WalletMetadataQueryService>()
             .AddScoped<
                 IGlobalFullTextSearchQueryService,
                 GlobalFullTextSearchParallelQueryService
