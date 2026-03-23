@@ -32,7 +32,8 @@ public static class InfrastructureServiceExtensions
             .AddScoped<DeleteTransactionService>()
             .AddScoped<RecurringTransactionProcessorService>()
             // Query services
-            .AddScoped<IAnalyticsQueryService, AnalyticsQueryService>()
+            .AddScoped<IGeneralAnalyticsQueryService, GeneralAnalyticsQueryService>()
+            .AddScoped<IWalletAnalyticsQueryService, WalletAnalyticsQueryService>()
             .AddScoped<
                 IGlobalFullTextSearchQueryService,
                 GlobalFullTextSearchParallelQueryService

@@ -1,7 +1,8 @@
-using FinanceTrack.Finance.UseCases.Analytics;
+﻿using FinanceTrack.Finance.UseCases.Analytics.Dto;
+using FinanceTrack.Finance.UseCases.Analytics.General;
 using FinanceTrack.Finance.Web.Extensions;
 
-namespace FinanceTrack.Finance.Web.Analytics;
+namespace FinanceTrack.Finance.Web.Analytics.General;
 
 public class GetSavingsProgress(IMediator mediator) : EndpointWithoutRequest<SavingsProgressDto>
 {
@@ -20,7 +21,7 @@ public class GetSavingsProgress(IMediator mediator) : EndpointWithoutRequest<Sav
             return;
         }
 
-        var result = await mediator.Send(new GetSavingsProgressQuery(userId), ct);
+        var result = await mediator.Send(new GetGeneralSavingsProgressQuery(userId), ct);
         await SendOkAsync(result, ct);
     }
 }

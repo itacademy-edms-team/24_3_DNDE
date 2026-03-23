@@ -1,13 +1,18 @@
-using FinanceTrack.Finance.UseCases.Analytics;
+﻿using FinanceTrack.Finance.UseCases.Analytics.Dto;
+using FinanceTrack.Finance.UseCases.Analytics.General;
 using FinanceTrack.Finance.Web.Extensions;
 
-namespace FinanceTrack.Finance.Web.Analytics;
+namespace FinanceTrack.Finance.Web.Analytics.General;
 
 public class GetOverviewRequest
 {
     public const string Route = "/Analytics/Overview";
-    [QueryParam] public DateOnly From { get; set; }
-    [QueryParam] public DateOnly To { get; set; }
+
+    [QueryParam]
+    public DateOnly From { get; set; }
+
+    [QueryParam]
+    public DateOnly To { get; set; }
 }
 
 public class GetOverview(IMediator mediator) : Endpoint<GetOverviewRequest, OverviewAnalyticsDto>
@@ -27,7 +32,7 @@ public class GetOverview(IMediator mediator) : Endpoint<GetOverviewRequest, Over
             return;
         }
 
-        var result = await mediator.Send(new GetOverviewQuery(userId, req.From, req.To), ct);
+        var result = await mediator.Send(new GetGeneralOverviewQuery(userId, req.From, req.To), ct);
         await SendOkAsync(result, ct);
     }
 }

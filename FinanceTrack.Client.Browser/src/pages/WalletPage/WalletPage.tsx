@@ -43,6 +43,7 @@ import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import RepeatIcon from '@mui/icons-material/Repeat';
 import ToggleOnIcon from '@mui/icons-material/ToggleOn';
 import ToggleOffIcon from '@mui/icons-material/ToggleOff';
+import QueryStatsIcon from '@mui/icons-material/QueryStats';
 
 import Loading from '@/components/Loading';
 
@@ -1258,6 +1259,13 @@ function WalletPage() {
         <Typography variant="h4" sx={{ flexGrow: 1 }}>
           {wallet.name}
         </Typography>
+        <Button
+          variant="outlined"
+          startIcon={<QueryStatsIcon />}
+          onClick={() => navigate(`/wallets/${walletId}/analytics`)}
+        >
+          Аналитика
+        </Button>
         {!wallet.isArchived && (
           <Button
             variant="contained"
