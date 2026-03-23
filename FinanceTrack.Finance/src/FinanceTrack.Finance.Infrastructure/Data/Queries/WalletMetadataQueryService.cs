@@ -6,7 +6,7 @@ namespace FinanceTrack.Finance.Infrastructure.Data.Queries;
 
 public class WalletMetadataQueryService(AppDbContext dbContext) : IWalletMetadataQueryService
 {
-    public async Task<Result<YearMinMaxDto>> GetDateMinMax(
+    public async Task<YearMinMaxDto> GetDateMinMax(
         string userId,
         CancellationToken ct = default
     )
@@ -16,18 +16,12 @@ public class WalletMetadataQueryService(AppDbContext dbContext) : IWalletMetadat
             .GroupBy(_ => 1)
             .Select(g => new
             {
-                Min = g.Min(t => t.OperationDate),
-                Max = g.Max(t => t.OperationDate),
+                Min = (DateOnly?)g.Min(t => t.OperationDate),
+                Max = (DateOnly?)g.Max(t => t.OperationDate),
             })
             .FirstOrDefaultAsync(ct);
 
-        if (dates is null)
-        {
-            var today = DateOnly.FromDateTime(DateTime.UtcNow);
-            return Result.Success(new YearMinMaxDto(today, today));
-        }
-
-        return Result.Success(new YearMinMaxDto(dates.Min, dates.Max));
+        return new YearMinMaxDto(dates?.Min, dates?.Max);
     }
 
     public async Task<Result<YearMinMaxDto>> GetDateMinMax(
@@ -49,17 +43,11 @@ public class WalletMetadataQueryService(AppDbContext dbContext) : IWalletMetadat
             .GroupBy(_ => 1)
             .Select(g => new
             {
-                Min = g.Min(t => t.OperationDate),
-                Max = g.Max(t => t.OperationDate),
+                Min = (DateOnly?)g.Min(t => t.OperationDate),
+                Max = (DateOnly?)g.Max(t => t.OperationDate),
             })
             .FirstOrDefaultAsync(ct);
 
-        if (dates is null)
-        {
-            var today = DateOnly.FromDateTime(DateTime.UtcNow);
-            return Result.Success(new YearMinMaxDto(today, today));
-        }
-
-        return Result.Success(new YearMinMaxDto(dates.Min, dates.Max));
+        return Result.Success(new YearMinMaxDto(dates?.Min, dates?.Max));
     }
 }

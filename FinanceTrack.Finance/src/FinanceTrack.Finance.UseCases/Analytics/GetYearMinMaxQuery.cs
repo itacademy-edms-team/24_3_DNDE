@@ -3,12 +3,12 @@ using FinanceTrack.Finance.UseCases.Wallets;
 
 namespace FinanceTrack.Finance.UseCases.Analytics;
 
-public sealed record GetYearMinMaxQuery(string UserId) : IQuery<Result<YearMinMaxDto>>;
+public sealed record GetYearMinMaxQuery(string UserId) : IQuery<YearMinMaxDto>;
 
 public sealed class GetYearMinMaxQueryHandler(IWalletMetadataQueryService service)
-    : IQueryHandler<GetYearMinMaxQuery, Result<YearMinMaxDto>>
+    : IQueryHandler<GetYearMinMaxQuery, YearMinMaxDto>
 {
-    public async Task<Result<YearMinMaxDto>> Handle(
+    public async Task<YearMinMaxDto> Handle(
         GetYearMinMaxQuery request,
         CancellationToken ct
     )

@@ -87,8 +87,8 @@ type CategoriesAnalyticsResponse = {
 };
 
 type YearMinMaxResponse = {
-  minYear: string;
-  maxYear: string;
+  minDate: string | null;
+  maxDate: string | null;
 };
 
 const fetchOverview = async (from: string, to: string): Promise<OverviewResponse> => {
@@ -129,6 +129,13 @@ const fetchYearMinMax = async (): Promise<YearMinMaxResponse> => {
     throw new Error(getErrorMessage('загрузки границ дат аналитики', res.status));
   }
   return await res.json();
+};
+
+const getYearFromDateString = (dateString: string | null): number | null => {
+  if (!dateString) return null;
+  const parsed = new Date(dateString);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.getFullYear();
 };
 
 const formatMoney = (value: number): string => {
@@ -240,8 +247,10 @@ function GeneralAnalyticsPage() {
   // Генерируем список доступных годов
   const availableYears = useMemo(() => {
     const years: number[] = [];
-    const minDataYear = yearMinMax ? new Date(yearMinMax.minYear).getFullYear() : now.getFullYear() - 5;
-    const maxDataYear = yearMinMax ? new Date(yearMinMax.maxYear).getFullYear() : now.getFullYear();
+    const minMetaYear = getYearFromDateString(yearMinMax?.minDate ?? null);
+    const maxMetaYear = getYearFromDateString(yearMinMax?.maxDate ?? null);
+    const minDataYear = minMetaYear ?? now.getFullYear() - 5;
+    const maxDataYear = maxMetaYear ?? now.getFullYear();
     const minYear = Math.min(minDataYear, filterStartYear, filterEndYear);
     const maxYear = Math.max(maxDataYear, filterStartYear, filterEndYear);
 

@@ -22,10 +22,6 @@ public class GetYearMinMax(IMediator mediator) : EndpointWithoutRequest<YearMinM
         }
 
         var result = await mediator.Send(new GetYearMinMaxQuery(userId), ct);
-
-        if (await this.SendResultIfNotOk(result, ct))
-            return;
-
-        await SendOkAsync(result.Value, ct);
+        await SendOkAsync(result, ct);
     }
 }

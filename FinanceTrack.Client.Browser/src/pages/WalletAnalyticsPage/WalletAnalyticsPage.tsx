@@ -99,8 +99,8 @@ type WalletCategoriesAnalyticsResponse = {
 };
 
 type YearMinMaxResponse = {
-  minYear: string;
-  maxYear: string;
+  minDate: string | null;
+  maxDate: string | null;
 };
 
 const fetchWalletOverview = async (
@@ -153,6 +153,13 @@ const fetchWalletYearMinMax = async (walletId: string): Promise<YearMinMaxRespon
     throw new Error(getErrorMessage('загрузки границ дат аналитики кошелька', res.status));
   }
   return await res.json();
+};
+
+const getYearFromDateString = (dateString: string | null): number | null => {
+  if (!dateString) return null;
+  const parsed = new Date(dateString);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.getFullYear();
 };
 
 const formatMoney = (value: number): string => {
@@ -218,8 +225,10 @@ function WalletAnalyticsPage() {
 
   const availableYears = useMemo(() => {
     const years: number[] = [];
-    const minDataYear = yearMinMax ? new Date(yearMinMax.minYear).getFullYear() : now.getFullYear() - 5;
-    const maxDataYear = yearMinMax ? new Date(yearMinMax.maxYear).getFullYear() : now.getFullYear();
+    const minMetaYear = getYearFromDateString(yearMinMax?.minDate ?? null);
+    const maxMetaYear = getYearFromDateString(yearMinMax?.maxDate ?? null);
+    const minDataYear = minMetaYear ?? now.getFullYear() - 5;
+    const maxDataYear = maxMetaYear ?? now.getFullYear();
     const minYear = Math.min(minDataYear, filterStartYear, filterEndYear);
     const maxYear = Math.max(maxDataYear, filterStartYear, filterEndYear);
 
