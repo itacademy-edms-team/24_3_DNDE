@@ -5,7 +5,7 @@ using FinanceTrack.Finance.UseCases.Wallets;
 
 namespace FinanceTrack.Finance.Infrastructure.Data.Queries;
 
-public class WalletForecastQueryService(AppDbContext appDbContext) : IWalletForecastQueryService
+public class WalletForecastQueryService(AppDbContext dbContext) : IWalletForecastQueryService
 {
     public async Task<Result<WalletForecastBalanceDto>> GetBalanceForecast(
         string userId,
@@ -13,7 +13,7 @@ public class WalletForecastQueryService(AppDbContext appDbContext) : IWalletFore
         CancellationToken ct = default
     )
     {
-        var wallet = await appDbContext.Wallets.FirstOrDefaultAsync(
+        var wallet = await dbContext.Wallets.FirstOrDefaultAsync(
             w => w.Id == walletId && w.UserId == userId,
             ct
         );
@@ -31,7 +31,7 @@ public class WalletForecastQueryService(AppDbContext appDbContext) : IWalletFore
         // Wallet.Balance includes future existing transactions excluding recurring
         // Today's balance is Wallet.Balance - future transactions
         // Making sure not to forget about Recurring transactions
-        var futureTransactions = await appDbContext
+        var futureTransactions = await dbContext
             .FinancialTransactions.Where(t =>
                 t.WalletId == walletId && t.UserId == userId && t.OperationDate > today
             )
@@ -79,7 +79,7 @@ public class WalletForecastQueryService(AppDbContext appDbContext) : IWalletFore
         var balanceEndOfMonth = balanceToday + restOfMonthIncome - restOfMonthExpense;
 
         // Simulate recurring transactions that haven't fired yet this month
-        var recurringRules = await appDbContext
+        var recurringRules = await dbContext
             .RecurringTransactions.Where(r =>
                 r.WalletId == walletId && r.UserId == userId && r.IsActive
             )
