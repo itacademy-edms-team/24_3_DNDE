@@ -33,16 +33,10 @@ public class WalletAnalyticsQueryService(AppDbContext dbContext) : IWalletAnalyt
             .ToListAsync(ct);
 
         var income = transactions
-            .Where(t =>
-                t.TransactionType == FinancialTransactionType.Income
-                || t.TransactionType == FinancialTransactionType.TransferIn
-            )
+            .Where(t => t.TransactionType == FinancialTransactionType.Income)
             .Sum(t => t.Amount);
         var expense = transactions
-            .Where(t =>
-                t.TransactionType == FinancialTransactionType.Expense
-                || t.TransactionType == FinancialTransactionType.TransferOut
-            )
+            .Where(t => t.TransactionType == FinancialTransactionType.Expense)
             .Sum(t => t.Amount);
 
         return Result.Success(new WalletOverviewDto(
@@ -63,12 +57,12 @@ public class WalletAnalyticsQueryService(AppDbContext dbContext) : IWalletAnalyt
         CancellationToken ct = default
     )
     {
-        var wallet = await dbContext.Wallets.FirstOrDefaultAsync(
+        var walletExists = await dbContext.Wallets.AnyAsync(
             w => w.Id == walletId && w.UserId == userId,
             ct
         );
 
-        if (wallet is null)
+        if (!walletExists)
             return Result.NotFound("Wallet not found");
 
         var transactions = await dbContext
@@ -86,12 +80,10 @@ public class WalletAnalyticsQueryService(AppDbContext dbContext) : IWalletAnalyt
             {
                 var periodIncome = g.Where(t =>
                         t.TransactionType == FinancialTransactionType.Income
-                        || t.TransactionType == FinancialTransactionType.TransferIn
                     )
                     .Sum(t => t.Amount);
                 var periodExpense = g.Where(t =>
                         t.TransactionType == FinancialTransactionType.Expense
-                        || t.TransactionType == FinancialTransactionType.TransferOut
                     )
                     .Sum(t => t.Amount);
                 return new CashFlowPeriodDto(

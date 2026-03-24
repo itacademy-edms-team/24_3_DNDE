@@ -1,4 +1,4 @@
-﻿using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
+using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
 using FinanceTrack.Finance.Core.WalletAggregate;
 using FinanceTrack.Finance.UseCases.Analytics;
 using FinanceTrack.Finance.UseCases.Analytics.Dto;
@@ -31,16 +31,10 @@ public class GeneralAnalyticsQueryService(AppDbContext dbContext) : IGeneralAnal
         {
             var walletTransactions = transactions.Where(t => t.WalletId == wallet.Id).ToList();
             var income = walletTransactions
-                .Where(t =>
-                    t.TransactionType == FinancialTransactionType.Income
-                    || t.TransactionType == FinancialTransactionType.TransferIn
-                )
+                .Where(t => t.TransactionType == FinancialTransactionType.Income)
                 .Sum(t => t.Amount);
             var expense = walletTransactions
-                .Where(t =>
-                    t.TransactionType == FinancialTransactionType.Expense
-                    || t.TransactionType == FinancialTransactionType.TransferOut
-                )
+                .Where(t => t.TransactionType == FinancialTransactionType.Expense)
                 .Sum(t => t.Amount);
 
             accountSummaries.Add(
