@@ -36,6 +36,7 @@ public static class InfrastructureServiceExtensions
             .AddScoped<IGeneralAnalyticsQueryService, GeneralAnalyticsQueryService>()
             .AddScoped<IWalletAnalyticsQueryService, WalletAnalyticsQueryService>()
             .AddScoped<IWalletMetadataQueryService, WalletMetadataQueryService>()
+            .AddScoped<IWalletForecastQueryService, WalletForecastQueryService>()
             .AddScoped<
                 IGlobalFullTextSearchQueryService,
                 GlobalFullTextSearchParallelQueryService

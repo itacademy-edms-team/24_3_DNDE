@@ -65,6 +65,11 @@ type UpdateWalletPayload = {
   targetDate?: string;
 };
 
+type BalanceForecastResponse = {
+  balanceToday: number;
+  balanceAtTheEndOfMonth: number;
+};
+
 const getErrorMessage = (operation: string, status: number): string => {
   return `Ошибка ${operation}: ${status}`;
 };
@@ -124,6 +129,16 @@ const archiveWallet = async (walletId: string): Promise<void> => {
   if (!res.ok) {
     throw new Error(getErrorMessage('архивации кошелька', res.status));
   }
+};
+
+const fetchBalanceForecast = async (walletId: string): Promise<BalanceForecastResponse> => {
+  const res = await fetch(`/api/finance/Wallets/${walletId}/Forecast/Balance`, {
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    throw new Error(getErrorMessage('загрузки прогноза баланса', res.status));
+  }
+  return await res.json();
 };
 
 const formatMoney = (value: number): string => {
@@ -563,6 +578,13 @@ function WalletPage() {
   const { data: wallet, isLoading, isPending, error } = useQuery({
     queryKey: ['wallet', walletId],
     queryFn: () => fetchWallet(walletId!),
+    enabled: !!walletId,
+    retry: false,
+  });
+
+  const { data: balanceForecast } = useQuery({
+    queryKey: ['wallet', walletId, 'forecast', 'balance'],
+    queryFn: () => fetchBalanceForecast(walletId!),
     enabled: !!walletId,
     retry: false,
   });
@@ -1362,6 +1384,31 @@ function WalletPage() {
           </Stack>
         </CardContent>
       </Card>
+
+      {balanceForecast && (
+        <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+          <Card variant="outlined" sx={{ flex: 1 }}>
+            <CardContent>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Баланс на сегодня
+              </Typography>
+              <Typography variant="h5" color={balanceForecast.balanceToday >= 0 ? 'success.main' : 'error.main'}>
+                {formatMoney(balanceForecast.balanceToday)}
+              </Typography>
+            </CardContent>
+          </Card>
+          <Card variant="outlined" sx={{ flex: 1 }}>
+            <CardContent>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Баланс на конец месяца
+              </Typography>
+              <Typography variant="h5" color={balanceForecast.balanceAtTheEndOfMonth >= 0 ? 'success.main' : 'error.main'}>
+                {formatMoney(balanceForecast.balanceAtTheEndOfMonth)}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Box>
+      )}
 
       {/* Секция рекуррентных транзакций */}
       {!wallet.isArchived && (
