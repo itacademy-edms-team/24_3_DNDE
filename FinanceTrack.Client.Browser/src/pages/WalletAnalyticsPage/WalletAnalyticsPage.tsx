@@ -98,7 +98,7 @@ type WalletCategoriesAnalyticsResponse = {
   expenseByCategory: WalletCategoryAnalytics[];
 };
 
-type YearMinMaxResponse = {
+type DateMinMaxResponse = {
   minDate: string | null;
   maxDate: string | null;
 };
@@ -145,8 +145,8 @@ const fetchWalletCategoriesAnalytics = async (
   return await res.json();
 };
 
-const fetchWalletYearMinMax = async (walletId: string): Promise<YearMinMaxResponse> => {
-  const res = await fetch(`/api/finance/Analytics/Wallets/${walletId}/Meta/YearMinMax`, {
+const fetchWalletDateMinMax = async (walletId: string): Promise<DateMinMaxResponse> => {
+  const res = await fetch(`/api/finance/Analytics/Wallets/${walletId}/Meta/DateMinMax`, {
     credentials: 'include',
   });
   if (!res.ok) {
@@ -216,17 +216,17 @@ function WalletAnalyticsPage() {
     retry: false,
   });
 
-  const { data: yearMinMax } = useQuery({
-    queryKey: ['wallet-analytics', walletId, 'meta', 'year-min-max'],
-    queryFn: () => fetchWalletYearMinMax(walletId!),
+  const { data: dateMinMax } = useQuery({
+    queryKey: ['wallet-analytics', walletId, 'meta', 'date-min-max'],
+    queryFn: () => fetchWalletDateMinMax(walletId!),
     enabled: !!walletId,
     retry: false,
   });
 
   const availableYears = useMemo(() => {
     const years: number[] = [];
-    const minMetaYear = getYearFromDateString(yearMinMax?.minDate ?? null);
-    const maxMetaYear = getYearFromDateString(yearMinMax?.maxDate ?? null);
+    const minMetaYear = getYearFromDateString(dateMinMax?.minDate ?? null);
+    const maxMetaYear = getYearFromDateString(dateMinMax?.maxDate ?? null);
     const minDataYear = minMetaYear ?? now.getFullYear() - 5;
     const maxDataYear = maxMetaYear ?? now.getFullYear();
     const minYear = Math.min(minDataYear, filterStartYear, filterEndYear);
@@ -236,7 +236,7 @@ function WalletAnalyticsPage() {
       years.push(year);
     }
     return years;
-  }, [now, yearMinMax, filterStartYear, filterEndYear]);
+  }, [now, dateMinMax, filterStartYear, filterEndYear]);
 
   const cashFlowChartData = useMemo(() => {
     if (!cashFlow?.periods) return [];

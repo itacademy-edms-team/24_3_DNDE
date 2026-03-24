@@ -86,7 +86,7 @@ type CategoriesAnalyticsResponse = {
   expenseByCategory: CategoryAnalytics[];
 };
 
-type YearMinMaxResponse = {
+type DateMinMaxResponse = {
   minDate: string | null;
   maxDate: string | null;
 };
@@ -121,8 +121,8 @@ const fetchCategoriesAnalytics = async (from: string, to: string): Promise<Categ
   return await res.json();
 };
 
-const fetchYearMinMax = async (): Promise<YearMinMaxResponse> => {
-  const res = await fetch('/api/finance/Analytics/Meta/YearMinMax', {
+const fetchDateMinMax = async (): Promise<DateMinMaxResponse> => {
+  const res = await fetch('/api/finance/Analytics/Meta/DateMinMax', {
     credentials: 'include',
   });
   if (!res.ok) {
@@ -192,9 +192,9 @@ function GeneralAnalyticsPage() {
     retry: false,
   });
 
-  const { data: yearMinMax } = useQuery({
-    queryKey: ['analytics', 'meta', 'year-min-max'],
-    queryFn: fetchYearMinMax,
+  const { data: dateMinMax } = useQuery({
+    queryKey: ['analytics', 'meta', 'date-min-max'],
+    queryFn: fetchDateMinMax,
     retry: false,
   });
 
@@ -247,8 +247,8 @@ function GeneralAnalyticsPage() {
   // Генерируем список доступных годов
   const availableYears = useMemo(() => {
     const years: number[] = [];
-    const minMetaYear = getYearFromDateString(yearMinMax?.minDate ?? null);
-    const maxMetaYear = getYearFromDateString(yearMinMax?.maxDate ?? null);
+    const minMetaYear = getYearFromDateString(dateMinMax?.minDate ?? null);
+    const maxMetaYear = getYearFromDateString(dateMinMax?.maxDate ?? null);
     const minDataYear = minMetaYear ?? now.getFullYear() - 5;
     const maxDataYear = maxMetaYear ?? now.getFullYear();
     const minYear = Math.min(minDataYear, filterStartYear, filterEndYear);
@@ -258,7 +258,7 @@ function GeneralAnalyticsPage() {
       years.push(year);
     }
     return years;
-  }, [now, yearMinMax, filterStartYear, filterEndYear]);
+  }, [now, dateMinMax, filterStartYear, filterEndYear]);
 
   const isLoading = isLoadingOverview || isLoadingCashFlow || isLoadingCategories;
 

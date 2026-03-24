@@ -1,14 +1,14 @@
-using FinanceTrack.Finance.UseCases.Analytics;
+﻿using FinanceTrack.Finance.UseCases.Analytics;
 using FinanceTrack.Finance.UseCases.Analytics.Dto;
 using FinanceTrack.Finance.Web.Extensions;
 
 namespace FinanceTrack.Finance.Web.Analytics.General;
 
-public class GetYearMinMax(IMediator mediator) : EndpointWithoutRequest<YearMinMaxDto>
+public class GetDateMinMax(IMediator mediator) : EndpointWithoutRequest<DateMinMaxDto>
 {
     public override void Configure()
     {
-        Get("/Analytics/Meta/YearMinMax");
+        Get("/Analytics/Meta/DateMinMax");
         Roles("user");
     }
 
@@ -21,7 +21,7 @@ public class GetYearMinMax(IMediator mediator) : EndpointWithoutRequest<YearMinM
             return;
         }
 
-        var result = await mediator.Send(new GetYearMinMaxQuery(userId), ct);
+        var result = await mediator.Send(new GetDateMinMaxQuery(userId), ct);
         await SendOkAsync(result, ct);
     }
 }

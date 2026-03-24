@@ -1,4 +1,4 @@
-using Ardalis.Result;
+﻿using Ardalis.Result;
 using FinanceTrack.Finance.UseCases.Analytics.Dto;
 using FinanceTrack.Finance.UseCases.Wallets;
 
@@ -6,10 +6,7 @@ namespace FinanceTrack.Finance.Infrastructure.Data.Queries;
 
 public class WalletMetadataQueryService(AppDbContext dbContext) : IWalletMetadataQueryService
 {
-    public async Task<YearMinMaxDto> GetDateMinMax(
-        string userId,
-        CancellationToken ct = default
-    )
+    public async Task<DateMinMaxDto> GetDateMinMax(string userId, CancellationToken ct = default)
     {
         var dates = await dbContext
             .FinancialTransactions.Where(t => t.UserId == userId)
@@ -21,10 +18,10 @@ public class WalletMetadataQueryService(AppDbContext dbContext) : IWalletMetadat
             })
             .FirstOrDefaultAsync(ct);
 
-        return new YearMinMaxDto(dates?.Min, dates?.Max);
+        return new DateMinMaxDto(dates?.Min, dates?.Max);
     }
 
-    public async Task<Result<YearMinMaxDto>> GetDateMinMax(
+    public async Task<Result<DateMinMaxDto>> GetDateMinMax(
         string userId,
         Guid walletId,
         CancellationToken ct = default
@@ -48,6 +45,6 @@ public class WalletMetadataQueryService(AppDbContext dbContext) : IWalletMetadat
             })
             .FirstOrDefaultAsync(ct);
 
-        return Result.Success(new YearMinMaxDto(dates?.Min, dates?.Max));
+        return Result.Success(new DateMinMaxDto(dates?.Min, dates?.Max));
     }
 }
