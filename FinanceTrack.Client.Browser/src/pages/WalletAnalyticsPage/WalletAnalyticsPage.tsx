@@ -13,6 +13,7 @@ import {
   Paper,
   Select,
   Typography,
+  useTheme,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import {
@@ -22,6 +23,7 @@ import {
   Cell,
   Pie,
   PieChart,
+  Sector,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -175,6 +177,7 @@ const formatMoney = (value: number): string => {
 function WalletAnalyticsPage() {
   const navigate = useNavigate();
   const { walletId } = useParams<{ walletId: string }>();
+  const theme = useTheme();
   const now = new Date();
   const [filterStartYear, setFilterStartYear] = useState<number>(now.getFullYear());
   const [filterStartMonth, setFilterStartMonth] = useState<number>(now.getMonth() + 1);
@@ -263,21 +266,46 @@ function WalletAnalyticsPage() {
 
   const incomePieData = useMemo(() => {
     if (!categoriesAnalytics?.incomeByCategory) return [];
-    return categoriesAnalytics.incomeByCategory.map((item) => ({
+    const mapped = categoriesAnalytics.incomeByCategory.map((item) => ({
       name: item.categoryName || 'Без категории',
       value: item.amount,
       percentage: item.percentage,
     }));
+    const major = mapped.filter((d) => d.percentage >= 3);
+    const minor = mapped.filter((d) => d.percentage < 3);
+    if (minor.length >= 2) {
+      major.push({
+        name: 'Прочее',
+        value: minor.reduce((s, d) => s + d.value, 0),
+        percentage: minor.reduce((s, d) => s + d.percentage, 0),
+      });
+      return major;
+    }
+    return mapped;
   }, [categoriesAnalytics]);
 
   const expensePieData = useMemo(() => {
     if (!categoriesAnalytics?.expenseByCategory) return [];
-    return categoriesAnalytics.expenseByCategory.map((item) => ({
+    const mapped = categoriesAnalytics.expenseByCategory.map((item) => ({
       name: item.categoryName || 'Без категории',
       value: item.amount,
       percentage: item.percentage,
     }));
+    const major = mapped.filter((d) => d.percentage >= 3);
+    const minor = mapped.filter((d) => d.percentage < 3);
+    if (minor.length >= 2) {
+      major.push({
+        name: 'Прочее',
+        value: minor.reduce((s, d) => s + d.value, 0),
+        percentage: minor.reduce((s, d) => s + d.percentage, 0),
+      });
+      return major;
+    }
+    return mapped;
   }, [categoriesAnalytics]);
+
+  const [activeIncomeIndex, setActiveIncomeIndex] = useState<number | undefined>(undefined);
+  const [activeExpenseIndex, setActiveExpenseIndex] = useState<number | undefined>(undefined);
 
   const isLoading = isLoadingOverview || isLoadingCashFlow || isLoadingCategories;
   const error = overviewError || cashFlowError || categoriesError;
@@ -297,9 +325,16 @@ function WalletAnalyticsPage() {
   const CustomPieTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0];
+      const color = data.payload.fill || COLORS[0];
       return (
         <Paper sx={{ p: 1.5, bgcolor: 'background.paper', boxShadow: 2 }}>
-          <Typography variant="body2" fontWeight="bold">
+          <Typography
+            component="div"
+            variant="body2"
+            fontWeight="bold"
+            sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}
+          >
+            <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: color }} />
             {data.name}
           </Typography>
           <Typography variant="body2" color="text.secondary">
@@ -312,6 +347,23 @@ function WalletAnalyticsPage() {
       );
     }
     return null;
+  };
+
+  const renderActiveShape = (props: any) => {
+    const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
+    return (
+      <g>
+        <Sector
+          cx={cx}
+          cy={cy}
+          innerRadius={innerRadius - 4}
+          outerRadius={outerRadius + 10}
+          startAngle={startAngle}
+          endAngle={endAngle}
+          fill={fill}
+        />
+      </g>
+    );
   };
 
   const renderCustomLabel = (entry: any) => {
@@ -601,18 +653,26 @@ function WalletAnalyticsPage() {
                   <PieChart>
                     <Pie
                       data={incomePieData}
+                      stroke="none"
                       cx="50%"
                       cy="50%"
                       labelLine={false}
                       label={renderCustomLabel}
+                      innerRadius={70}
                       outerRadius={120}
                       fill="#8884d8"
                       dataKey="value"
+                      onMouseEnter={(_, index) => setActiveIncomeIndex(index)}
+                      onMouseLeave={() => setActiveIncomeIndex(undefined)}
+                      {...{ activeIndex: activeIncomeIndex, activeShape: renderActiveShape }}
                     >
                       {incomePieData.map((_, index) => (
                         <Cell key={`wallet-income-cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
+                    <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central" fontSize={16} fontWeight="bold" fill={theme.palette.text.primary}>
+                      {formatMoney(incomePieData.reduce((s, d) => s + d.value, 0))}
+                    </text>
                     <Tooltip content={<CustomPieTooltip />} />
                     <Legend formatter={(value, entry: any) => `${value} (${formatMoney(entry.payload.value)})`} />
                   </PieChart>
@@ -633,18 +693,26 @@ function WalletAnalyticsPage() {
                   <PieChart>
                     <Pie
                       data={expensePieData}
+                      stroke="none"
                       cx="50%"
                       cy="50%"
                       labelLine={false}
                       label={renderCustomLabel}
+                      innerRadius={70}
                       outerRadius={120}
                       fill="#8884d8"
                       dataKey="value"
+                      onMouseEnter={(_, index) => setActiveExpenseIndex(index)}
+                      onMouseLeave={() => setActiveExpenseIndex(undefined)}
+                      {...{ activeIndex: activeExpenseIndex, activeShape: renderActiveShape }}
                     >
                       {expensePieData.map((_, index) => (
                         <Cell key={`wallet-expense-cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
+                    <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central" fontSize={16} fontWeight="bold" fill={theme.palette.text.primary}>
+                      {formatMoney(expensePieData.reduce((s, d) => s + d.value, 0))}
+                    </text>
                     <Tooltip content={<CustomPieTooltip />} />
                     <Legend formatter={(value, entry: any) => `${value} (${formatMoney(entry.payload.value)})`} />
                   </PieChart>
