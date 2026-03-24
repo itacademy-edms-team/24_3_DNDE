@@ -16,8 +16,9 @@ import {
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import {
-  BarChart,
+  ComposedChart,
   Bar,
+  Line,
   Cell,
   Pie,
   PieChart,
@@ -249,6 +250,7 @@ function WalletAnalyticsPage() {
 
       return {
         name: `${MONTH_OPTIONS[period.month - 1]?.label || period.month} ${period.year}`,
+        net: period.net,
         bigger: max,
         smaller: min,
         biggerLabel: isIncomeBigger ? 'Доходы' : 'Расходы',
@@ -468,7 +470,7 @@ function WalletAnalyticsPage() {
               Денежный поток по месяцам
             </Typography>
             <ResponsiveContainer width="100%" height={400}>
-              <BarChart data={cashFlowChartData} barCategoryGap="30%" barGap={-50}>
+              <ComposedChart data={cashFlowChartData} barCategoryGap="30%" barGap={-60}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
                 <YAxis tickFormatter={(value) => formatMoney(value ?? 0)} />
@@ -481,47 +483,71 @@ function WalletAnalyticsPage() {
                           <Typography variant="body2" fontWeight="bold" sx={{ mb: 1 }}>
                             {data.name}
                           </Typography>
-                          {payload.map((entry, index) => {
-                            const isBigger = entry.dataKey === 'bigger';
-                            const label = isBigger ? data.biggerLabel : data.smallerLabel;
-                            const color = isBigger ? data.biggerColor : data.smallerColor;
-                            return (
-                              <Typography
-                                key={index}
-                                component="div"
-                                variant="body2"
-                                sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
-                              >
-                                <Box
-                                  sx={{
-                                    width: 12,
-                                    height: 12,
-                                    borderRadius: '50%',
-                                    bgcolor: color,
-                                  }}
-                                />
-                                {label}: {formatMoney((entry.value as number) ?? 0)}
-                              </Typography>
-                            );
-                          })}
+                          {payload
+                            .filter((entry) => entry.dataKey !== 'net')
+                            .map((entry, index) => {
+                              const isBigger = entry.dataKey === 'bigger';
+                              const label = isBigger ? data.biggerLabel : data.smallerLabel;
+                              const color = isBigger ? data.biggerColor : data.smallerColor;
+                              return (
+                                <Typography
+                                  key={index}
+                                  component="div"
+                                  variant="body2"
+                                  sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+                                >
+                                  <Box
+                                    sx={{
+                                      width: 12,
+                                      height: 12,
+                                      borderRadius: '50%',
+                                      bgcolor: color,
+                                    }}
+                                  />
+                                  {label}: {formatMoney((entry.value as number) ?? 0)}
+                                </Typography>
+                              );
+                            })}
+                          <Typography
+                            component="div"
+                            variant="body2"
+                            sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}
+                          >
+                            <Box
+                              sx={{
+                                width: 12,
+                                height: 12,
+                                borderRadius: '50%',
+                                bgcolor: '#2196f3',
+                              }}
+                            />
+                            Чистый поток: {formatMoney(data.net ?? 0)}
+                          </Typography>
                         </Paper>
                       );
                     }
                     return null;
                   }}
                 />
-                <Legend formatter={() => null} />
-                <Bar dataKey="bigger" fill="#888888">
+                <Bar dataKey="bigger" fill="#888888" radius={[5, 5, 0, 0]}>
                   {cashFlowChartData.map((entry, index) => (
                     <Cell key={`wallet-cell-bigger-${index}`} fill={entry.biggerColor} />
                   ))}
                 </Bar>
-                <Bar dataKey="smaller" fill="#888888">
+                <Bar dataKey="smaller" fill="#888888" radius={[5, 5, 0, 0]}>
                   {cashFlowChartData.map((entry, index) => (
                     <Cell key={`wallet-cell-smaller-${index}`} fill={entry.smallerColor} />
                   ))}
                 </Bar>
-              </BarChart>
+                <Line
+                  type="monotone"
+                  dataKey="net"
+                  stroke="#2196f3"
+                  strokeWidth={2}
+                  dot={{ r: 4, fill: '#2196f3' }}
+                  activeDot={{ r: 6 }}
+                />
+              </ComposedChart>
             </ResponsiveContainer>
             <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3, mt: 2 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -547,6 +573,16 @@ function WalletAnalyticsPage() {
                   }}
                 />
                 <Typography variant="body2">Расходы</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box
+                  sx={{
+                    width: 16,
+                    height: 3,
+                    bgcolor: '#2196f3',
+                  }}
+                />
+                <Typography variant="body2">Чистый поток</Typography>
               </Box>
             </Box>
           </CardContent>

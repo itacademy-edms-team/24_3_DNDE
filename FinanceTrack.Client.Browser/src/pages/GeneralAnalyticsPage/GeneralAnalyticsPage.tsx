@@ -13,8 +13,9 @@ import {
   Paper,
 } from '@mui/material';
 import {
-  BarChart,
+  ComposedChart,
   Bar,
+  Line,
   PieChart,
   Pie,
   Cell,
@@ -213,7 +214,7 @@ function GeneralAnalyticsPage() {
         name: `${MONTH_OPTIONS[period.month - 1]?.label || period.month} ${period.year}`,
         income: income,
         expense: expense,
-        // Для наложения: больший сзади, меньший спереди
+        net: period.net,
         bigger: max,
         smaller: min,
         biggerLabel: isIncomeBigger ? 'Доходы' : 'Расходы',
@@ -435,11 +436,11 @@ function GeneralAnalyticsPage() {
               Денежный поток по месяцам
             </Typography>
             <ResponsiveContainer width="100%" height={400}>
-              <BarChart data={cashFlowChartData} barCategoryGap="30%" barGap={-50}>
+              <ComposedChart data={cashFlowChartData} barCategoryGap="30%" barGap={-50}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
                 <YAxis tickFormatter={(value) => formatMoney(value ?? 0)} />
-                <Tooltip 
+                <Tooltip
                   content={({ active, payload }) => {
                     if (active && payload && payload.length > 0) {
                       const data = payload[0].payload;
@@ -448,57 +449,71 @@ function GeneralAnalyticsPage() {
                           <Typography variant="body2" fontWeight="bold" sx={{ mb: 1 }}>
                             {data.name}
                           </Typography>
-                          {payload.map((entry, index) => {
-                            const isBigger = entry.dataKey === 'bigger';
-                            const label = isBigger ? data.biggerLabel : data.smallerLabel;
-                            const color = isBigger ? data.biggerColor : data.smallerColor;
-                            return (
-                              <Typography
-                                key={index}
-                                component="div"
-                                variant="body2"
-                                sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
-                              >
-                                <Box
-                                  sx={{
-                                    width: 12,
-                                    height: 12,
-                                    borderRadius: '50%',
-                                    bgcolor: color,
-                                  }}
-                                />
-                                {label}: {formatMoney(entry.value as number ?? 0)}
-                              </Typography>
-                            );
-                          })}
+                          {payload
+                            .filter((entry) => entry.dataKey !== 'net')
+                            .map((entry, index) => {
+                              const isBigger = entry.dataKey === 'bigger';
+                              const label = isBigger ? data.biggerLabel : data.smallerLabel;
+                              const color = isBigger ? data.biggerColor : data.smallerColor;
+                              return (
+                                <Typography
+                                  key={index}
+                                  component="div"
+                                  variant="body2"
+                                  sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+                                >
+                                  <Box
+                                    sx={{
+                                      width: 12,
+                                      height: 12,
+                                      borderRadius: '50%',
+                                      bgcolor: color,
+                                    }}
+                                  />
+                                  {label}: {formatMoney((entry.value as number) ?? 0)}
+                                </Typography>
+                              );
+                            })}
+                          <Typography
+                            component="div"
+                            variant="body2"
+                            sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}
+                          >
+                            <Box
+                              sx={{
+                                width: 12,
+                                height: 12,
+                                borderRadius: '50%',
+                                bgcolor: '#2196f3',
+                              }}
+                            />
+                            Чистый поток: {formatMoney(data.net ?? 0)}
+                          </Typography>
                         </Paper>
                       );
                     }
                     return null;
                   }}
                 />
-                <Legend 
-                  formatter={() => null}
-                />
-                {/* Сначала рисуем больший столбец (сзади) */}
-                <Bar 
-                  dataKey="bigger" 
-                  fill="#888888"
-                >
+                <Bar dataKey="bigger" fill="#888888">
                   {cashFlowChartData.map((entry, index) => (
                     <Cell key={`cell-bigger-${index}`} fill={entry.biggerColor} />
                   ))}
                 </Bar>
-                {/* Затем меньший столбец (спереди, поверх большего) */}
-                <Bar 
-                  dataKey="smaller" 
-                  fill="#888888"
-                >
+                <Bar dataKey="smaller" fill="#888888">
                   {cashFlowChartData.map((entry, index) => (
                     <Cell key={`cell-smaller-${index}`} fill={entry.smallerColor} />
                   ))}
                 </Bar>
-              </BarChart>
+                <Line
+                  type="monotone"
+                  dataKey="net"
+                  stroke="#2196f3"
+                  strokeWidth={2}
+                  dot={{ r: 4, fill: '#2196f3' }}
+                  activeDot={{ r: 6 }}
+                />
+              </ComposedChart>
             </ResponsiveContainer>
             {/* Кастомная легенда */}
             <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3, mt: 2 }}>
@@ -525,6 +540,16 @@ function GeneralAnalyticsPage() {
                   }}
                 />
                 <Typography variant="body2">Расходы</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box
+                  sx={{
+                    width: 16,
+                    height: 3,
+                    bgcolor: '#2196f3',
+                  }}
+                />
+                <Typography variant="body2">Чистый поток</Typography>
               </Box>
             </Box>
           </CardContent>
