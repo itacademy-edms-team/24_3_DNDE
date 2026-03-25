@@ -1,26 +1,29 @@
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import {
   Box,
+  Button,
   Card,
   CardContent,
   FormControl,
+  Grid2,
   InputLabel,
   MenuItem,
+  Paper,
   Select,
   Typography,
-  Grid2,
-  Paper,
   useTheme,
 } from '@mui/material';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import {
   ComposedChart,
   Bar,
   Line,
-  PieChart,
-  Pie,
-  Sector,
   Cell,
+  Pie,
+  PieChart,
+  Sector,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -50,22 +53,31 @@ const MONTH_OPTIONS = [
   { value: 12, label: 'Декабрь' },
 ];
 
-type OverviewResponse = {
-  totalBalance: number;
-  totalIncome: number;
-  totalExpense: number;
+const COLORS = [
+  '#0088FE',
+  '#00C49F',
+  '#FFBB28',
+  '#FF8042',
+  '#8884d8',
+  '#82ca9d',
+  '#ffc658',
+  '#ff7c7c',
+  '#8dd1e1',
+  '#d084d0',
+  '#ffb347',
+  '#87ceeb',
+];
+
+type WalletOverviewResponse = {
+  walletId: string;
+  walletName: string;
+  balance: number;
+  income: number;
+  expense: number;
   netFlow: number;
-  accounts: Array<{
-    walletId: string;
-    walletName: string;
-    walletType: string;
-    balance: number;
-    income: number;
-    expense: number;
-  }>;
 };
 
-type CashFlowPeriod = {
+type WalletCashFlowPeriod = {
   year: number;
   month: number;
   income: number;
@@ -73,20 +85,20 @@ type CashFlowPeriod = {
   net: number;
 };
 
-type CashFlowResponse = {
-  periods: CashFlowPeriod[];
+type WalletCashFlowResponse = {
+  periods: WalletCashFlowPeriod[];
 };
 
-type CategoryAnalytics = {
+type WalletCategoryAnalytics = {
   categoryId: string | null;
   categoryName: string | null;
   amount: number;
   percentage: number;
 };
 
-type CategoriesAnalyticsResponse = {
-  incomeByCategory: CategoryAnalytics[];
-  expenseByCategory: CategoryAnalytics[];
+type WalletCategoriesAnalyticsResponse = {
+  incomeByCategory: WalletCategoryAnalytics[];
+  expenseByCategory: WalletCategoryAnalytics[];
 };
 
 type DateMinMaxResponse = {
@@ -94,42 +106,54 @@ type DateMinMaxResponse = {
   maxDate: string | null;
 };
 
-const fetchOverview = async (from: string, to: string): Promise<OverviewResponse> => {
-  const res = await fetch(`/api/finance/Analytics/Overview?from=${from}&to=${to}`, {
+const fetchWalletOverview = async (
+  walletId: string,
+  from: string,
+  to: string
+): Promise<WalletOverviewResponse> => {
+  const res = await fetch(`/api/finance/Analytics/Wallets/${walletId}/Overview?From=${from}&To=${to}`, {
     credentials: 'include',
   });
   if (!res.ok) {
-    throw new Error(getErrorMessage('загрузки обзора', res.status));
+    throw new Error(getErrorMessage('загрузки обзора аналитики кошелька', res.status));
   }
   return await res.json();
 };
 
-const fetchCashFlow = async (from: string, to: string): Promise<CashFlowResponse> => {
-  const res = await fetch(`/api/finance/Analytics/CashFlow?from=${from}&to=${to}`, {
+const fetchWalletCashFlow = async (
+  walletId: string,
+  from: string,
+  to: string
+): Promise<WalletCashFlowResponse> => {
+  const res = await fetch(`/api/finance/Analytics/Wallets/${walletId}/CashFlow?From=${from}&To=${to}`, {
     credentials: 'include',
   });
   if (!res.ok) {
-    throw new Error(getErrorMessage('загрузки денежного потока', res.status));
+    throw new Error(getErrorMessage('загрузки денежного потока кошелька', res.status));
   }
   return await res.json();
 };
 
-const fetchCategoriesAnalytics = async (from: string, to: string): Promise<CategoriesAnalyticsResponse> => {
-  const res = await fetch(`/api/finance/Analytics/Categories?from=${from}&to=${to}`, {
+const fetchWalletCategoriesAnalytics = async (
+  walletId: string,
+  from: string,
+  to: string
+): Promise<WalletCategoriesAnalyticsResponse> => {
+  const res = await fetch(`/api/finance/Analytics/Wallets/${walletId}/Categories?From=${from}&To=${to}`, {
     credentials: 'include',
   });
   if (!res.ok) {
-    throw new Error(getErrorMessage('загрузки аналитики по категориям', res.status));
+    throw new Error(getErrorMessage('загрузки аналитики кошелька по категориям', res.status));
   }
   return await res.json();
 };
 
-const fetchDateMinMax = async (): Promise<DateMinMaxResponse> => {
-  const res = await fetch('/api/finance/Analytics/Meta/DateMinMax', {
+const fetchWalletDateMinMax = async (walletId: string): Promise<DateMinMaxResponse> => {
+  const res = await fetch(`/api/finance/Analytics/Wallets/${walletId}/Meta/DateMinMax`, {
     credentials: 'include',
   });
   if (!res.ok) {
-    throw new Error(getErrorMessage('загрузки границ дат аналитики', res.status));
+    throw new Error(getErrorMessage('загрузки границ дат аналитики кошелька', res.status));
   }
   return await res.json();
 };
@@ -150,23 +174,9 @@ const formatMoney = (value: number): string => {
   }).format(value);
 };
 
-// Цвета для Pie Chart
-const COLORS = [
-  '#0088FE',
-  '#00C49F',
-  '#FFBB28',
-  '#FF8042',
-  '#8884d8',
-  '#82ca9d',
-  '#ffc658',
-  '#ff7c7c',
-  '#8dd1e1',
-  '#d084d0',
-  '#ffb347',
-  '#87ceeb',
-];
-
-function GeneralAnalyticsPage() {
+function WalletAnalyticsPage() {
+  const navigate = useNavigate();
+  const { walletId } = useParams<{ walletId: string }>();
   const theme = useTheme();
   const now = new Date();
   const [filterStartYear, setFilterStartYear] = useState<number>(now.getFullYear());
@@ -174,49 +184,75 @@ function GeneralAnalyticsPage() {
   const [filterEndYear, setFilterEndYear] = useState<number>(now.getFullYear());
   const [filterEndMonth, setFilterEndMonth] = useState<number>(now.getMonth() + 1);
 
-  // Формируем даты для фильтрации
   const filterFrom = `${filterStartYear}-${String(filterStartMonth).padStart(2, '0')}-01`;
   const filterTo = `${filterEndYear}-${String(filterEndMonth).padStart(2, '0')}-${new Date(filterEndYear, filterEndMonth, 0).getDate()}`;
 
-  const { data: overview, isLoading: isLoadingOverview } = useQuery({
-    queryKey: ['analytics', 'overview', filterFrom, filterTo],
-    queryFn: () => fetchOverview(filterFrom, filterTo),
+  const {
+    data: overview,
+    isLoading: isLoadingOverview,
+    error: overviewError,
+  } = useQuery({
+    queryKey: ['wallet-analytics', walletId, 'overview', filterFrom, filterTo],
+    queryFn: () => fetchWalletOverview(walletId!, filterFrom, filterTo),
+    enabled: !!walletId,
     retry: false,
   });
 
-  const { data: cashFlow, isLoading: isLoadingCashFlow } = useQuery({
-    queryKey: ['analytics', 'cashflow', filterFrom, filterTo],
-    queryFn: () => fetchCashFlow(filterFrom, filterTo),
+  const {
+    data: cashFlow,
+    isLoading: isLoadingCashFlow,
+    error: cashFlowError,
+  } = useQuery({
+    queryKey: ['wallet-analytics', walletId, 'cashflow', filterFrom, filterTo],
+    queryFn: () => fetchWalletCashFlow(walletId!, filterFrom, filterTo),
+    enabled: !!walletId,
     retry: false,
   });
 
-  const { data: categoriesAnalytics, isLoading: isLoadingCategories } = useQuery({
-    queryKey: ['analytics', 'categories', filterFrom, filterTo],
-    queryFn: () => fetchCategoriesAnalytics(filterFrom, filterTo),
+  const {
+    data: categoriesAnalytics,
+    isLoading: isLoadingCategories,
+    error: categoriesError,
+  } = useQuery({
+    queryKey: ['wallet-analytics', walletId, 'categories', filterFrom, filterTo],
+    queryFn: () => fetchWalletCategoriesAnalytics(walletId!, filterFrom, filterTo),
+    enabled: !!walletId,
     retry: false,
   });
 
   const { data: dateMinMax } = useQuery({
-    queryKey: ['analytics', 'meta', 'date-min-max'],
-    queryFn: fetchDateMinMax,
+    queryKey: ['wallet-analytics', walletId, 'meta', 'date-min-max'],
+    queryFn: () => fetchWalletDateMinMax(walletId!),
+    enabled: !!walletId,
     retry: false,
   });
 
-  // Форматируем данные для Bar Chart (overlapping bars - оба положительные, наложение)
+  const availableYears = useMemo(() => {
+    const years: number[] = [];
+    const minMetaYear = getYearFromDateString(dateMinMax?.minDate ?? null);
+    const maxMetaYear = getYearFromDateString(dateMinMax?.maxDate ?? null);
+    const minDataYear = minMetaYear ?? now.getFullYear() - 5;
+    const maxDataYear = maxMetaYear ?? now.getFullYear();
+    const minYear = Math.min(minDataYear, filterStartYear, filterEndYear);
+    const maxYear = Math.max(maxDataYear, filterStartYear, filterEndYear);
+
+    for (let year = maxYear; year >= minYear; year--) {
+      years.push(year);
+    }
+    return years;
+  }, [now, dateMinMax, filterStartYear, filterEndYear]);
+
   const cashFlowChartData = useMemo(() => {
     if (!cashFlow?.periods) return [];
     return cashFlow.periods.map((period) => {
       const income = period.income;
       const expense = period.expense;
-      // Определяем, какой больше, чтобы правильно наложить
       const max = Math.max(income, expense);
       const min = Math.min(income, expense);
       const isIncomeBigger = income >= expense;
-      
+
       return {
         name: `${MONTH_OPTIONS[period.month - 1]?.label || period.month} ${period.year}`,
-        income: income,
-        expense: expense,
         net: period.net,
         bigger: max,
         smaller: min,
@@ -268,26 +304,19 @@ function GeneralAnalyticsPage() {
     return mapped;
   }, [categoriesAnalytics]);
 
-  // Генерируем список доступных годов
-  const availableYears = useMemo(() => {
-    const years: number[] = [];
-    const minMetaYear = getYearFromDateString(dateMinMax?.minDate ?? null);
-    const maxMetaYear = getYearFromDateString(dateMinMax?.maxDate ?? null);
-    const minDataYear = minMetaYear ?? now.getFullYear() - 5;
-    const maxDataYear = maxMetaYear ?? now.getFullYear();
-    const minYear = Math.min(minDataYear, filterStartYear, filterEndYear);
-    const maxYear = Math.max(maxDataYear, filterStartYear, filterEndYear);
-
-    for (let year = maxYear; year >= minYear; year--) {
-      years.push(year);
-    }
-    return years;
-  }, [now, dateMinMax, filterStartYear, filterEndYear]);
-
   const [activeIncomeIndex, setActiveIncomeIndex] = useState<number | undefined>(undefined);
   const [activeExpenseIndex, setActiveExpenseIndex] = useState<number | undefined>(undefined);
 
   const isLoading = isLoadingOverview || isLoadingCashFlow || isLoadingCategories;
+  const error = overviewError || cashFlowError || categoriesError;
+
+  if (!walletId) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Typography color="error">Не удалось определить кошелёк для аналитики.</Typography>
+      </Box>
+    );
+  }
 
   if (isLoading) {
     return <Loading />;
@@ -343,12 +372,23 @@ function GeneralAnalyticsPage() {
 
   return (
     <Box sx={{ p: 3 }}>
-      <meta name="title" content="Аналитика" />
-      <Typography variant="h4" sx={{ mb: 3 }}>
-        Аналитика
-      </Typography>
+      <meta name="title" content={overview?.walletName || 'Аналитика кошелька'} />
 
-      {/* Фильтры по датам */}
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 2 }}>
+        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(`/wallets/${walletId}`)}>
+          Назад
+        </Button>
+        <Typography variant="h4" sx={{ flexGrow: 1 }}>
+          {overview?.walletName ? `Аналитика: ${overview.walletName}` : 'Аналитика кошелька'}
+        </Typography>
+      </Box>
+
+      {error && (
+        <Typography color="error" sx={{ mb: 2 }}>
+          {(error as Error).message}
+        </Typography>
+      )}
+
       <Card variant="outlined" sx={{ mb: 3 }}>
         <CardContent>
           <Typography variant="subtitle2" sx={{ mb: 2 }}>
@@ -422,17 +462,16 @@ function GeneralAnalyticsPage() {
         </CardContent>
       </Card>
 
-      {/* Общий баланс */}
       {overview && (
         <Grid2 container spacing={3} sx={{ mb: 3 }}>
           <Grid2 size={{ xs: 12, sm: 6, md: 3 }}>
             <Card variant="outlined">
               <CardContent>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Общий баланс
+                  Баланс
                 </Typography>
-                <Typography variant="h4" color={overview.totalBalance >= 0 ? 'success.main' : 'error.main'}>
-                  {formatMoney(overview.totalBalance)}
+                <Typography variant="h4" color={overview.balance >= 0 ? 'success.main' : 'error.main'}>
+                  {formatMoney(overview.balance)}
                 </Typography>
               </CardContent>
             </Card>
@@ -441,10 +480,10 @@ function GeneralAnalyticsPage() {
             <Card variant="outlined">
               <CardContent>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Общий доход
+                  Доход
                 </Typography>
                 <Typography variant="h4" color="success.main">
-                  {formatMoney(overview.totalIncome)}
+                  {formatMoney(overview.income)}
                 </Typography>
               </CardContent>
             </Card>
@@ -453,10 +492,10 @@ function GeneralAnalyticsPage() {
             <Card variant="outlined">
               <CardContent>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
-                  Общий расход
+                  Расход
                 </Typography>
                 <Typography variant="h4" color="error.main">
-                  {formatMoney(overview.totalExpense)}
+                  {formatMoney(overview.expense)}
                 </Typography>
               </CardContent>
             </Card>
@@ -476,7 +515,6 @@ function GeneralAnalyticsPage() {
         </Grid2>
       )}
 
-      {/* График доходов/расходов */}
       {cashFlowChartData.length > 0 && (
         <Card variant="outlined" sx={{ mb: 3 }}>
           <CardContent>
@@ -484,7 +522,7 @@ function GeneralAnalyticsPage() {
               Денежный поток по месяцам
             </Typography>
             <ResponsiveContainer width="100%" height={400}>
-              <ComposedChart data={cashFlowChartData} barCategoryGap="30%" barGap={-50}>
+              <ComposedChart data={cashFlowChartData} barCategoryGap="30%" barGap={-60}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
                 <YAxis tickFormatter={(value) => formatMoney(value ?? 0)} />
@@ -545,12 +583,12 @@ function GeneralAnalyticsPage() {
                 />
                 <Bar dataKey="bigger" fill="#888888" radius={[5, 5, 0, 0]}>
                   {cashFlowChartData.map((entry, index) => (
-                    <Cell key={`cell-bigger-${index}`} fill={entry.biggerColor} />
+                    <Cell key={`wallet-cell-bigger-${index}`} fill={entry.biggerColor} />
                   ))}
                 </Bar>
                 <Bar dataKey="smaller" fill="#888888" radius={[5, 5, 0, 0]}>
                   {cashFlowChartData.map((entry, index) => (
-                    <Cell key={`cell-smaller-${index}`} fill={entry.smallerColor} />
+                    <Cell key={`wallet-cell-smaller-${index}`} fill={entry.smallerColor} />
                   ))}
                 </Bar>
                 <Line
@@ -563,7 +601,6 @@ function GeneralAnalyticsPage() {
                 />
               </ComposedChart>
             </ResponsiveContainer>
-            {/* Кастомная легенда */}
             <Box sx={{ display: 'flex', justifyContent: 'center', gap: 3, mt: 2 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Box
@@ -604,9 +641,7 @@ function GeneralAnalyticsPage() {
         </Card>
       )}
 
-      {/* Pie Charts для категорий */}
       <Grid2 container spacing={3}>
-        {/* Pie Chart доходов */}
         {incomePieData.length > 0 && (
           <Grid2 size={{ xs: 12, md: 6 }}>
             <Card variant="outlined">
@@ -632,16 +667,14 @@ function GeneralAnalyticsPage() {
                       {...{ activeIndex: activeIncomeIndex, activeShape: renderActiveShape }}
                     >
                       {incomePieData.map((_, index) => (
-                        <Cell key={`cell-income-${index}`} fill={COLORS[index % COLORS.length]} />
+                        <Cell key={`wallet-income-cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
                     <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central" fontSize={16} fontWeight="bold" fill={theme.palette.text.primary}>
                       {formatMoney(incomePieData.reduce((s, d) => s + d.value, 0))}
                     </text>
                     <Tooltip content={<CustomPieTooltip />} />
-                    <Legend
-                      formatter={(value, entry: any) => `${value} (${formatMoney(entry.payload.value)})`}
-                    />
+                    <Legend formatter={(value, entry: any) => `${value} (${formatMoney(entry.payload.value)})`} />
                   </PieChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -649,7 +682,6 @@ function GeneralAnalyticsPage() {
           </Grid2>
         )}
 
-        {/* Pie Chart расходов */}
         {expensePieData.length > 0 && (
           <Grid2 size={{ xs: 12, md: 6 }}>
             <Card variant="outlined">
@@ -675,16 +707,14 @@ function GeneralAnalyticsPage() {
                       {...{ activeIndex: activeExpenseIndex, activeShape: renderActiveShape }}
                     >
                       {expensePieData.map((_, index) => (
-                        <Cell key={`cell-expense-${index}`} fill={COLORS[index % COLORS.length]} />
+                        <Cell key={`wallet-expense-cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
                     <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central" fontSize={16} fontWeight="bold" fill={theme.palette.text.primary}>
                       {formatMoney(expensePieData.reduce((s, d) => s + d.value, 0))}
                     </text>
                     <Tooltip content={<CustomPieTooltip />} />
-                    <Legend
-                      formatter={(value, entry: any) => `${value} (${formatMoney(entry.payload.value)})`}
-                    />
+                    <Legend formatter={(value, entry: any) => `${value} (${formatMoney(entry.payload.value)})`} />
                   </PieChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -692,7 +722,6 @@ function GeneralAnalyticsPage() {
           </Grid2>
         )}
 
-        {/* Сообщения, если нет данных */}
         {incomePieData.length === 0 && expensePieData.length === 0 && (
           <Grid2 size={12}>
             <Card variant="outlined">
@@ -709,4 +738,4 @@ function GeneralAnalyticsPage() {
   );
 }
 
-export default GeneralAnalyticsPage;
+export default WalletAnalyticsPage;

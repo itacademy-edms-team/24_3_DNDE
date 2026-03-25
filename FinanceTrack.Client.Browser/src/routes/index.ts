@@ -58,6 +58,12 @@ const routes: Routes = [
     protected: true,
   },
   {
+    component: asyncComponentLoader(() => import('@/pages/WalletAnalyticsPage')),
+    path: '/wallets/:walletId/analytics',
+    title: '',
+    protected: true,
+  },
+  {
     component: asyncComponentLoader(() => import('@/pages/CategoriesPage')),
     path: '/categories',
     title: 'Категории',

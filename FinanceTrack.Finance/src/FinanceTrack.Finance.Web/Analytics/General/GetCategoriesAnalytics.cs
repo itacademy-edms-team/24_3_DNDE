@@ -1,13 +1,18 @@
-using FinanceTrack.Finance.UseCases.Analytics;
+﻿using FinanceTrack.Finance.UseCases.Analytics.Dto;
+using FinanceTrack.Finance.UseCases.Analytics.General;
 using FinanceTrack.Finance.Web.Extensions;
 
-namespace FinanceTrack.Finance.Web.Analytics;
+namespace FinanceTrack.Finance.Web.Analytics.General;
 
 public class GetCategoriesAnalyticsRequest
 {
     public const string Route = "/Analytics/Categories";
-    [QueryParam] public DateOnly From { get; set; }
-    [QueryParam] public DateOnly To { get; set; }
+
+    [QueryParam]
+    public DateOnly From { get; set; }
+
+    [QueryParam]
+    public DateOnly To { get; set; }
 }
 
 public class GetCategoriesAnalytics(IMediator mediator)
@@ -19,19 +24,22 @@ public class GetCategoriesAnalytics(IMediator mediator)
         Roles("user");
     }
 
-    public override async Task HandleAsync(GetCategoriesAnalyticsRequest req, CancellationToken ct)
+    public override async Task HandleAsync(
+        GetCategoriesAnalyticsRequest req,
+        CancellationToken cancel
+    )
     {
         var userId = User.GetUserId();
         if (string.IsNullOrWhiteSpace(userId))
         {
-            await SendUnauthorizedAsync(ct);
+            await SendUnauthorizedAsync(cancel);
             return;
         }
 
         var result = await mediator.Send(
-            new GetCategoriesAnalyticsQuery(userId, req.From, req.To),
-            ct
+            new GetGeneralCategoriesAnalyticsQuery(userId, req.From, req.To),
+            cancel
         );
-        await SendOkAsync(result, ct);
+        await SendOkAsync(result, cancel);
     }
 }

@@ -1,0 +1,13 @@
+﻿namespace FinanceTrack.Finance.UseCases.Wallets.GetForecastBalance;
+
+public sealed class GetForecastBalanceHandler(IWalletForecastQueryService service)
+    : IQueryHandler<GetForecastBalanceQuery, Result<WalletForecastBalanceDto>>
+{
+    public async Task<Result<WalletForecastBalanceDto>> Handle(
+        GetForecastBalanceQuery request,
+        CancellationToken cancel
+    )
+    {
+        return await service.GetBalanceForecast(request.UserId, request.WalletId, cancel);
+    }
+}
