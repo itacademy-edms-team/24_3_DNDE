@@ -19,20 +19,23 @@ public class GetWalletDateMinMax(IMediator mediator)
         Roles("user");
     }
 
-    public override async Task HandleAsync(GetWalletDateMinMaxRequest req, CancellationToken ct)
+    public override async Task HandleAsync(GetWalletDateMinMaxRequest req, CancellationToken cancel)
     {
         var userId = User.GetUserId();
         if (string.IsNullOrWhiteSpace(userId))
         {
-            await SendUnauthorizedAsync(ct);
+            await SendUnauthorizedAsync(cancel);
             return;
         }
 
-        var result = await mediator.Send(new GetWalletDateMinMaxQuery(userId, req.WalletId), ct);
+        var result = await mediator.Send(
+            new GetWalletDateMinMaxQuery(userId, req.WalletId),
+            cancel
+        );
 
-        if (await this.SendResultIfNotOk(result, ct))
+        if (await this.SendResultIfNotOk(result, cancel))
             return;
 
-        await SendOkAsync(result.Value, ct);
+        await SendOkAsync(result.Value, cancel);
     }
 }

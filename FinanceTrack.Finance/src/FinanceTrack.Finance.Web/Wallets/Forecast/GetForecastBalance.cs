@@ -19,20 +19,20 @@ public class GetForecastBalance(IMediator mediator)
         Roles("user");
     }
 
-    public override async Task HandleAsync(GetForecastBalanceRequest req, CancellationToken ct)
+    public override async Task HandleAsync(GetForecastBalanceRequest req, CancellationToken cancel)
     {
         var userId = User.GetUserId();
         if (string.IsNullOrWhiteSpace(userId))
         {
-            await SendUnauthorizedAsync(ct);
+            await SendUnauthorizedAsync(cancel);
             return;
         }
 
-        var result = await mediator.Send(new GetForecastBalanceQuery(userId, req.WalletId), ct);
+        var result = await mediator.Send(new GetForecastBalanceQuery(userId, req.WalletId), cancel);
 
-        if (await this.SendResultIfNotOk(result, ct))
+        if (await this.SendResultIfNotOk(result, cancel))
             return;
 
-        await SendOkAsync(result.Value, ct);
+        await SendOkAsync(result.Value, cancel);
     }
 }

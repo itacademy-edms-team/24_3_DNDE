@@ -10,12 +10,12 @@ public class WalletForecastQueryService(AppDbContext dbContext) : IWalletForecas
     public async Task<Result<WalletForecastBalanceDto>> GetBalanceForecast(
         string userId,
         Guid walletId,
-        CancellationToken ct = default
+        CancellationToken cancel = default
     )
     {
         var wallet = await dbContext.Wallets.FirstOrDefaultAsync(
             w => w.Id == walletId && w.UserId == userId,
-            ct
+            cancel
         );
 
         if (wallet is null)
@@ -35,7 +35,7 @@ public class WalletForecastQueryService(AppDbContext dbContext) : IWalletForecas
             .FinancialTransactions.Where(t =>
                 t.WalletId == walletId && t.UserId == userId && t.OperationDate > today
             )
-            .ToListAsync(ct);
+            .ToListAsync(cancel);
 
         var futureIncome = futureTransactions
             .Where(t =>
@@ -83,7 +83,7 @@ public class WalletForecastQueryService(AppDbContext dbContext) : IWalletForecas
             .RecurringTransactions.Where(r =>
                 r.WalletId == walletId && r.UserId == userId && r.IsActive
             )
-            .ToListAsync(ct);
+            .ToListAsync(cancel);
 
         var currentMonthStart = new DateOnly(today.Year, today.Month, 1);
 

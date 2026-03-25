@@ -8,8 +8,8 @@ public sealed record GetGeneralCashFlowQuery(string UserId, DateOnly From, DateO
 public sealed class GetCashFlowHandler(IGeneralAnalyticsQueryService service)
     : IQueryHandler<GetGeneralCashFlowQuery, CashFlowDto>
 {
-    public async Task<CashFlowDto> Handle(GetGeneralCashFlowQuery request, CancellationToken ct)
+    public async Task<CashFlowDto> Handle(GetGeneralCashFlowQuery request, CancellationToken cancel)
     {
-        return await service.GetCashFlow(request.UserId, request.From, request.To, ct);
+        return await service.GetCashFlow(request.UserId, request.From, request.To, cancel);
     }
 }

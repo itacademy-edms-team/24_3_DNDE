@@ -8,8 +8,8 @@ public sealed record GetDateMinMaxQuery(string UserId) : IQuery<DateMinMaxDto>;
 public sealed class GetDateMinMaxQueryHandler(IWalletMetadataQueryService service)
     : IQueryHandler<GetDateMinMaxQuery, DateMinMaxDto>
 {
-    public async Task<DateMinMaxDto> Handle(GetDateMinMaxQuery request, CancellationToken ct)
+    public async Task<DateMinMaxDto> Handle(GetDateMinMaxQuery request, CancellationToken cancel)
     {
-        return await service.GetDateMinMax(request.UserId, ct);
+        return await service.GetDateMinMax(request.UserId, cancel);
     }
 }

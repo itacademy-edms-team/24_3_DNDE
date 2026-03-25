@@ -14,7 +14,7 @@ public sealed class GetWalletCashFlowHandler(IWalletAnalyticsQueryService servic
 {
     public async Task<Result<CashFlowDto>> Handle(
         GetWalletCashFlowQuery request,
-        CancellationToken ct
+        CancellationToken cancel
     )
     {
         return await service.GetWalletCashFlow(
@@ -22,7 +22,7 @@ public sealed class GetWalletCashFlowHandler(IWalletAnalyticsQueryService servic
             request.WalletId,
             request.From,
             request.To,
-            ct
+            cancel
         );
     }
 }

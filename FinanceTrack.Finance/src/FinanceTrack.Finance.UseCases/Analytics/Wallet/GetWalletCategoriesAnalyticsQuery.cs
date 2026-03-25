@@ -1,4 +1,4 @@
-using FinanceTrack.Finance.UseCases.Analytics.Dto;
+﻿using FinanceTrack.Finance.UseCases.Analytics.Dto;
 
 namespace FinanceTrack.Finance.UseCases.Analytics.Wallet;
 
@@ -14,7 +14,7 @@ public sealed class GetWalletCategoriesAnalyticsHandler(IWalletAnalyticsQuerySer
 {
     public async Task<Result<CategoriesAnalyticsDto>> Handle(
         GetWalletCategoriesAnalyticsQuery request,
-        CancellationToken ct
+        CancellationToken cancel
     )
     {
         return await service.GetWalletCategoriesAnalytics(
@@ -22,7 +22,7 @@ public sealed class GetWalletCategoriesAnalyticsHandler(IWalletAnalyticsQuerySer
             request.WalletId,
             request.From,
             request.To,
-            ct
+            cancel
         );
     }
 }

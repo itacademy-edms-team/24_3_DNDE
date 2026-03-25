@@ -12,9 +12,9 @@ public sealed class GetWalletDateMinMaxQueryHandler(IWalletMetadataQueryService 
 {
     public async Task<Result<DateMinMaxDto>> Handle(
         GetWalletDateMinMaxQuery request,
-        CancellationToken cancellationToken
+        CancellationToken cancel
     )
     {
-        return await service.GetDateMinMax(request.userId, request.WalletId, cancellationToken);
+        return await service.GetDateMinMax(request.userId, request.WalletId, cancel);
     }
 }

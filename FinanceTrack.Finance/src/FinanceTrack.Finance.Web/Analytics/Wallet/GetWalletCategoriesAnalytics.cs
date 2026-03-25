@@ -1,4 +1,4 @@
-using FinanceTrack.Finance.UseCases.Analytics.Dto;
+﻿using FinanceTrack.Finance.UseCases.Analytics.Dto;
 using FinanceTrack.Finance.UseCases.Analytics.Wallet;
 using FinanceTrack.Finance.Web.Extensions;
 
@@ -27,24 +27,24 @@ public class GetWalletCategoriesAnalytics(IMediator mediator)
 
     public override async Task HandleAsync(
         GetWalletCategoriesAnalyticsRequest req,
-        CancellationToken ct
+        CancellationToken cancel
     )
     {
         var userId = User.GetUserId();
         if (string.IsNullOrWhiteSpace(userId))
         {
-            await SendUnauthorizedAsync(ct);
+            await SendUnauthorizedAsync(cancel);
             return;
         }
 
         var result = await mediator.Send(
             new GetWalletCategoriesAnalyticsQuery(userId, req.WalletId, req.From, req.To),
-            ct
+            cancel
         );
 
-        if (await this.SendResultIfNotOk(result, ct))
+        if (await this.SendResultIfNotOk(result, cancel))
             return;
 
-        await SendOkAsync(result.Value, ct);
+        await SendOkAsync(result.Value, cancel);
     }
 }

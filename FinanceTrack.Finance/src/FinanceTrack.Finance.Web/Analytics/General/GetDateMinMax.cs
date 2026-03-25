@@ -12,16 +12,16 @@ public class GetDateMinMax(IMediator mediator) : EndpointWithoutRequest<DateMinM
         Roles("user");
     }
 
-    public override async Task HandleAsync(CancellationToken ct)
+    public override async Task HandleAsync(CancellationToken cancel)
     {
         var userId = User.GetUserId();
         if (string.IsNullOrWhiteSpace(userId))
         {
-            await SendUnauthorizedAsync(ct);
+            await SendUnauthorizedAsync(cancel);
             return;
         }
 
-        var result = await mediator.Send(new GetDateMinMaxQuery(userId), ct);
-        await SendOkAsync(result, ct);
+        var result = await mediator.Send(new GetDateMinMaxQuery(userId), cancel);
+        await SendOkAsync(result, cancel);
     }
 }

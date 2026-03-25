@@ -24,19 +24,22 @@ public class GetCategoriesAnalytics(IMediator mediator)
         Roles("user");
     }
 
-    public override async Task HandleAsync(GetCategoriesAnalyticsRequest req, CancellationToken ct)
+    public override async Task HandleAsync(
+        GetCategoriesAnalyticsRequest req,
+        CancellationToken cancel
+    )
     {
         var userId = User.GetUserId();
         if (string.IsNullOrWhiteSpace(userId))
         {
-            await SendUnauthorizedAsync(ct);
+            await SendUnauthorizedAsync(cancel);
             return;
         }
 
         var result = await mediator.Send(
             new GetGeneralCategoriesAnalyticsQuery(userId, req.From, req.To),
-            ct
+            cancel
         );
-        await SendOkAsync(result, ct);
+        await SendOkAsync(result, cancel);
     }
 }

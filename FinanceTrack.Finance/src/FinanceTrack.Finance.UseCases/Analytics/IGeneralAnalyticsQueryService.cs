@@ -8,14 +8,14 @@ public interface IGeneralAnalyticsQueryService
         string userId,
         DateOnly from,
         DateOnly to,
-        CancellationToken ct = default
+        CancellationToken cancel = default
     );
 
     Task<CashFlowDto> GetCashFlow(
         string userId,
         DateOnly from,
         DateOnly to,
-        CancellationToken ct = default
+        CancellationToken cancel = default
     );
 
     Task<SavingsProgressDto> GetSavingsProgress(string userId, CancellationToken ct = default);
@@ -24,6 +24,6 @@ public interface IGeneralAnalyticsQueryService
         string userId,
         DateOnly from,
         DateOnly to,
-        CancellationToken ct = default
+        CancellationToken cancel = default
     );
 }

@@ -1,4 +1,4 @@
-using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
+﻿using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
 using FinanceTrack.Finance.Core.WalletAggregate;
 using FinanceTrack.Finance.UseCases.Analytics;
 using FinanceTrack.Finance.UseCases.Analytics.Dto;
@@ -11,18 +11,18 @@ public class GeneralAnalyticsQueryService(AppDbContext dbContext) : IGeneralAnal
         string userId,
         DateOnly from,
         DateOnly to,
-        CancellationToken ct = default
+        CancellationToken cancel = default
     )
     {
         var wallets = await dbContext
             .Wallets.Where(w => w.UserId == userId && !w.IsArchived)
-            .ToListAsync(ct);
+            .ToListAsync(cancel);
 
         var transactions = await dbContext
             .FinancialTransactions.Where(t =>
                 t.UserId == userId && t.OperationDate >= from && t.OperationDate <= to
             )
-            .ToListAsync(ct);
+            .ToListAsync(cancel);
 
         var totalBalance = wallets.Sum(w => w.Balance);
 

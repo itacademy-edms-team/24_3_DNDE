@@ -5,9 +5,9 @@ public sealed class GetForecastBalanceHandler(IWalletForecastQueryService servic
 {
     public async Task<Result<WalletForecastBalanceDto>> Handle(
         GetForecastBalanceQuery request,
-        CancellationToken ct
+        CancellationToken cancel
     )
     {
-        return await service.GetBalanceForecast(request.UserId, request.WalletId, ct);
+        return await service.GetBalanceForecast(request.UserId, request.WalletId, cancel);
     }
 }

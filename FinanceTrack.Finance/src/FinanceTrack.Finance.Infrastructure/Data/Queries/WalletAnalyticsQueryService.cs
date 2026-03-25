@@ -1,4 +1,4 @@
-using Ardalis.Result;
+﻿using Ardalis.Result;
 using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
 using FinanceTrack.Finance.UseCases.Analytics;
 using FinanceTrack.Finance.UseCases.Analytics.Dto;
@@ -12,12 +12,12 @@ public class WalletAnalyticsQueryService(AppDbContext dbContext) : IWalletAnalyt
         Guid walletId,
         DateOnly from,
         DateOnly to,
-        CancellationToken ct = default
+        CancellationToken cancel = default
     )
     {
         var wallet = await dbContext.Wallets.FirstOrDefaultAsync(
             w => w.Id == walletId && w.UserId == userId,
-            ct
+            cancel
         );
 
         if (wallet is null)
@@ -30,7 +30,7 @@ public class WalletAnalyticsQueryService(AppDbContext dbContext) : IWalletAnalyt
                 && t.OperationDate >= from
                 && t.OperationDate <= to
             )
-            .ToListAsync(ct);
+            .ToListAsync(cancel);
 
         var income = transactions
             .Where(t => t.TransactionType == FinancialTransactionType.Income)
@@ -39,14 +39,16 @@ public class WalletAnalyticsQueryService(AppDbContext dbContext) : IWalletAnalyt
             .Where(t => t.TransactionType == FinancialTransactionType.Expense)
             .Sum(t => t.Amount);
 
-        return Result.Success(new WalletOverviewDto(
-            wallet.Id,
-            wallet.Name,
-            wallet.Balance,
-            income,
-            expense,
-            income - expense
-        ));
+        return Result.Success(
+            new WalletOverviewDto(
+                wallet.Id,
+                wallet.Name,
+                wallet.Balance,
+                income,
+                expense,
+                income - expense
+            )
+        );
     }
 
     public async Task<Result<CashFlowDto>> GetWalletCashFlow(
@@ -130,9 +132,15 @@ public class WalletAnalyticsQueryService(AppDbContext dbContext) : IWalletAnalyt
         var categoryDict = categories.ToDictionary(c => c.Id, c => c.Name);
 
         var incomeByCategory = CategoryBreakdownHelper.Build(
-            transactions, FinancialTransactionType.Income, categoryDict);
+            transactions,
+            FinancialTransactionType.Income,
+            categoryDict
+        );
         var expenseByCategory = CategoryBreakdownHelper.Build(
-            transactions, FinancialTransactionType.Expense, categoryDict);
+            transactions,
+            FinancialTransactionType.Expense,
+            categoryDict
+        );
 
         return Result.Success(new CategoriesAnalyticsDto(incomeByCategory, expenseByCategory));
     }

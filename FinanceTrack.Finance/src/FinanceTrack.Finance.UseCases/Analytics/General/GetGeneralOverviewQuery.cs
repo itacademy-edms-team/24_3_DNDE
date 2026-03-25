@@ -10,9 +10,9 @@ public sealed class GetOverviewHandler(IGeneralAnalyticsQueryService service)
 {
     public async Task<OverviewAnalyticsDto> Handle(
         GetGeneralOverviewQuery request,
-        CancellationToken ct
+        CancellationToken cancel
     )
     {
-        return await service.GetOverview(request.UserId, request.From, request.To, ct);
+        return await service.GetOverview(request.UserId, request.From, request.To, cancel);
     }
 }

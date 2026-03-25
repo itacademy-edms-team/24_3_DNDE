@@ -10,9 +10,14 @@ public sealed class GetCategoriesAnalyticsHandler(IGeneralAnalyticsQueryService 
 {
     public async Task<CategoriesAnalyticsDto> Handle(
         GetGeneralCategoriesAnalyticsQuery request,
-        CancellationToken ct
+        CancellationToken cancel
     )
     {
-        return await service.GetCategoriesAnalytics(request.UserId, request.From, request.To, ct);
+        return await service.GetCategoriesAnalytics(
+            request.UserId,
+            request.From,
+            request.To,
+            cancel
+        );
     }
 }

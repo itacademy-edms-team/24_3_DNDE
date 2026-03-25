@@ -9,9 +9,9 @@ public sealed class GetSavingsProgressHandler(IGeneralAnalyticsQueryService serv
 {
     public async Task<SavingsProgressDto> Handle(
         GetGeneralSavingsProgressQuery request,
-        CancellationToken ct
+        CancellationToken cancel
     )
     {
-        return await service.GetSavingsProgress(request.UserId, ct);
+        return await service.GetSavingsProgress(request.UserId, cancel);
     }
 }

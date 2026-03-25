@@ -1,4 +1,4 @@
-using FinanceTrack.Finance.UseCases.Analytics.Dto;
+﻿using FinanceTrack.Finance.UseCases.Analytics.Dto;
 
 namespace FinanceTrack.Finance.UseCases.Analytics;
 
@@ -9,7 +9,7 @@ public interface IWalletAnalyticsQueryService
         Guid walletId,
         DateOnly from,
         DateOnly to,
-        CancellationToken ct = default
+        CancellationToken cancel = default
     );
 
     Task<Result<CashFlowDto>> GetWalletCashFlow(
@@ -17,7 +17,7 @@ public interface IWalletAnalyticsQueryService
         Guid walletId,
         DateOnly from,
         DateOnly to,
-        CancellationToken ct = default
+        CancellationToken cancel = default
     );
 
     Task<Result<CategoriesAnalyticsDto>> GetWalletCategoriesAnalytics(
@@ -25,6 +25,6 @@ public interface IWalletAnalyticsQueryService
         Guid walletId,
         DateOnly from,
         DateOnly to,
-        CancellationToken ct = default
+        CancellationToken cancel = default
     );
 }

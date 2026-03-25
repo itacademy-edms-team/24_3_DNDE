@@ -6,7 +6,10 @@ namespace FinanceTrack.Finance.Infrastructure.Data.Queries;
 
 public class WalletMetadataQueryService(AppDbContext dbContext) : IWalletMetadataQueryService
 {
-    public async Task<DateMinMaxDto> GetDateMinMax(string userId, CancellationToken ct = default)
+    public async Task<DateMinMaxDto> GetDateMinMax(
+        string userId,
+        CancellationToken cancel = default
+    )
     {
         var dates = await dbContext
             .FinancialTransactions.Where(t => t.UserId == userId)
@@ -16,7 +19,7 @@ public class WalletMetadataQueryService(AppDbContext dbContext) : IWalletMetadat
                 Min = (DateOnly?)g.Min(t => t.OperationDate),
                 Max = (DateOnly?)g.Max(t => t.OperationDate),
             })
-            .FirstOrDefaultAsync(ct);
+            .FirstOrDefaultAsync(cancel);
 
         return new DateMinMaxDto(dates?.Min, dates?.Max);
     }
