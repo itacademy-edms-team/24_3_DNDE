@@ -1,4 +1,5 @@
-﻿using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
+﻿using Ardalis.Result;
+using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
 using FinanceTrack.Finance.Infrastructure.Data.Config;
 using FinanceTrack.Finance.Infrastructure.PdfImport.Abstractions;
 using FinanceTrack.Finance.UseCases.ImportTransactions;
@@ -18,7 +19,7 @@ internal static class FinancialTransactionMapper
         return value.Substring(0, take) + ellipsis;
     }
 
-    public static TransactionImportDto ToDto(TransactionMatchBase match)
+    public static Result<TransactionImportDto> ToDto(TransactionMatchBase match)
     {
         var hasIncome = !string.IsNullOrWhiteSpace(match.IncomeAmount);
         var hasExpense = !string.IsNullOrWhiteSpace(match.ExpenseAmount);
@@ -26,13 +27,27 @@ internal static class FinancialTransactionMapper
         decimal incomeAmount = 0m;
         decimal expenseAmount = 0m;
 
-        if (hasIncome)
-            incomeAmount = PdfValueParser.ParseAmount(match.IncomeAmount);
+        if (hasIncome && !PdfValueParser.TryParseAmount(match.IncomeAmount, out incomeAmount))
+            return Result<TransactionImportDto>.Error(
+                $"Invalid income amount format: '{match.IncomeAmount}'."
+            );
 
-        if (hasExpense)
-            expenseAmount = PdfValueParser.ParseAmount(match.ExpenseAmount);
+        if (hasExpense && !PdfValueParser.TryParseAmount(match.ExpenseAmount, out expenseAmount))
+            return Result<TransactionImportDto>.Error(
+                $"Invalid expense amount format: '{match.ExpenseAmount}'."
+            );
 
         var isIncome = incomeAmount >= 0.01m;
+        var amount = isIncome ? incomeAmount : expenseAmount;
+        if (amount < 0.01m)
+            return Result<TransactionImportDto>.Error(
+                "Invalid transaction amount. Parsed amount must be at least 0.01."
+            );
+
+        if (!PdfValueParser.TryParseDate(match.OperationDate, out var operationDate))
+            return Result<TransactionImportDto>.Error(
+                $"Invalid operation date format: '{match.OperationDate}'. Expected format: dd.MM.yyyy."
+            );
 
         var fullName = match.Description.Trim();
         var nameMaxLength = FinancialTransactionDataSchemaConstants.TransactionNameMaxLength;
@@ -48,14 +63,16 @@ internal static class FinancialTransactionMapper
             description = TruncateWithEllipsis(fullName, descriptionMaxLength);
         }
 
-        return new TransactionImportDto(
-            Name: name,
-            Description: description,
-            TransactionType: isIncome
-                ? FinancialTransactionType.Income
-                : FinancialTransactionType.Expense,
-            Amount: isIncome ? incomeAmount : expenseAmount,
-            OperationDate: PdfValueParser.ParseDate(match.OperationDate)
+        return Result.Success(
+            new TransactionImportDto(
+                Name: name,
+                Description: description,
+                TransactionType: isIncome
+                    ? FinancialTransactionType.Income
+                    : FinancialTransactionType.Expense,
+                Amount: amount,
+                OperationDate: operationDate
+            )
         );
     }
 }
