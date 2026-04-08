@@ -1,9 +1,27 @@
-import { Alert, Box, Chip, Divider, Paper, Typography } from '@mui/material';
+import { Alert, Box, Divider, Paper, Typography } from '@mui/material';
 import ImageIcon from '@mui/icons-material/Image';
+import gazprombDebit000001 from '@/assets/docs/gazprombank/debit/gazpromDebit000001.jpg';
+
+type DocImageExample = {
+  id: string;
+  title: string;
+  note: string;
+  src?: string;
+  alt?: string;
+};
+
+const examples: DocImageExample[] = [
+  {
+    id: 'GazprombankDebit000001',
+    title: 'Пример 1',
+    note: 'Первая страница выписки по дебетовой карте Газпромбанка.',
+    src: gazprombDebit000001
+  },
+];
 
 function DocsGazprombankDebitPage() {
   return (
-    <Box sx={{ p: 3, maxWidth: 720 }}>
+    <Box sx={{ p: 3, maxWidth: 960 }}>
       <Typography variant="h4" gutterBottom>
         Газпромбанк — дебетовая карта
       </Typography>
@@ -17,37 +35,53 @@ function DocsGazprombankDebitPage() {
 
       <Divider sx={{ mb: 3 }} />
 
-      <Typography variant="h6" gutterBottom>
-        Идентификатор типа выписки
-      </Typography>
-      <Chip label="GazprombankDebit000001" variant="outlined" sx={{ mb: 3, fontFamily: 'monospace', fontSize: '0.9rem' }} />
+      <Box sx={{ display: 'grid', gap: 3 }}>
+        {examples.map((item) => (
+          <Box key={item.id} component="figure" sx={{ m: 0 }}>
+            <Typography variant="h6" gutterBottom>
+              {item.id}
+            </Typography>
+            {item.src ? (
+              <Box
+                component="img"
+                src={item.src}
+                alt={item.alt || item.title}
+                sx={{
+                  width: '100%',
+                  maxWidth: 560,
+                  borderRadius: 1,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  display: 'block',
+                }}
+              />
+            ) : (
+              <Paper
+                variant="outlined"
+                sx={{
+                  width: '100%',
+                  maxWidth: 560,
+                  aspectRatio: '210 / 297',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexDirection: 'column',
+                  gap: 1,
+                  color: 'text.disabled',
+                  bgcolor: 'action.hover',
+                }}
+              >
+                <ImageIcon sx={{ fontSize: 64 }} />
+                <Typography variant="body2">Изображение будет добавлено позже</Typography>
+              </Paper>
+            )}
 
-      <Typography variant="h6" gutterBottom>
-        Как выглядит первая страница
-      </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Первая страница выписки по дебетовой карте Газпромбанка должна содержать логотип банка,
-        информацию о карте, период выписки и таблицу операций с колонками: дата, описание, сумма, баланс.
-      </Typography>
-
-      <Paper
-        variant="outlined"
-        sx={{
-          width: '100%',
-          aspectRatio: '210 / 297',
-          maxWidth: 400,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexDirection: 'column',
-          gap: 1,
-          color: 'text.disabled',
-          bgcolor: 'action.hover',
-        }}
-      >
-        <ImageIcon sx={{ fontSize: 64 }} />
-        <Typography variant="body2">Изображение будет добавлено позже</Typography>
-      </Paper>
+            <Typography component="figcaption" variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              {item.note}
+            </Typography>
+          </Box>
+        ))}
+      </Box>
     </Box>
   );
 }
