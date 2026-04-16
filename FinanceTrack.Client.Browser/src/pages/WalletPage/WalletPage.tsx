@@ -160,6 +160,11 @@ const formatDate = (dateStr: string | null): string => {
   });
 };
 
+const formatDisplayName = (displayName: string): string => {
+  if (displayName.length <= 75) return displayName;
+  return displayName.slice(0, 72) + '...';
+}
+
 const formatDateShort = (dateStr: string): string => {
   const date = new Date(dateStr);
   return date.toLocaleDateString('ru-RU', {
@@ -1701,7 +1706,7 @@ function WalletPage() {
                           <TableCell>
                             <Box>
                               <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}>
-                                {displayName}
+                                {formatDisplayName(displayName)}
                                 {isTransfer && (
                                   <Chip
                                     label={transaction.type === 'TransferOut' ? 'Исходящий' : 'Входящий'}

@@ -1,9 +1,11 @@
-using FinanceTrack.Finance.Core.Interfaces;
+﻿using FinanceTrack.Finance.Core.Interfaces;
 using FinanceTrack.Finance.Core.Services;
 using FinanceTrack.Finance.Infrastructure.Data;
 using FinanceTrack.Finance.Infrastructure.Data.Queries;
+using FinanceTrack.Finance.Infrastructure.PdfImport;
 using FinanceTrack.Finance.UseCases.Analytics;
 using FinanceTrack.Finance.UseCases.FullTextSearch;
+using FinanceTrack.Finance.UseCases.ImportTransactions;
 using FinanceTrack.Finance.UseCases.Wallets;
 
 namespace FinanceTrack.Finance.Infrastructure;
@@ -26,12 +28,16 @@ public static class InfrastructureServiceExtensions
             .AddScoped(typeof(IReadRepository<>), typeof(EfRepository<>))
             .AddScoped<IUnitOfWork, EfUnitOfWork>()
             // Domain services
+            .AddScoped<CreateWalletService>()
             .AddScoped<CreateIncomeService>()
             .AddScoped<CreateExpenseService>()
             .AddScoped<TransferService>()
             .AddScoped<UpdateTransactionService>()
             .AddScoped<DeleteTransactionService>()
             .AddScoped<RecurringTransactionProcessorService>()
+            // Import services
+            .AddScoped<IBankStatementImportService, BankStatementImportService>()
+            .AddScoped<ImportTransactionsService>()
             // Query services
             .AddScoped<IGeneralAnalyticsQueryService, GeneralAnalyticsQueryService>()
             .AddScoped<IWalletAnalyticsQueryService, WalletAnalyticsQueryService>()

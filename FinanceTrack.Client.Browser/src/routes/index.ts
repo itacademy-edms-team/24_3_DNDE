@@ -4,6 +4,7 @@ import HomeIcon from '@mui/icons-material/Home';
 import TerrainIcon from '@mui/icons-material/Terrain';
 import CategoryIcon from '@mui/icons-material/Category';
 import SearchIcon from '@mui/icons-material/Search';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
 
 import asyncComponentLoader from '@/utils/loader';
 
@@ -68,6 +69,37 @@ const routes: Routes = [
     path: '/categories',
     title: 'Категории',
     icon: CategoryIcon,
+    protected: true,
+  },
+  {
+    component: asyncComponentLoader(() => import('@/pages/ImportPdfIndexPage')),
+    path: '/import',
+    title: 'Импорт из PDF',
+    icon: UploadFileIcon,
+    protected: true,
+  },
+  {
+    component: asyncComponentLoader(() => import('@/pages/ImportPdfExistingWalletPage')),
+    path: '/import/existing-wallet',
+    title: '',
+    protected: true,
+  },
+  {
+    component: asyncComponentLoader(() => import('@/pages/ImportPdfNewWalletPage')),
+    path: '/import/new-wallet',
+    title: '',
+    protected: true,
+  },
+  {
+    component: asyncComponentLoader(() => import('@/pages/DocsSberbankPaymentPage')),
+    path: '/docs/sberbank/payment',
+    title: '',
+    protected: true,
+  },
+  {
+    component: asyncComponentLoader(() => import('@/pages/DocsGazprombankDebitPage')),
+    path: '/docs/gazprombank/debit',
+    title: '',
     protected: true,
   },
   {
