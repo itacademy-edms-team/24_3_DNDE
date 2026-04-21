@@ -1,12 +1,14 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   Box,
   Button,
   Card,
   CardContent,
   Chip,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -174,24 +176,39 @@ const formatDateShort = (dateStr: string): string => {
   });
 };
 
+const fetchTransactionDateRange = async (
+  walletId: string,
+): Promise<TransactionDateRange | null> => {
+  const res = await fetch(
+    `/api/finance/Wallets/${walletId}/Transactions/Meta/DateRange`,
+    { credentials: 'include' },
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(getErrorMessage('загрузки диапазона дат', res.status));
+  return await res.json();
+};
+
 const fetchTransactions = async (
   walletId: string,
-  from?: string,
-  to?: string
-): Promise<Transaction[]> => {
+  from: string,
+  to: string,
+  pageSize: number,
+  afterCursor: string | null,
+): Promise<TransactionsPage> => {
   const params = new URLSearchParams();
-  if (from) params.append('from', from);
-  if (to) params.append('to', to);
-  
-  const url = `/api/finance/Wallets/${walletId}/Transactions${params.toString() ? `?${params.toString()}` : ''}`;
-  const res = await fetch(url, {
-    credentials: 'include',
-  });
+  params.append('from', from);
+  params.append('to', to);
+  params.append('pageSize', String(pageSize));
+  if (afterCursor) params.append('afterCursor', afterCursor);
+
+  const res = await fetch(
+    `/api/finance/Wallets/${walletId}/Transactions?${params.toString()}`,
+    { credentials: 'include' },
+  );
   if (!res.ok) {
     throw new Error(getErrorMessage('загрузки транзакций', res.status));
   }
-  const data: TransactionsResponse = await res.json();
-  return data.transactions;
+  return await res.json();
 };
 
 const fetchCategories = async (type: 'Income' | 'Expense'): Promise<Category[]> => {
@@ -402,9 +419,13 @@ type Transaction = {
   description: string | null;
 };
 
-type TransactionsResponse = {
+type TransactionsPage = {
   transactions: Transaction[];
+  nextCursor: string | null;
+  hasMore: boolean;
 };
+
+type TransactionDateRange = { minDate: string; maxDate: string };
 
 type CreateIncomePayload = {
   walletId: string;
@@ -554,6 +575,7 @@ function WalletPage() {
   const [filterEndYear, setFilterEndYear] = useState<number>(now.getFullYear());
   const [filterEndMonth, setFilterEndMonth] = useState<number>(now.getMonth() + 1);
   const [filtersInitialized, setFiltersInitialized] = useState(false);
+  const [pageSize, setPageSize] = useState<20 | 30 | 40>(20);
   const [transactionForm, setTransactionForm] = useState<TransactionFormState>({
     name: '',
     amount: '',
@@ -594,28 +616,13 @@ function WalletPage() {
     retry: false,
   });
 
-  // Загружаем все транзакции для определения диапазона дат
-  const { data: allTransactions = [] } = useQuery({
-    queryKey: ['transactions', walletId, 'all'],
-    queryFn: () => fetchTransactions(walletId!),
+  // Диапазон дат транзакций (для инициализации фильтров)
+  const { data: dateRange } = useQuery({
+    queryKey: ['transactions', walletId, 'meta', 'dateRange'],
+    queryFn: () => fetchTransactionDateRange(walletId!),
     enabled: !!walletId && !wallet?.isArchived,
     retry: false,
   });
-
-  // Определяем самую позднюю и самую раннюю даты транзакций
-  const latestTransactionDate = useMemo(() => {
-    if (allTransactions.length === 0) return null;
-    const dates = allTransactions.map((t) => new Date(t.operationDate));
-    const latest = new Date(Math.max(...dates.map((d) => d.getTime())));
-    return latest;
-  }, [allTransactions]);
-
-  const earliestTransactionDate = useMemo(() => {
-    if (allTransactions.length === 0) return null;
-    const dates = allTransactions.map((t) => new Date(t.operationDate));
-    const earliest = new Date(Math.min(...dates.map((d) => d.getTime())));
-    return earliest;
-  }, [allTransactions]);
 
   // Определяем диапазон годов для фильтров
   const availableYears = useMemo(() => {
@@ -623,25 +630,20 @@ function WalletPage() {
     let minYear = currentYear - 10;
     let maxYear = currentYear;
 
-    if (earliestTransactionDate) {
-      const earliestYear = earliestTransactionDate.getFullYear();
-      minYear = Math.min(minYear, earliestYear);
-    }
-    if (latestTransactionDate) {
-      const latestYear = latestTransactionDate.getFullYear();
-      maxYear = Math.max(maxYear, latestYear);
+    if (dateRange) {
+      minYear = Math.min(minYear, new Date(dateRange.minDate).getFullYear());
+      maxYear = Math.max(maxYear, new Date(dateRange.maxDate).getFullYear());
     }
 
-    // Добавляем небольшой запас
-    minYear = Math.max(2000, minYear - 1); // Не раньше 2000 года
-    maxYear = Math.min(2100, maxYear + 1); // Не позже 2100 года
+    minYear = Math.max(2000, minYear - 1);
+    maxYear = Math.min(2100, maxYear + 1);
 
     const years: number[] = [];
     for (let year = maxYear; year >= minYear; year--) {
       years.push(year);
     }
     return years;
-  }, [earliestTransactionDate, latestTransactionDate, now]);
+  }, [dateRange]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Сбрасываем фильтры при смене кошелька
   useEffect(() => {
@@ -653,33 +655,70 @@ function WalletPage() {
     setFilterEndMonth(currentDate.getMonth() + 1);
   }, [walletId]);
 
-  // Устанавливаем фильтры на основе самой поздней транзакции
+  // Устанавливаем фильтры на основе диапазона дат с сервера
   useEffect(() => {
     if (!filtersInitialized && walletId) {
-      if (latestTransactionDate) {
-        // Если есть транзакции, устанавливаем фильтры на основе самой поздней
-        const year = latestTransactionDate.getFullYear();
-        const month = latestTransactionDate.getMonth() + 1;
-        setFilterEndYear(year);
-        setFilterEndMonth(month);
-        setFilterStartYear(year);
-        setFilterStartMonth(month);
+      if (dateRange) {
+        const minDate = new Date(dateRange.minDate);
+        const maxDate = new Date(dateRange.maxDate);
+        setFilterStartYear(minDate.getFullYear());
+        setFilterStartMonth(minDate.getMonth() + 1);
+        setFilterEndYear(maxDate.getFullYear());
+        setFilterEndMonth(maxDate.getMonth() + 1);
       }
-      // Если транзакций нет, фильтры остаются на текущем месяце (уже установлены по умолчанию)
       setFiltersInitialized(true);
     }
-  }, [latestTransactionDate, filtersInitialized, walletId]);
+  }, [dateRange, filtersInitialized, walletId]);
 
   // Формируем даты для фильтрации
   const filterFrom = `${filterStartYear}-${String(filterStartMonth).padStart(2, '0')}-01`;
   const filterTo = `${filterEndYear}-${String(filterEndMonth).padStart(2, '0')}-${new Date(filterEndYear, filterEndMonth, 0).getDate()}`;
 
-  const { data: transactions = [] } = useQuery({
-    queryKey: ['transactions', walletId, filterFrom, filterTo],
-    queryFn: () => fetchTransactions(walletId!, filterFrom, filterTo),
+  const {
+    data: transactionsData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ['transactions', walletId, filterFrom, filterTo, pageSize],
+    queryFn: ({ pageParam }) =>
+      fetchTransactions(walletId!, filterFrom, filterTo, pageSize, pageParam),
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
     enabled: !!walletId && !wallet?.isArchived && filtersInitialized,
     retry: false,
   });
+
+  const allTransactions = useMemo(() => {
+    const seen = new Set<string>();
+    return (transactionsData?.pages ?? [])
+      .flatMap((p) => p.transactions)
+      .filter((t) => {
+        if (seen.has(t.id)) return false;
+        seen.add(t.id);
+        return true;
+      });
+  }, [transactionsData]);
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const virtualizer = useVirtualizer({
+    count: allTransactions.length,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => 53,
+    overscan: 10,
+  });
+
+  const virtualItems = virtualizer.getVirtualItems();
+
+  // Шаг 11 — InfiniteScroll: загружаем следующую страницу при достижении конца
+  useEffect(() => {
+    const lastItem = virtualItems[virtualItems.length - 1];
+    if (!lastItem) return;
+    if (lastItem.index >= allTransactions.length - 1 && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [virtualItems, hasNextPage, isFetchingNextPage, fetchNextPage, allTransactions.length]);
 
   const { data: incomeCategories = [] } = useQuery({
     queryKey: ['categories', 'Income'],
@@ -749,10 +788,9 @@ function WalletPage() {
       transactionType === 'Income' ? createIncome(payload as CreateIncomePayload) : createExpense(payload as CreateExpensePayload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions', walletId] });
+      queryClient.invalidateQueries({ queryKey: ['transactions', walletId, 'meta', 'dateRange'] });
       queryClient.invalidateQueries({ queryKey: ['wallet', walletId] });
       queryClient.invalidateQueries({ queryKey: ['wallets'] });
-      // Сбрасываем инициализацию фильтров, чтобы они обновились с учетом новой транзакции
-      setFiltersInitialized(false);
       setTransactionDialogOpen(false);
       setTransactionForm({
         name: '',
@@ -775,6 +813,7 @@ function WalletPage() {
       updateTransaction(transactionId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions', walletId] });
+      queryClient.invalidateQueries({ queryKey: ['transactions', walletId, 'meta', 'dateRange'] });
       queryClient.invalidateQueries({ queryKey: ['wallet', walletId] });
       queryClient.invalidateQueries({ queryKey: ['wallets'] });
       setTransactionDialogOpen(false);
@@ -798,6 +837,7 @@ function WalletPage() {
     mutationFn: deleteTransaction,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions', walletId] });
+      queryClient.invalidateQueries({ queryKey: ['transactions', walletId, 'meta', 'dateRange'] });
       queryClient.invalidateQueries({ queryKey: ['wallet', walletId] });
       queryClient.invalidateQueries({ queryKey: ['wallets'] });
       setDeleteConfirmOpen(false);
@@ -1124,11 +1164,6 @@ function WalletPage() {
 
     createTransferMutation.mutate(payload);
   };
-
-  // Сортируем все транзакции по дате (новые сверху)
-  const sortedTransactions = [...transactions].sort(
-    (a, b) => new Date(b.operationDate).getTime() - new Date(a.operationDate).getTime()
-  );
 
   const availableWallets = allWallets.filter((w) => !w.isArchived);
   const fromWallets = availableWallets.filter((w) => w.id !== transferForm.toWalletId);
@@ -1669,104 +1704,154 @@ function WalletPage() {
                     ))}
                   </Select>
                 </FormControl>
+
+                <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>
+                  На странице:
+                </Typography>
+                <FormControl size="small" sx={{ minWidth: 80 }}>
+                  <Select
+                    value={pageSize}
+                    onChange={(e) => setPageSize(e.target.value as 20 | 30 | 40)}
+                  >
+                    <MenuItem value={20}>20</MenuItem>
+                    <MenuItem value={30}>30</MenuItem>
+                    <MenuItem value={40}>40</MenuItem>
+                  </Select>
+                </FormControl>
               </Box>
             </Box>
 
-            {sortedTransactions.length === 0 ? (
+            {allTransactions.length === 0 && filtersInitialized ? (
               <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
                 Нет транзакций. Добавьте доход, расход или перевод.
               </Typography>
             ) : (
-              <TableContainer component={Paper} variant="outlined">
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Дата</TableCell>
-                      <TableCell>Название</TableCell>
-                      <TableCell align="right">Сумма</TableCell>
-                      <TableCell align="right">Действия</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {sortedTransactions.map((transaction) => {
-                      const isTransfer = transaction.type === 'TransferIn' || transaction.type === 'TransferOut';
-                      const isIncome = transaction.type === 'Income';
-                      const isExpense = transaction.type === 'Expense';
-                      
-                      let displayName = transaction.name;
-                      if (isTransfer) {
-                        displayName = transaction.type === 'TransferOut' 
-                          ? `↗ ${transaction.name}` 
-                          : `↙ ${transaction.name}`;
-                      }
+              <>
+                <TableContainer
+                  ref={scrollContainerRef}
+                  component={Paper}
+                  variant="outlined"
+                  sx={{ height: 480, overflow: 'auto' }}
+                >
+                  <Table size="small" sx={{ tableLayout: 'fixed' }}>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell sx={{ width: 100 }}>Дата</TableCell>
+                        <TableCell>Название</TableCell>
+                        <TableCell align="right" sx={{ width: 140 }}>Сумма</TableCell>
+                        <TableCell align="right" sx={{ width: 90 }}>Действия</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {virtualItems.length > 0 && virtualItems[0].start > 0 && (
+                        <TableRow sx={{ height: virtualItems[0].start }}>
+                          <TableCell colSpan={4} sx={{ p: 0, border: 0 }} />
+                        </TableRow>
+                      )}
 
-                      return (
-                        <TableRow key={transaction.id}>
-                          <TableCell>{formatDateShort(transaction.operationDate)}</TableCell>
-                          <TableCell>
-                            <Box>
-                              <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}>
-                                {formatDisplayName(displayName)}
-                                {isTransfer && (
-                                  <Chip
-                                    label={transaction.type === 'TransferOut' ? 'Исходящий' : 'Входящий'}
-                                    size="small"
-                                    variant="outlined"
-                                  />
+                      {virtualItems.map((virtualRow) => {
+                        const transaction = allTransactions[virtualRow.index];
+                        const isTransfer = transaction.type === 'TransferIn' || transaction.type === 'TransferOut';
+                        const isIncome = transaction.type === 'Income';
+                        const isExpense = transaction.type === 'Expense';
+
+                        let displayName = transaction.name;
+                        if (isTransfer) {
+                          displayName = transaction.type === 'TransferOut'
+                            ? `↗ ${transaction.name}`
+                            : `↙ ${transaction.name}`;
+                        }
+
+                        return (
+                          <TableRow
+                            key={transaction.id}
+                            ref={virtualizer.measureElement}
+                            data-index={virtualRow.index}
+                          >
+                            <TableCell>{formatDateShort(transaction.operationDate)}</TableCell>
+                            <TableCell>
+                              <Box>
+                                <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}>
+                                  {formatDisplayName(displayName)}
+                                  {isTransfer && (
+                                    <Chip
+                                      label={transaction.type === 'TransferOut' ? 'Исходящий' : 'Входящий'}
+                                      size="small"
+                                      variant="outlined"
+                                    />
+                                  )}
+                                </Box>
+                                {isTransfer && transaction.relatedWalletName && (
+                                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                                    {transaction.type === 'TransferOut'
+                                      ? `→ ${transaction.relatedWalletName}`
+                                      : `← ${transaction.relatedWalletName}`}
+                                  </Typography>
                                 )}
                               </Box>
-                              {isTransfer && transaction.relatedWalletName && (
-                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                                  {transaction.type === 'TransferOut' 
-                                    ? `→ ${transaction.relatedWalletName}`
-                                    : `← ${transaction.relatedWalletName}`}
-                                </Typography>
-                              )}
-                            </Box>
-                          </TableCell>
-                          <TableCell align="right">
-                            <Typography
-                              color={
-                                isIncome
-                                  ? 'success.main'
-                                  : isExpense
-                                    ? 'error.main'
-                                    : transaction.type === 'TransferOut'
-                                      ? 'warning.main'
-                                      : 'info.main'
-                              }
-                              fontWeight="bold"
-                            >
-                              {isIncome ? '+' : isExpense ? '-' : transaction.type === 'TransferOut' ? '↗' : '↙'}
-                              {formatMoney(transaction.amount)}
-                            </Typography>
-                          </TableCell>
-                          <TableCell align="right">
-                            <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
-                              {!isTransfer && (
+                            </TableCell>
+                            <TableCell align="right">
+                              <Typography
+                                color={
+                                  isIncome
+                                    ? 'success.main'
+                                    : isExpense
+                                      ? 'error.main'
+                                      : transaction.type === 'TransferOut'
+                                        ? 'warning.main'
+                                        : 'info.main'
+                                }
+                                fontWeight="bold"
+                              >
+                                {isIncome ? '+' : isExpense ? '-' : transaction.type === 'TransferOut' ? '↗' : '↙'}
+                                {formatMoney(transaction.amount)}
+                              </Typography>
+                            </TableCell>
+                            <TableCell align="right">
+                              <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
+                                {!isTransfer && (
+                                  <IconButton
+                                    size="small"
+                                    color="primary"
+                                    onClick={() => handleEditTransaction(transaction)}
+                                  >
+                                    <EditIcon fontSize="small" />
+                                  </IconButton>
+                                )}
                                 <IconButton
                                   size="small"
-                                  color="primary"
-                                  onClick={() => handleEditTransaction(transaction)}
+                                  color="error"
+                                  onClick={() => handleDeleteClick(transaction.id)}
                                 >
-                                  <EditIcon fontSize="small" />
+                                  <DeleteIcon fontSize="small" />
                                 </IconButton>
-                              )}
-                              <IconButton
-                                size="small"
-                                color="error"
-                                onClick={() => handleDeleteClick(transaction.id)}
-                              >
-                                <DeleteIcon fontSize="small" />
-                              </IconButton>
-                            </Box>
-                          </TableCell>
+                              </Box>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+
+                      {virtualItems.length > 0 && (
+                        <TableRow
+                          sx={{
+                            height:
+                              virtualizer.getTotalSize() -
+                              virtualItems[virtualItems.length - 1].end,
+                          }}
+                        >
+                          <TableCell colSpan={4} sx={{ p: 0, border: 0 }} />
                         </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+
+                {isFetchingNextPage && (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 1 }}>
+                    <CircularProgress size={20} />
+                  </Box>
+                )}
+              </>
             )}
           </CardContent>
         </Card>
