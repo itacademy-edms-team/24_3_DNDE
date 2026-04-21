@@ -680,7 +680,7 @@ function WalletPage() {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ['transactions', walletId, filterFrom, filterTo, pageSize],
+    queryKey: ['transactions', walletId, filterFrom, filterTo],
     queryFn: ({ pageParam }) =>
       fetchTransactions(walletId!, filterFrom, filterTo, pageSize, pageParam),
     initialPageParam: null as string | null,
