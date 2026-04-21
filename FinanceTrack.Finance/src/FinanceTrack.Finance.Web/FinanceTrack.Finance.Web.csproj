@@ -31,5 +31,6 @@
     </ItemGroup>
     <ItemGroup>
         <Folder Include="FinancialTransactions\Expenses\" />
+        <Folder Include="FinancialTransactions\Meta\" />
     </ItemGroup>
 </Project>

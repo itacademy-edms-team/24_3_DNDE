@@ -2,6 +2,7 @@
 using Ardalis.GuardClauses;
 using FinanceTrack.Finance.Core.Interfaces;
 using FinanceTrack.Finance.Infrastructure;
+using FinanceTrack.Finance.Infrastructure.Data.Config;
 using FinanceTrack.Finance.Infrastructure.Email;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.IdentityModel.Tokens;
@@ -16,8 +17,10 @@ public static class ServiceConfigs
         WebApplicationBuilder builder
     )
     {
-        builder.Services.AddHealthChecks();
+        services.AddHealthChecks();
 
+        services.AddPagination();
+        services.ConfigureOptions<PaginationOptionsSetup>();
         services.AddInfrastructureServices(builder.Configuration, logger).AddMediatrConfigs();
 
         if (builder.Environment.IsDevelopment())
