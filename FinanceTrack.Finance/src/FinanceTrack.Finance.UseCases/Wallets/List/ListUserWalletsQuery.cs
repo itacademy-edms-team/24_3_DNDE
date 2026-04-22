@@ -1,4 +1,4 @@
-namespace FinanceTrack.Finance.UseCases.Wallets.List;
+﻿namespace FinanceTrack.Finance.UseCases.Wallets.List;
 
-public sealed record ListUserWalletsQuery(string UserId)
-    : IQuery<IReadOnlyList<WalletDto>>;
+public sealed record ListUserWalletsQuery(string UserId, string? AfterCursor, int PageSize)
+    : IQuery<Result<WalletPageDto>>;

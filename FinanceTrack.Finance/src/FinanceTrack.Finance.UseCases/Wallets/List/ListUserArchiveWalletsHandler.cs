@@ -1,35 +1,20 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using FinanceTrack.Finance.Core.WalletAggregate;
-using FinanceTrack.Finance.Core.WalletAggregate.Specifications;
+﻿namespace FinanceTrack.Finance.UseCases.Wallets.List;
 
-namespace FinanceTrack.Finance.UseCases.Wallets.List;
-
-public sealed class ListUserArchiveWalletsHandler(IRepository<Wallet> repo)
-    : IQueryHandler<ListUserArchiveWalletsQuery, IReadOnlyList<WalletDto>>
+public sealed class ListUserArchiveWalletsHandler(IUserWalletListQueryService walletListService)
+    : IQueryHandler<ListUserArchiveWalletsQuery, Result<WalletPageDto>>
 {
-    public async Task<IReadOnlyList<WalletDto>> Handle(
+    public async Task<Result<WalletPageDto>> Handle(
         ListUserArchiveWalletsQuery request,
         CancellationToken ct
     )
     {
-        var spec = new UserArchiveWalletsSpec(request.userId);
-        var wallets = await repo.ListAsync(spec, ct);
-
-        return wallets
-            .Select(w => new WalletDto(
-                w.Id,
-                w.Name,
-                w.WalletType.Name,
-                w.Balance,
-                w.AllowNegativeBalance,
-                w.TargetAmount,
-                w.TargetDate,
-                w.IsArchived
-            ))
-            .ToList();
+        var page = await walletListService.ListAsync(
+            request.UserId,
+            isArchived: true,
+            request.AfterCursor,
+            request.PageSize,
+            ct
+        );
+        return Result.Success(page);
     }
 }

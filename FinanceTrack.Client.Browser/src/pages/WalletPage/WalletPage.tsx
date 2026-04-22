@@ -737,7 +737,7 @@ function WalletPage() {
   // Используем те же категории для рекуррентных транзакций
 
   const { data: allWallets = [] } = useQuery({
-    queryKey: ['wallets'],
+    queryKey: ['wallets-for-transfer'],
     queryFn: fetchAllWallets,
     enabled: transferDialogOpen,
     retry: false,
