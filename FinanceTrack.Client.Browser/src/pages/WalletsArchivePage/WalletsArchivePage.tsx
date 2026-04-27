@@ -1,15 +1,18 @@
+import { useEffect, useRef, useMemo } from 'react';
 import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Button,
   Card,
   CardContent,
   Chip,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  LinearProgress,
   Typography,
 } from '@mui/material';
 import Grid2 from '@mui/material/Grid2';
@@ -31,38 +34,43 @@ type Wallet = {
   isArchived: boolean;
 };
 
-type WalletsResponse = {
+type WalletsPage = {
   wallets: Wallet[];
+  nextCursor: string | null;
+  hasMore: boolean;
 };
 
 const getErrorMessage = (operation: string, status: number): string => {
   return `Ошибка ${operation}: ${status}`;
 };
 
-const fetchArchivedWallets = async (): Promise<Wallet[]> => {
-  const res = await fetch('/api/finance/Wallets/archive', {
+const PAGE_SIZE = 30;
+
+const fetchArchivedWallets = async ({
+  pageParam,
+}: {
+  pageParam: string | null;
+}): Promise<WalletsPage> => {
+  const params = new URLSearchParams();
+  params.append('pageSize', String(PAGE_SIZE));
+  if (pageParam) params.append('afterCursor', pageParam);
+
+  const res = await fetch(`/api/finance/Wallets/archive?${params.toString()}`, {
     credentials: 'include',
   });
-  if (!res.ok) {
-    throw new Error(getErrorMessage('загрузки архивных кошельков', res.status));
-  }
-  const data: WalletsResponse = await res.json();
-  return data.wallets;
+  if (!res.ok) throw new Error(getErrorMessage('загрузки архивных кошельков', res.status));
+  return await res.json();
 };
 
 const unarchiveWallet = async (walletId: string): Promise<void> => {
   const res = await fetch(`/api/finance/Wallets/${walletId}/unarchive`, {
     credentials: 'include',
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: '{}', // FastEndpoints default behaviour requirement
+    headers: { 'Content-Type': 'application/json' },
+    body: '{}',
   });
 
-  if (!res.ok) {
-    throw new Error(getErrorMessage('разархивации кошелька', res.status));
-  }
+  if (!res.ok) throw new Error(getErrorMessage('разархивации кошелька', res.status));
 };
 
 const formatMoney = (value: number): string => {
@@ -86,15 +94,53 @@ const formatDate = (dateStr: string | null): string => {
 
 function WalletsArchivePage() {
   const queryClient = useQueryClient();
+  const sentinelRef = useRef<HTMLDivElement>(null);
   const [unarchiveConfirmOpen, setUnarchiveConfirmOpen] = useState(false);
   const [walletToUnarchive, setWalletToUnarchive] = useState<Wallet | null>(null);
   const [errorDialog, setErrorDialog] = useState({ open: false, message: '' });
 
-  const { data: wallets, isLoading, isPending, error } = useQuery({
+  const {
+    data: walletsData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    error,
+  } = useInfiniteQuery({
     queryKey: ['wallets-archive'],
     queryFn: fetchArchivedWallets,
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
     retry: false,
   });
+
+  const wallets = useMemo(() => {
+    const seen = new Set<string>();
+    return (walletsData?.pages ?? [])
+      .flatMap((p) => p.wallets)
+      .filter((w) => {
+        if (seen.has(w.id)) return false;
+        seen.add(w.id);
+        return true;
+      });
+  }, [walletsData]);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const unarchiveWalletMutation = useMutation({
     mutationFn: (walletId: string) => unarchiveWallet(walletId),
@@ -121,7 +167,7 @@ function WalletsArchivePage() {
     }
   };
 
-  if (isLoading || isPending) {
+  if (isLoading) {
     return <Loading />;
   }
 
@@ -142,7 +188,7 @@ function WalletsArchivePage() {
         <Typography variant="h4">Архивные кошельки</Typography>
       </Box>
 
-      {(!wallets || wallets.length === 0) && (
+      {wallets.length === 0 && (
         <Box sx={{ textAlign: 'center', py: 4 }}>
           <Typography variant="h5" gutterBottom>
             Нет архивных кошельков
@@ -153,7 +199,7 @@ function WalletsArchivePage() {
         </Box>
       )}
 
-      {wallets && wallets.length > 0 && (
+      {wallets.length > 0 && (
         <Grid2 container spacing={2}>
           {wallets.map((wallet) => (
             <Grid2 size={{ xs: 12, sm: 6, md: 4 }} key={wallet.id}>
@@ -163,7 +209,14 @@ function WalletsArchivePage() {
         </Grid2>
       )}
 
-      {/* Dialog подтверждения разархивации */}
+      <div ref={sentinelRef} />
+
+      {isFetchingNextPage && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+          <CircularProgress size={24} />
+        </Box>
+      )}
+
       <Dialog open={unarchiveConfirmOpen} onClose={() => setUnarchiveConfirmOpen(false)}>
         <DialogTitle>Разархивировать кошелёк</DialogTitle>
         <DialogContent>
@@ -187,7 +240,6 @@ function WalletsArchivePage() {
         </DialogActions>
       </Dialog>
 
-      {/* Error Dialog */}
       <ErrorDialog
         open={errorDialog.open}
         message={errorDialog.message}
@@ -245,7 +297,11 @@ function WalletCard({ wallet, onUnarchive }: WalletCardProps) {
           sx={{ mb: 2 }}
         />
 
-        <Typography variant="h4" gutterBottom color={wallet.balance >= 0 ? 'success.main' : 'error.main'}>
+        <Typography
+          variant="h4"
+          gutterBottom
+          color={wallet.balance >= 0 ? 'success.main' : 'error.main'}
+        >
           {formatMoney(wallet.balance)}
         </Typography>
 
@@ -260,10 +316,19 @@ function WalletCard({ wallet, onUnarchive }: WalletCardProps) {
               </Typography>
             </Box>
             {wallet.targetDate && (
-              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ mt: 0.5, display: 'block' }}
+              >
                 До: {formatDate(wallet.targetDate)}
               </Typography>
             )}
+            <LinearProgress
+              variant="determinate"
+              value={progressPercent}
+              sx={{ height: 8, borderRadius: 1, mt: 1 }}
+            />
           </Box>
         )}
 

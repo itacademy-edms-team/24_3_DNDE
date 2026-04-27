@@ -1,12 +1,15 @@
 ﻿using FinanceTrack.Finance.Core.Interfaces;
 using FinanceTrack.Finance.Core.Services;
 using FinanceTrack.Finance.Infrastructure.Data;
+using FinanceTrack.Finance.Infrastructure.Data.Config;
 using FinanceTrack.Finance.Infrastructure.Data.Queries;
 using FinanceTrack.Finance.Infrastructure.PdfImport;
 using FinanceTrack.Finance.UseCases.Analytics;
+using FinanceTrack.Finance.UseCases.FinancialTransactions.List;
 using FinanceTrack.Finance.UseCases.FullTextSearch;
 using FinanceTrack.Finance.UseCases.ImportTransactions;
 using FinanceTrack.Finance.UseCases.Wallets;
+using FinanceTrack.Finance.UseCases.Wallets.List;
 
 namespace FinanceTrack.Finance.Infrastructure;
 
@@ -46,7 +49,9 @@ public static class InfrastructureServiceExtensions
             .AddScoped<
                 IGlobalFullTextSearchQueryService,
                 GlobalFullTextSearchParallelQueryService
-            >();
+            >()
+            .AddScoped<IWalletTransactionListQueryService, WalletTransactionListQueryService>()
+            .AddScoped<IUserWalletListQueryService, UserWalletListQueryService>();
 
         logger.LogInformation("{Project} services registered", "Infrastructure");
 

@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Button,
   Card,
   CardContent,
   Chip,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -27,7 +28,6 @@ import Grid2 from '@mui/material/Grid2';
 import AddIcon from '@mui/icons-material/Add';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import SavingsIcon from '@mui/icons-material/Savings';
-import ArchiveIcon from '@mui/icons-material/Archive';
 
 import Loading from '@/components/Loading';
 
@@ -42,8 +42,10 @@ type Wallet = {
   isArchived: boolean;
 };
 
-type WalletsResponse = {
+type WalletsPage = {
   wallets: Wallet[];
+  nextCursor: string | null;
+  hasMore: boolean;
 };
 
 type CreateWalletPayload = {
@@ -58,28 +60,24 @@ type CreateWalletResponse = {
   id: string;
 };
 
-const fetchWallets = async (): Promise<Wallet[]> => {
-  try {
-    const res = await fetch('/api/finance/Wallets', {
-      credentials: 'include',
-    });
-    if (!res.ok) {
-      throw new Error(`HTTP error! status: ${res.status}`);
-    }
-    const data: WalletsResponse = await res.json();
-    return data.wallets;
-  } catch (e) {
-    console.error('Failed to fetch wallets:', e);
-    throw e;
-  }
+const PAGE_SIZE = 30;
+
+const fetchWallets = async ({ pageParam }: { pageParam: string | null }): Promise<WalletsPage> => {
+  const params = new URLSearchParams();
+  params.append('pageSize', String(PAGE_SIZE));
+  if (pageParam) params.append('afterCursor', pageParam);
+
+  const res = await fetch(`/api/finance/Wallets?${params.toString()}`, {
+    credentials: 'include',
+  });
+  if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+  return await res.json();
 };
 
 const createWallet = async (payload: CreateWalletPayload): Promise<CreateWalletResponse> => {
   const res = await fetch('/api/finance/Wallets', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
     body: JSON.stringify(payload),
   });
@@ -121,6 +119,7 @@ type WalletFormState = {
 
 function WalletsPage() {
   const queryClient = useQueryClient();
+  const sentinelRef = useRef<HTMLDivElement>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [formState, setFormState] = useState<WalletFormState>({
     name: '',
@@ -130,11 +129,48 @@ function WalletsPage() {
     targetDate: '',
   });
 
-  const { data: wallets, isLoading, isPending, error } = useQuery({
+  const {
+    data: walletsData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    error,
+  } = useInfiniteQuery({
     queryKey: ['wallets'],
     queryFn: fetchWallets,
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
     retry: false,
   });
+
+  const wallets = useMemo(() => {
+    const seen = new Set<string>();
+    return (walletsData?.pages ?? [])
+      .flatMap((p) => p.wallets)
+      .filter((w) => {
+        if (seen.has(w.id)) return false;
+        seen.add(w.id);
+        return true;
+      });
+  }, [walletsData]);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const createWalletMutation = useMutation({
     mutationFn: createWallet,
@@ -170,7 +206,6 @@ function WalletsPage() {
   };
 
   const handleSubmit = () => {
-    // Валидация
     if (!formState.name.trim()) {
       alert('Введите название кошелька');
       return;
@@ -203,7 +238,7 @@ function WalletsPage() {
 
   const isSavings = formState.walletType === 'Savings';
 
-  if (isLoading || isPending) {
+  if (isLoading) {
     return <Loading />;
   }
 
@@ -217,24 +252,17 @@ function WalletsPage() {
     );
   }
 
-  const activeWallets = wallets?.filter((w) => !w.isArchived) ?? [];
-  const archivedWallets = wallets?.filter((w) => w.isArchived) ?? [];
-
   return (
     <Box sx={{ p: 3 }}>
       <meta name="title" content="Кошельки" />
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4">Кошельки</Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleOpenDialog}
-        >
+        <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenDialog}>
           Создать кошелёк
         </Button>
       </Box>
 
-      {(!wallets || wallets.length === 0) && (
+      {wallets.length === 0 && (
         <Box sx={{ textAlign: 'center', py: 4 }}>
           <Typography variant="h5" gutterBottom>
             У вас пока нет кошельков
@@ -245,33 +273,21 @@ function WalletsPage() {
         </Box>
       )}
 
-      {activeWallets.length > 0 && (
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h6" gutterBottom sx={{ mb: 2 }}>
-            Активные кошельки
-          </Typography>
-          <Grid2 container spacing={2}>
-            {activeWallets.map((wallet) => (
-              <Grid2 size={{ xs: 12, sm: 6, md: 4 }} key={wallet.id}>
-                <WalletCard wallet={wallet} />
-              </Grid2>
-            ))}
-          </Grid2>
-        </Box>
+      {wallets.length > 0 && (
+        <Grid2 container spacing={2}>
+          {wallets.map((wallet) => (
+            <Grid2 size={{ xs: 12, sm: 6, md: 4 }} key={wallet.id}>
+              <WalletCard wallet={wallet} />
+            </Grid2>
+          ))}
+        </Grid2>
       )}
 
-      {archivedWallets.length > 0 && (
-        <Box>
-          <Typography variant="h6" gutterBottom sx={{ mb: 2, color: 'text.secondary' }}>
-            Архивированные кошельки
-          </Typography>
-          <Grid2 container spacing={2}>
-            {archivedWallets.map((wallet) => (
-              <Grid2 size={{ xs: 12, sm: 6, md: 4 }} key={wallet.id}>
-                <WalletCard wallet={wallet} />
-              </Grid2>
-            ))}
-          </Grid2>
+      <div ref={sentinelRef} />
+
+      {isFetchingNextPage && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+          <CircularProgress size={24} />
         </Box>
       )}
 
@@ -332,9 +348,9 @@ function WalletsPage() {
                   onChange={(e) => setFormState({ ...formState, targetAmount: e.target.value })}
                   fullWidth
                   required
-                  inputProps={{ min: 0.01, step: 0.01 }}
-                  InputProps={{
-                    endAdornment: <InputAdornment position="end">₽</InputAdornment>,
+                  slotProps={{
+                    htmlInput: { min: 0.01, step: 0.01 },
+                    input: { endAdornment: <InputAdornment position="end">₽</InputAdornment> },
                   }}
                 />
 
@@ -344,8 +360,10 @@ function WalletsPage() {
                   value={formState.targetDate}
                   onChange={(e) => setFormState({ ...formState, targetDate: e.target.value })}
                   fullWidth
-                  InputLabelProps={{ shrink: true }}
-                  inputProps={{ min: new Date().toISOString().split('T')[0] }}
+                  slotProps={{
+                    inputLabel: { shrink: true },
+                    htmlInput: { min: new Date().toISOString().split('T')[0] },
+                  }}
                 />
               </>
             )}
@@ -378,35 +396,19 @@ function WalletCard({ wallet }: WalletCardProps) {
       ? Math.min((wallet.balance / wallet.targetAmount) * 100, 100)
       : 0;
 
-  const handleCardClick = () => {
-    navigate(`/wallets/${wallet.id}`);
-  };
-
   return (
     <Card
       variant="outlined"
-      onClick={handleCardClick}
+      onClick={() => navigate(`/wallets/${wallet.id}`)}
       sx={{
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        opacity: wallet.isArchived ? 0.6 : 1,
-        position: 'relative',
         cursor: 'pointer',
-        '&:hover': {
-          boxShadow: 3,
-        },
+        '&:hover': { boxShadow: 3 },
         transition: 'box-shadow 0.2s',
       }}
     >
-      {wallet.isArchived && (
-        <Chip
-          icon={<ArchiveIcon />}
-          label="Архив"
-          size="small"
-          sx={{ position: 'absolute', top: 8, right: 8 }}
-        />
-      )}
       <CardContent sx={{ flexGrow: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
           {isSavings ? (
@@ -426,7 +428,11 @@ function WalletCard({ wallet }: WalletCardProps) {
           sx={{ mb: 2 }}
         />
 
-        <Typography variant="h4" gutterBottom color={wallet.balance >= 0 ? 'success.main' : 'error.main'}>
+        <Typography
+          variant="h4"
+          gutterBottom
+          color={wallet.balance >= 0 ? 'success.main' : 'error.main'}
+        >
           {formatMoney(wallet.balance)}
         </Typography>
 

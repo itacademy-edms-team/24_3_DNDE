@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿namespace FinanceTrack.Finance.UseCases.Wallets.List;
 
-namespace FinanceTrack.Finance.UseCases.Wallets.List;
-
-public sealed record ListUserArchiveWalletsQuery(string userId) : IQuery<IReadOnlyList<WalletDto>>;
+public sealed record ListUserArchiveWalletsQuery(string UserId, string? AfterCursor, int PageSize)
+    : IQuery<Result<WalletPageDto>>;
