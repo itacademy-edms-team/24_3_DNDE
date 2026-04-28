@@ -6,6 +6,7 @@ public class RecurringTransactionsForReminderSpec : Specification<RecurringTrans
     {
         Query
             .Where(rt => rt.IsActive)
+            .Where(rt => rt.TransactionType == RecurringTransactionType.Expense)
             .Where(rt => rt.StartDate <= today)
             .Where(rt => rt.EndDate == null || rt.EndDate >= today)
             .Where(rt => rt.LastEmailReminderDate == null)
