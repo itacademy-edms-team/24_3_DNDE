@@ -93,11 +93,15 @@ public class EmailReminderService(
     {
         var sb = new StringBuilder();
         sb.AppendLine("Предстоящие платежи:");
-        sb.AppendLine();
-        foreach (var item in items)
-            sb.AppendLine(
-                $"• [{item.WalletName}] {item.Name} — {item.Amount:F2} ₽, {item.DueDate:dd.MM.yyyy}"
-            );
+
+        foreach (var walletGroup in items.GroupBy(i => i.WalletName))
+        {
+            sb.AppendLine();
+            sb.AppendLine($"{walletGroup.Key}:");
+            foreach (var item in walletGroup.OrderBy(i => i.DueDate))
+                sb.AppendLine($"• {item.Name} — {item.Amount:F2} ₽, {item.DueDate:dd.MM.yyyy}");
+        }
+
         return sb.ToString();
     }
 
