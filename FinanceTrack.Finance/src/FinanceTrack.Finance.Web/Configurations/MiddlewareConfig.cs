@@ -1,5 +1,6 @@
 ﻿using Ardalis.ListStartupServices;
 using FinanceTrack.Finance.Infrastructure.Data;
+using FinanceTrack.Finance.Web.Middlewares;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTrack.Finance.Web.Configurations;
@@ -10,6 +11,9 @@ public static class MiddlewareConfig
         this WebApplication app
     )
     {
+        app.UseAuthentication();
+        app.UseAuthorization();
+
         if (app.Environment.IsDevelopment())
         {
             app.UseDeveloperExceptionPage();
@@ -22,6 +26,8 @@ public static class MiddlewareConfig
         }
 
         app.MapHealthChecks("/healthz");
+
+        app.UseMiddleware<UserSyncMiddleware>();
 
         app.UseFastEndpoints().UseSwaggerGen(); // Includes AddFileServer and static files middleware
 

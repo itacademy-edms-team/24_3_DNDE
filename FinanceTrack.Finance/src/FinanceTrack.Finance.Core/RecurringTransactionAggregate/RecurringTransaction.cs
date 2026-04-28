@@ -18,6 +18,7 @@ public sealed class RecurringTransaction : GuidEntityBase, IAggregateRoot
     public DateOnly? EndDate { get; private set; }
     public bool IsActive { get; private set; }
     public DateOnly? LastProcessedDate { get; private set; }
+    public DateOnly? LastEmailReminderDate { get; private set; }
     public DateTime CreatedAtUtc { get; private set; }
 
     // Navigation
@@ -44,7 +45,7 @@ public sealed class RecurringTransaction : GuidEntityBase, IAggregateRoot
         Guard.Against.Default(walletId);
         Guard.Against.NullOrWhiteSpace(name);
         Guard.Against.OutOfRange(amount, nameof(amount), 0.01m, decimal.MaxValue);
-        Guard.Against.OutOfRange(dayOfMonth, nameof(dayOfMonth), 1, 28);
+        Guard.Against.OutOfRange(dayOfMonth, nameof(dayOfMonth), 1, 31);
         Guard.Against.Default(startDate);
 
         if (endDate.HasValue && endDate.Value < startDate)
@@ -69,11 +70,30 @@ public sealed class RecurringTransaction : GuidEntityBase, IAggregateRoot
         };
     }
 
-    public void Deactivate() => IsActive = false;
+    public RecurringTransaction Deactivate()
+    {
+        IsActive = false;
+        return this;
+    }
 
-    public void Activate() => IsActive = true;
+    public RecurringTransaction Activate()
+    {
+        IsActive = true;
+        return this;
+    }
 
-    public void MarkProcessed(DateOnly date) => LastProcessedDate = date;
+    public RecurringTransaction MarkProcessed(DateOnly date)
+    {
+        LastProcessedDate = date;
+        LastEmailReminderDate = null; // Сбрасываем дату для последующих месяцев. Чтобы сервисы понимали, что этот правило ещё не напоминалось.
+        return this;
+    }
+
+    public RecurringTransaction MarkEmailReminderSent(DateOnly date)
+    {
+        LastEmailReminderDate = date;
+        return this;
+    }
 
     public RecurringTransaction UpdateName(string name)
     {
@@ -97,7 +117,7 @@ public sealed class RecurringTransaction : GuidEntityBase, IAggregateRoot
 
     public RecurringTransaction SetDayOfMonth(int day)
     {
-        Guard.Against.OutOfRange(day, nameof(day), 1, 28);
+        Guard.Against.OutOfRange(day, nameof(day), 1, 31);
         DayOfMonth = day;
         return this;
     }

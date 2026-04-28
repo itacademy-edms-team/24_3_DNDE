@@ -4,6 +4,7 @@ using FinanceTrack.Finance.Core.Interfaces;
 using FinanceTrack.Finance.Infrastructure;
 using FinanceTrack.Finance.Infrastructure.Data.Config;
 using FinanceTrack.Finance.Infrastructure.Email;
+using FinanceTrack.Finance.Web.Middlewares;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.IdentityModel.Tokens;
 
@@ -22,6 +23,7 @@ public static class ServiceConfigs
         services.AddPagination();
         services.ConfigureOptions<PaginationOptionsSetup>();
         services.AddInfrastructureServices(builder.Configuration, logger).AddMediatrConfigs();
+        services.AddScoped<UserSyncMiddleware>();
 
         if (builder.Environment.IsDevelopment())
         {
