@@ -1,4 +1,5 @@
 ﻿using FinanceTrack.Finance.Core.Services;
+using FinanceTrack.Finance.Infrastructure.Notifications;
 
 namespace FinanceTrack.Finance.Web.BackgroundServices;
 
@@ -7,11 +8,11 @@ public class RecurringTransactionBackgroundService(
     ILogger<RecurringTransactionBackgroundService> logger
 ) : BackgroundService
 {
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    protected override async Task ExecuteAsync(CancellationToken cancel)
     {
         logger.LogInformation("RecurringTransactionBackgroundService started.");
 
-        while (!stoppingToken.IsCancellationRequested)
+        while (!cancel.IsCancellationRequested)
         {
             try
             {
@@ -20,7 +21,7 @@ public class RecurringTransactionBackgroundService(
                     scope.ServiceProvider.GetRequiredService<RecurringTransactionProcessorService>();
 
                 var today = DateOnly.FromDateTime(DateTime.UtcNow);
-                var created = await processor.ProcessAsync(today, stoppingToken);
+                var created = await processor.ProcessAsync(today, cancel);
 
                 if (created > 0)
                 {
@@ -30,6 +31,10 @@ public class RecurringTransactionBackgroundService(
                         today
                     );
                 }
+
+                var reminderService =
+                    scope.ServiceProvider.GetRequiredService<EmailReminderService>();
+                await reminderService.SendRemindersAsync(today, cancel);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -37,7 +42,7 @@ public class RecurringTransactionBackgroundService(
             }
 
             // Run every hour
-            await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
+            await Task.Delay(TimeSpan.FromHours(1), cancel);
         }
     }
 }

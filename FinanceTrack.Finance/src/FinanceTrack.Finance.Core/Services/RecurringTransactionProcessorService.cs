@@ -66,7 +66,7 @@ public class RecurringTransactionProcessorService(
                 Math.Min(
                     rule.DayOfMonth,
                     DateTime.DaysInMonth(currentMonth.Year, currentMonth.Month)
-                )
+                ) // Выбираем день месяца, учитывая количество дней в месяце и день из правила
             );
 
             // Only create if the operation date has arrived and it's within the active range

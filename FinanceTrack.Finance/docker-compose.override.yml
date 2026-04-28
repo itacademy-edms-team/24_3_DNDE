@@ -20,6 +20,8 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_HTTP_PORTS=8080
+      - Mailserver__Hostname=ft-mailpit
+      - Mailserver__Port=1025
       # - ASPNETCORE_HTTPS_PORTS=8081
     ports:
       - "16020:8080"

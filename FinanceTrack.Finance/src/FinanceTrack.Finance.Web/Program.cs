@@ -31,9 +31,6 @@ builder.Services.AddHostedService<RecurringTransactionBackgroundService>();
 
 var app = builder.Build();
 
-app.UseAuthentication();
-app.UseAuthorization();
-
 await app.UseAppMiddlewareAndSeedDatabase();
 
 await app.RunAsync();

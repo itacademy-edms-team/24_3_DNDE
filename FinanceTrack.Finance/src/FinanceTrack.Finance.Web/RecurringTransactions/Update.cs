@@ -29,8 +29,8 @@ public class UpdateRecurringTransactionValidator : Validator<UpdateRecurringTran
             .GreaterThanOrEqualTo(0.01m)
             .WithMessage("Amount must be at least 0.01.");
         RuleFor(x => x.DayOfMonth)
-            .InclusiveBetween(1, 28)
-            .WithMessage("DayOfMonth must be between 1 and 28.");
+            .InclusiveBetween(1, 31)
+            .WithMessage("DayOfMonth must be between 1 and 31.");
     }
 }
 

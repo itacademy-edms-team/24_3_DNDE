@@ -1234,8 +1234,8 @@ function WalletPage() {
     }
 
     const dayOfMonth = parseInt(recurringForm.dayOfMonth);
-    if (!recurringForm.dayOfMonth || isNaN(dayOfMonth) || dayOfMonth < 1 || dayOfMonth > 28) {
-      setErrorDialog({ open: true, message: 'День месяца должен быть от 1 до 28' });
+    if (!recurringForm.dayOfMonth || isNaN(dayOfMonth)) {
+      setErrorDialog({ open: true, message: 'День месяца должен быть числом' });
       return;
     }
 
@@ -2240,7 +2240,6 @@ function WalletPage() {
               fullWidth
               required
               inputProps={{ min: 1, max: 28 }}
-              helperText="От 1 до 28 (чтобы избежать проблем с разной длиной месяцев)"
             />
 
             <TextField

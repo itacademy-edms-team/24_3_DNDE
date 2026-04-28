@@ -40,6 +40,8 @@ public class RecurringTransactionConfiguration : IEntityTypeConfiguration<Recurr
 
         builder.Property(r => r.LastProcessedDate).HasColumnType("date");
 
+        builder.Property(r => r.LastEmailReminderDate).HasColumnType("date");
+
         builder
             .Property(r => r.CreatedAtUtc)
             .HasColumnType("timestamp with time zone")

@@ -9,8 +9,10 @@ public class MimeKitEmailSender(
 {
     private readonly MailserverConfiguration _mailserverConfiguration = mailserverOptions.Value!;
 
-    public async Task SendEmailAsync(string to, string from, string subject, string body)
+    public async Task SendEmailAsync(string to, string subject, string body)
     {
+        var from = _mailserverConfiguration.FromEmail;
+
         logger.LogWarning(
             "Sending email to {to} from {from} with subject {subject} using {type}.",
             to,
