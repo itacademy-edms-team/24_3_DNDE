@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using System.Collections.Concurrent;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using FinanceTrack.Gateway.Configuration;
 using Microsoft.Extensions.Caching.Memory;
@@ -46,6 +47,8 @@ public class TokenExchangeService : ITokenExchangeService
     private const string TokenExchangeGrantType = "urn:ietf:params:oauth:grant-type:token-exchange";
     private const string AccessTokenType = "urn:ietf:params:oauth:token-type:access_token";
 
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _semaphores = new();
+
     public TokenExchangeService(
         HttpClient httpClient,
         IOptions<OidcOptions> oidcOptions,
@@ -66,25 +69,29 @@ public class TokenExchangeService : ITokenExchangeService
         CancellationToken cancellationToken = default
     )
     {
-        // Create cache key based on subject token hash, target audience and scopes
+        // Cache key uses sub (stable across token refreshes) instead of token hash
+        var sub = ExtractSub(subjectToken);
         var scopesKey = scopes != null ? string.Join(",", scopes) : "";
-        var cacheKey = $"token_exchange:{subjectToken.GetHashCode()}:{targetAudience}:{scopesKey}";
+        var cacheKey = $"token_exchange:{sub ?? subjectToken.GetHashCode().ToString()}:{targetAudience}:{scopesKey}";
 
-        // Check cache first
-        if (
-            _cache.TryGetValue(cacheKey, out TokenExchangeResult? cachedResult)
-            && cachedResult != null
-        )
+        if (_cache.TryGetValue(cacheKey, out TokenExchangeResult? cachedResult) && cachedResult != null)
         {
-            _logger.LogDebug(
-                "Returning cached exchanged token for audience {Audience}",
-                targetAudience
-            );
+            _logger.LogDebug("Returning cached exchanged token for audience {Audience}", targetAudience);
             return cachedResult;
         }
 
+        // Prevent stampede: only one exchange per unique key at a time
+        var sem = _semaphores.GetOrAdd(cacheKey, _ => new SemaphoreSlim(1, 1));
+        await sem.WaitAsync(cancellationToken);
         try
         {
+            // Double-check after acquiring the lock
+            if (_cache.TryGetValue(cacheKey, out cachedResult) && cachedResult != null)
+            {
+                _logger.LogDebug("Returning cached exchanged token for audience {Audience} (after lock)", targetAudience);
+                return cachedResult;
+            }
+
             var tokenEndpoint = $"{_oidcOptions.Bff.Authority}/protocol/openid-connect/token";
 
             var requestBody = new Dictionary<string, string>
@@ -186,6 +193,31 @@ public class TokenExchangeService : ITokenExchangeService
                 Error: "exception",
                 ErrorDescription: ex.Message
             );
+        }
+        finally
+        {
+            sem.Release();
+        }
+    }
+
+    private static string? ExtractSub(string jwtToken)
+    {
+        try
+        {
+            var payload = jwtToken.Split('.')[1];
+            var padded = (payload.Length % 4) switch
+            {
+                2 => payload + "==",
+                3 => payload + "=",
+                _ => payload
+            };
+            var bytes = Convert.FromBase64String(padded.Replace('-', '+').Replace('_', '/'));
+            using var doc = JsonDocument.Parse(bytes);
+            return doc.RootElement.TryGetProperty("sub", out var sub) ? sub.GetString() : null;
+        }
+        catch
+        {
+            return null;
         }
     }
 

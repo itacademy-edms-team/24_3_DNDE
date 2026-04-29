@@ -18,7 +18,10 @@ builder
 // Services
 builder.Services.AddHealthChecks();
 builder.Services.AddMemoryCache();
-builder.Services.AddHttpClient<ITokenExchangeService, TokenExchangeService>();
+builder.Services.AddHttpClient<ITokenExchangeService, TokenExchangeService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
 
 // YARP Reverse Proxy with Token Exchange
 builder

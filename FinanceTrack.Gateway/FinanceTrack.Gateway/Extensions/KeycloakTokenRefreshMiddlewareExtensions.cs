@@ -114,7 +114,8 @@ public static class KeycloakTokenRefreshMiddlewareExtensions
 
         try
         {
-            var response = await http.PostAsync(tokenEndpoint, new FormUrlEncodedContent(data));
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            var response = await http.PostAsync(tokenEndpoint, new FormUrlEncodedContent(data), cts.Token);
             if (!response.IsSuccessStatusCode)
             {
                 return null;
