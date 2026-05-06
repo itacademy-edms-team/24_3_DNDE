@@ -12,7 +12,15 @@ import {
   QueryClientProvider,
 } from '@tanstack/react-query'
 
-const queryClient = new QueryClient()
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 0,
+      gcTime: 0,
+      retry: false,
+    },
+  },
+});
 
 const container = document.getElementById('root') as HTMLElement;
 const root = createRoot(container);
