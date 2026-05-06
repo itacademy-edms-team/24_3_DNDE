@@ -33,8 +33,8 @@ builder
     .ConfigurePrimaryHttpMessageHandler(() =>
         new SocketsHttpHandler
         {
-            PooledConnectionLifetime = TimeSpan.FromMinutes(1),
-            PooledConnectionIdleTimeout = TimeSpan.FromSeconds(45),
+            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(4),
         }
     );
 builder
@@ -48,8 +48,8 @@ builder
     .ConfigurePrimaryHttpMessageHandler(() =>
         new SocketsHttpHandler
         {
-            PooledConnectionLifetime = TimeSpan.FromMinutes(1),
-            PooledConnectionIdleTimeout = TimeSpan.FromSeconds(45),
+            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(4),
         }
     );
 builder.Services.AddScoped<KeycloakTokenRefreshMiddleware>();
