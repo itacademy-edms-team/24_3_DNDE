@@ -5,8 +5,14 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.HttpOverrides;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var logger = Log.Logger = new LoggerConfiguration().Enrich.FromLogContext().CreateLogger();
+builder.Host.UseSerilog((_, config) => config.ReadFrom.Configuration(builder.Configuration));
+
+logger.Information("Starting Web Host ...");
 
 // Configuration
 builder
@@ -18,16 +24,46 @@ builder
 // Services
 builder.Services.AddHealthChecks();
 builder.Services.AddMemoryCache();
-builder.Services.AddHttpClient<ITokenExchangeService, TokenExchangeService>(client =>
-{
-    client.Timeout = TimeSpan.FromSeconds(10);
-});
+builder.Services.AddSingleton<TokenExchangeLocks>();
+builder
+    .Services.AddHttpClient<ITokenExchangeService, TokenExchangeService>(client =>
+    {
+        client.Timeout = TimeSpan.FromSeconds(10);
+    })
+    .ConfigurePrimaryHttpMessageHandler(() =>
+        new SocketsHttpHandler
+        {
+            PooledConnectionLifetime = TimeSpan.FromMinutes(1),
+            PooledConnectionIdleTimeout = TimeSpan.FromSeconds(45),
+        }
+    );
+builder
+    .Services.AddHttpClient(
+        KeycloakTokenRefreshMiddleware.HttpClientName,
+        client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(10);
+        }
+    )
+    .ConfigurePrimaryHttpMessageHandler(() =>
+        new SocketsHttpHandler
+        {
+            PooledConnectionLifetime = TimeSpan.FromMinutes(1),
+            PooledConnectionIdleTimeout = TimeSpan.FromSeconds(45),
+        }
+    );
+builder.Services.AddScoped<KeycloakTokenRefreshMiddleware>();
 
 // YARP Reverse Proxy with Token Exchange
 builder
     .Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
-    .AddTokenExchangeTransform();
+    .AddTokenExchangeTransform()
+    .ConfigureHttpClient((_, handler) =>
+    {
+        handler.PooledConnectionLifetime = TimeSpan.FromSeconds(30);
+        handler.PooledConnectionIdleTimeout = TimeSpan.FromSeconds(20);
+    });
 
 //// Right scheme/host/port indent under Traefik
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
@@ -67,7 +103,7 @@ app.UseForwardedHeaders();
 
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseKeycloakTokenRefresh();
+app.UseMiddleware<KeycloakTokenRefreshMiddleware>();
 
 app.MapHealthChecks("/healthz");
 
@@ -100,18 +136,17 @@ app.MapGet(
 );
 
 app.MapGet(
-        "/bff/user",
-        (HttpContext ctx) =>
-        {
-            if (ctx.User.Identity is not { IsAuthenticated: true } identity)
-                return Results.Unauthorized();
+    "/bff/user",
+    (HttpContext ctx) =>
+    {
+        if (ctx.User.Identity is not { IsAuthenticated: true } identity)
+            return Results.Unauthorized();
 
-            var name = identity.Name;
-            var claims = ctx.User.Claims.Select(c => new { c.Type, c.Value });
+        var name = identity.Name;
+        var claims = ctx.User.Claims.Select(c => new { c.Type, c.Value });
 
-            return Results.Ok(new { name, claims });
-        }
-    )
-    .RequireAuthorization();
+        return Results.Ok(new { name, claims });
+    }
+);
 
 await app.RunAsync();

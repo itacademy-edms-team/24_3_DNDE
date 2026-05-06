@@ -43,23 +43,24 @@ public class TokenExchangeService : ITokenExchangeService
     private readonly OidcOptions _oidcOptions;
     private readonly IMemoryCache _cache;
     private readonly ILogger<TokenExchangeService> _logger;
-
     private const string TokenExchangeGrantType = "urn:ietf:params:oauth:grant-type:token-exchange";
     private const string AccessTokenType = "urn:ietf:params:oauth:token-type:access_token";
 
-    private readonly ConcurrentDictionary<string, SemaphoreSlim> _semaphores = new();
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _semaphores;
 
     public TokenExchangeService(
         HttpClient httpClient,
         IOptions<OidcOptions> oidcOptions,
         IMemoryCache cache,
-        ILogger<TokenExchangeService> logger
+        ILogger<TokenExchangeService> logger,
+        TokenExchangeLocks locks
     )
     {
         _httpClient = httpClient;
         _oidcOptions = oidcOptions.Value;
         _cache = cache;
         _logger = logger;
+        _semaphores = locks.Semaphores;
     }
 
     public async Task<TokenExchangeResult> ExchangeTokenAsync(
@@ -72,11 +73,18 @@ public class TokenExchangeService : ITokenExchangeService
         // Cache key uses sub (stable across token refreshes) instead of token hash
         var sub = ExtractSub(subjectToken);
         var scopesKey = scopes != null ? string.Join(",", scopes) : "";
-        var cacheKey = $"token_exchange:{sub ?? subjectToken.GetHashCode().ToString()}:{targetAudience}:{scopesKey}";
+        var cacheKey =
+            $"token_exchange:{sub ?? subjectToken.GetHashCode().ToString()}:{targetAudience}:{scopesKey}";
 
-        if (_cache.TryGetValue(cacheKey, out TokenExchangeResult? cachedResult) && cachedResult != null)
+        if (
+            _cache.TryGetValue(cacheKey, out TokenExchangeResult? cachedResult)
+            && cachedResult != null
+        )
         {
-            _logger.LogDebug("Returning cached exchanged token for audience {Audience}", targetAudience);
+            _logger.LogDebug(
+                "Returning cached exchanged token for audience {Audience}",
+                targetAudience
+            );
             return cachedResult;
         }
 
@@ -88,7 +96,10 @@ public class TokenExchangeService : ITokenExchangeService
             // Double-check after acquiring the lock
             if (_cache.TryGetValue(cacheKey, out cachedResult) && cachedResult != null)
             {
-                _logger.LogDebug("Returning cached exchanged token for audience {Audience} (after lock)", targetAudience);
+                _logger.LogDebug(
+                    "Returning cached exchanged token for audience {Audience} (after lock)",
+                    targetAudience
+                );
                 return cachedResult;
             }
 
@@ -171,8 +182,11 @@ public class TokenExchangeService : ITokenExchangeService
                 ErrorDescription: null
             );
 
-            // Cache the result (expire slightly before the token expires)
-            var cacheExpiration = TimeSpan.FromSeconds(Math.Max(tokenResponse.ExpiresIn - 30, 10));
+            // Use the actual JWT exp claim for cache duration because Keycloak may return
+            // expires_in = full client lifetime even when the issued token's exp is limited
+            // by the subject token's remaining lifetime. Trusting expires_in would cache a
+            // stale token and cause silent 401s once the 5-minute JWT ClockSkew window closes.
+            var cacheExpiration = ComputeCacheDuration(tokenResponse.AccessToken, tokenResponse.ExpiresIn);
             _cache.Set(cacheKey, result, cacheExpiration);
 
             _logger.LogDebug(
@@ -200,6 +214,44 @@ public class TokenExchangeService : ITokenExchangeService
         }
     }
 
+    private static TimeSpan ComputeCacheDuration(string accessToken, int expiresIn)
+    {
+        const int bufferSeconds = 30;
+        var exp = ExtractExp(accessToken);
+        if (exp.HasValue)
+        {
+            var remaining = exp.Value - DateTimeOffset.UtcNow - TimeSpan.FromSeconds(bufferSeconds);
+            return remaining > TimeSpan.FromSeconds(10) ? remaining : TimeSpan.FromSeconds(10);
+        }
+        return TimeSpan.FromSeconds(Math.Max(expiresIn - bufferSeconds, 10));
+    }
+
+    private static DateTimeOffset? ExtractExp(string jwtToken)
+    {
+        try
+        {
+            var parts = jwtToken.Split('.');
+            if (parts.Length < 2)
+                return null;
+            var payload = parts[1];
+            var padded = (payload.Length % 4) switch
+            {
+                2 => payload + "==",
+                3 => payload + "=",
+                _ => payload,
+            };
+            var bytes = Convert.FromBase64String(padded.Replace('-', '+').Replace('_', '/'));
+            using var doc = JsonDocument.Parse(bytes);
+            return doc.RootElement.TryGetProperty("exp", out var exp)
+                ? DateTimeOffset.FromUnixTimeSeconds(exp.GetInt64())
+                : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     private static string? ExtractSub(string jwtToken)
     {
         try
@@ -209,7 +261,7 @@ public class TokenExchangeService : ITokenExchangeService
             {
                 2 => payload + "==",
                 3 => payload + "=",
-                _ => payload
+                _ => payload,
             };
             var bytes = Convert.FromBase64String(padded.Replace('-', '+').Replace('_', '/'));
             using var doc = JsonDocument.Parse(bytes);
