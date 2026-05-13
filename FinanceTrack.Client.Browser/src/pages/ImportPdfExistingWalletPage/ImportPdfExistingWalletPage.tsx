@@ -34,7 +34,7 @@ type WalletsResponse = {
 };
 
 const fetchWallets = async (): Promise<Wallet[]> => {
-  const res = await fetch('/api/finance/Wallets', { credentials: 'include' });
+  const res = await fetch('/api/finance/Wallets?pageSize=100', { credentials: 'include' });
   if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
   const data: WalletsResponse = await res.json();
   return data.wallets.filter((w) => !w.isArchived);
@@ -79,7 +79,7 @@ function ImportPdfExistingWalletPage() {
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
 
   const { data: wallets, isLoading, error: walletsError } = useQuery({
-    queryKey: ['wallets'],
+    queryKey: ['wallets-for-import'],
     queryFn: fetchWallets,
     retry: false,
   });
