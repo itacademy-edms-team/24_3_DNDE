@@ -37,8 +37,8 @@ public class ConfigureOidcOptions(IOptions<OidcOptions> oidcOptions, IHostEnviro
             RoleClaimType = "roles",
         };
 
-        options.CallbackPath = "/signin-oidc";
-        options.SignedOutCallbackPath = "/signout-callback-oidc";
+        options.CallbackPath = "/bff/signin-oidc";
+        options.SignedOutCallbackPath = "/bff/signout-callback-oidc";
         options.SignedOutRedirectUri = "/";
 
         if (env.IsDevelopment())
