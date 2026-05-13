@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.Security.Claims;
 using System.Text.Json;
 using FinanceTrack.Gateway.Configuration;
@@ -21,41 +21,64 @@ public sealed class TokenRefreshService(
 ) : ITokenRefreshService
 {
     public const string HttpClientName = "keycloak-refresh";
-
-    private static readonly TimeSpan RefreshThreshold = TimeSpan.FromMinutes(2);
+    private readonly OidcOptions _oidcOptions = oidcOptions.Value;
 
     public async Task TryRefreshTokenAsync(HttpContext context)
     {
         if (context.User?.Identity?.IsAuthenticated != true)
             return;
 
-        var sub = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                  ?? context.User.FindFirst("sub")?.Value;
+        var sub =
+            context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? context
+                .User.FindFirst("sub")
+                ?.Value;
         if (string.IsNullOrEmpty(sub))
         {
-            logger.LogWarning("Token refresh skipped: no subject claim found. Claims present: {Claims}",
-                string.Join(", ", context.User.Claims.Select(c => c.Type)));
+            logger.LogWarning(
+                "Token refresh skipped: no subject claim found. Claims present: {Claims}",
+                string.Join(", ", context.User.Claims.Select(c => c.Type))
+            );
             return;
         }
 
         var expiresAtRaw = await context.GetTokenAsync("expires_at");
         if (string.IsNullOrEmpty(expiresAtRaw))
         {
-            logger.LogWarning("Token refresh skipped: expires_at not found in cookie for sub={Sub}", sub);
+            logger.LogWarning(
+                "Token refresh skipped: expires_at not found in cookie for sub={Sub}",
+                sub
+            );
             return;
         }
 
-        if (!DateTimeOffset.TryParse(expiresAtRaw, CultureInfo.InvariantCulture, DateTimeStyles.None, out var expiresAt))
+        if (
+            !DateTimeOffset.TryParse(
+                expiresAtRaw,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out var expiresAt
+            )
+        )
         {
-            logger.LogWarning("Token refresh skipped: failed to parse expires_at='{ExpiresAt}' for sub={Sub}", expiresAtRaw, sub);
+            logger.LogWarning(
+                "Token refresh skipped: failed to parse expires_at='{ExpiresAt}' for sub={Sub}",
+                expiresAtRaw,
+                sub
+            );
             return;
         }
 
+        var refreshThreshold = _oidcOptions.TokenLifetime.RefreshThreshold;
         var timeUntilExpiry = expiresAt - DateTimeOffset.UtcNow;
-        logger.LogDebug("Token refresh check: expires_at={ExpiresAt}, timeUntilExpiry={TimeUntilExpiry:g}, threshold={Threshold:g}, sub={Sub}",
-            expiresAt, timeUntilExpiry, RefreshThreshold, sub);
+        logger.LogDebug(
+            "Token refresh check: expires_at={ExpiresAt}, timeUntilExpiry={TimeUntilExpiry:g}, threshold={Threshold:g}, sub={Sub}",
+            expiresAt,
+            timeUntilExpiry,
+            refreshThreshold,
+            sub
+        );
 
-        if (timeUntilExpiry > RefreshThreshold)
+        if (timeUntilExpiry > refreshThreshold)
             return;
 
         var lockKey = $"token_refresh:{sub}";
@@ -63,14 +86,24 @@ public sealed class TokenRefreshService(
         await sem.WaitAsync();
         try
         {
-            if (semaphores.LastRefreshedAt.TryGetValue(sub, out var lastRefreshed) &&
-                DateTimeOffset.UtcNow - lastRefreshed < RefreshThreshold)
+            if (
+                semaphores.LastRefreshedAt.TryGetValue(sub, out var lastRefreshed)
+                && DateTimeOffset.UtcNow - lastRefreshed < refreshThreshold
+            )
             {
-                logger.LogDebug("Token refresh skipped (double-check): lastRefreshed={LastRefreshed}, sub={Sub}", lastRefreshed, sub);
+                logger.LogDebug(
+                    "Token refresh skipped (double-check): lastRefreshed={LastRefreshed}, sub={Sub}",
+                    lastRefreshed,
+                    sub
+                );
                 return;
             }
 
-            logger.LogInformation("Performing token refresh for sub={Sub}, tokenExpiry={ExpiresAt}", sub, expiresAt);
+            logger.LogInformation(
+                "Performing token refresh for sub={Sub}, tokenExpiry={ExpiresAt}",
+                sub,
+                expiresAt
+            );
 
             var refreshToken = await context.GetTokenAsync("refresh_token");
             if (string.IsNullOrEmpty(refreshToken))
@@ -80,7 +113,11 @@ public sealed class TokenRefreshService(
                 return;
             }
 
-            var succeeded = await RefreshAndStoreTokensAsync(context, refreshToken);
+            var succeeded = await RefreshAndStoreTokensAsync(
+                context,
+                refreshToken,
+                _oidcOptions.TokenLifetime.ClockSkewBuffer
+            );
             if (succeeded)
             {
                 semaphores.LastRefreshedAt[sub] = DateTimeOffset.UtcNow;
@@ -93,7 +130,11 @@ public sealed class TokenRefreshService(
         }
     }
 
-    private async Task<bool> RefreshAndStoreTokensAsync(HttpContext context, string refreshToken)
+    private async Task<bool> RefreshAndStoreTokensAsync(
+        HttpContext context,
+        string refreshToken,
+        TimeSpan clockSkewBuffer
+    )
     {
         var tokenResponse = await RequestNewTokensAsync(refreshToken);
         if (tokenResponse == null)
@@ -102,7 +143,7 @@ public sealed class TokenRefreshService(
             return false;
         }
 
-        await StoreNewTokensAsync(context, tokenResponse, refreshToken);
+        await StoreNewTokensAsync(context, tokenResponse, refreshToken, clockSkewBuffer);
         return true;
     }
 
@@ -143,14 +184,17 @@ public sealed class TokenRefreshService(
     private static async Task StoreNewTokensAsync(
         HttpContext context,
         JsonDocument tokenResponse,
-        string fallbackRefreshToken
+        string fallbackRefreshToken,
+        TimeSpan clockSkewBuffer
     )
     {
         using (tokenResponse)
         {
             var root = tokenResponse.RootElement;
 
-            var authResult = await context.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            var authResult = await context.AuthenticateAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme
+            );
             if (!authResult.Succeeded || authResult.Principal is null)
                 return;
 
@@ -163,17 +207,18 @@ public sealed class TokenRefreshService(
                 : await context.GetTokenAsync("id_token");
 
             var expiresInSec = root.GetProperty("expires_in").GetInt32();
-            var newExpiresAt = DateTimeOffset.UtcNow
-                .AddSeconds(expiresInSec - 30)
+            var newExpiresAt = DateTimeOffset
+                .UtcNow.Add(TimeSpan.FromSeconds(expiresInSec) - clockSkewBuffer)
                 .ToString("o", CultureInfo.InvariantCulture);
 
             authResult.Properties!.StoreTokens(
-            [
-                new() { Name = "access_token",  Value = newAccessToken! },
-                new() { Name = "refresh_token", Value = newRefreshToken! },
-                new() { Name = "id_token",      Value = newIdToken! },
-                new() { Name = "expires_at",    Value = newExpiresAt },
-            ]);
+                [
+                    new() { Name = "access_token", Value = newAccessToken! },
+                    new() { Name = "refresh_token", Value = newRefreshToken! },
+                    new() { Name = "id_token", Value = newIdToken! },
+                    new() { Name = "expires_at", Value = newExpiresAt },
+                ]
+            );
 
             await context.SignInAsync(
                 CookieAuthenticationDefaults.AuthenticationScheme,

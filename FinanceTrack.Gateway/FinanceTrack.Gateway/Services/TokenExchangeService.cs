@@ -206,16 +206,16 @@ public class TokenExchangeService(
         }
     }
 
-    private static TimeSpan ComputeCacheDuration(string accessToken, int expiresIn)
+    private TimeSpan ComputeCacheDuration(string accessToken, int expiresIn)
     {
-        const int bufferSeconds = 30;
+        var buffer = _oidcOptions.TokenLifetime.ClockSkewBuffer;
         var exp = ExtractExp(accessToken);
         if (exp.HasValue)
         {
-            var remaining = exp.Value - DateTimeOffset.UtcNow - TimeSpan.FromSeconds(bufferSeconds);
+            var remaining = exp.Value - DateTimeOffset.UtcNow - buffer;
             return remaining > TimeSpan.FromSeconds(10) ? remaining : TimeSpan.FromSeconds(10);
         }
-        return TimeSpan.FromSeconds(Math.Max(expiresIn - bufferSeconds, 10));
+        return TimeSpan.FromSeconds(Math.Max(expiresIn - (int)buffer.TotalSeconds, 10));
     }
 
     private static DateTimeOffset? ExtractExp(string jwtToken)
