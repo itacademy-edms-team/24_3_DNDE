@@ -8,16 +8,10 @@ namespace FinanceTrack.Gateway.Configuration;
 /// <summary>
 /// Configures OpenIdConnect options using OidcOptions from configuration
 /// </summary>
-public class ConfigureOidcOptions : IConfigureNamedOptions<OpenIdConnectOptions>
+public class ConfigureOidcOptions(IOptions<OidcOptions> oidcOptions, IHostEnvironment env)
+    : IConfigureNamedOptions<OpenIdConnectOptions>
 {
-    private readonly OidcOptions _oidcOptions;
-    private readonly IHostEnvironment _env;
-
-    public ConfigureOidcOptions(IOptions<OidcOptions> oidcOptions, IHostEnvironment env)
-    {
-        _oidcOptions = oidcOptions.Value;
-        _env = env;
-    }
+    private readonly OidcOptions _oidcOptions = oidcOptions.Value;
 
     public void Configure(string? name, OpenIdConnectOptions options)
     {
@@ -47,7 +41,7 @@ public class ConfigureOidcOptions : IConfigureNamedOptions<OpenIdConnectOptions>
         options.SignedOutCallbackPath = "/signout-callback-oidc";
         options.SignedOutRedirectUri = "/";
 
-        if (_env.IsDevelopment())
+        if (env.IsDevelopment())
         {
             options.RequireHttpsMetadata = false;
             // http bypass section (dev only)

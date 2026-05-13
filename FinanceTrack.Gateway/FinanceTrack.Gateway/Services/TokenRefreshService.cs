@@ -2,37 +2,33 @@ using System.Globalization;
 using System.Security.Claims;
 using System.Text.Json;
 using FinanceTrack.Gateway.Configuration;
-using FinanceTrack.Gateway.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.Extensions.Options;
 
-namespace FinanceTrack.Gateway.Extensions;
+namespace FinanceTrack.Gateway.Services;
 
-public sealed class KeycloakTokenRefreshMiddleware(
+public interface ITokenRefreshService
+{
+    Task TryRefreshTokenAsync(HttpContext context);
+}
+
+public sealed class TokenRefreshService(
     IHttpClientFactory httpClientFactory,
     IOptions<OidcOptions> oidcOptions,
-    ILogger<KeycloakTokenRefreshMiddleware> logger,
-    TokenExchangeLocks locks
-) : IMiddleware
+    ILogger<TokenRefreshService> logger,
+    TokenRefreshSemaphores semaphores
+) : ITokenRefreshService
 {
     public const string HttpClientName = "keycloak-refresh";
 
     private static readonly TimeSpan RefreshThreshold = TimeSpan.FromMinutes(2);
 
-    public async Task InvokeAsync(HttpContext context, RequestDelegate next)
-    {
-        if (!context.WebSockets.IsWebSocketRequest)
-            await TryRefreshTokenAsync(context);
-        await next(context);
-    }
-
-    private async Task TryRefreshTokenAsync(HttpContext context)
+    public async Task TryRefreshTokenAsync(HttpContext context)
     {
         if (context.User?.Identity?.IsAuthenticated != true)
             return;
 
-        // .NET maps OIDC "sub" → ClaimTypes.NameIdentifier by default; fall back to raw "sub" if mapping is disabled
         var sub = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                   ?? context.User.FindFirst("sub")?.Value;
         if (string.IsNullOrEmpty(sub))
@@ -63,12 +59,11 @@ public sealed class KeycloakTokenRefreshMiddleware(
             return;
 
         var lockKey = $"token_refresh:{sub}";
-        var sem = locks.Semaphores.GetOrAdd(lockKey, _ => new SemaphoreSlim(1, 1));
+        var sem = semaphores.Semaphores.GetOrAdd(lockKey, _ => new SemaphoreSlim(1, 1));
         await sem.WaitAsync();
         try
         {
-            // Another concurrent request may have already refreshed within the threshold window
-            if (locks.LastRefreshedAt.TryGetValue(sub, out var lastRefreshed) &&
+            if (semaphores.LastRefreshedAt.TryGetValue(sub, out var lastRefreshed) &&
                 DateTimeOffset.UtcNow - lastRefreshed < RefreshThreshold)
             {
                 logger.LogDebug("Token refresh skipped (double-check): lastRefreshed={LastRefreshed}, sub={Sub}", lastRefreshed, sub);
@@ -88,7 +83,7 @@ public sealed class KeycloakTokenRefreshMiddleware(
             var succeeded = await RefreshAndStoreTokensAsync(context, refreshToken);
             if (succeeded)
             {
-                locks.LastRefreshedAt[sub] = DateTimeOffset.UtcNow;
+                semaphores.LastRefreshedAt[sub] = DateTimeOffset.UtcNow;
                 logger.LogInformation("Token refresh succeeded for sub={Sub}", sub);
             }
         }

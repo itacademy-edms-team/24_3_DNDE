@@ -1,6 +1,5 @@
 ﻿using FinanceTrack.Gateway.Configuration;
 using FinanceTrack.Gateway.Extensions;
-using FinanceTrack.Gateway.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
@@ -23,49 +22,22 @@ builder
 
 // Services
 builder.Services.AddHealthChecks();
-builder.Services.AddMemoryCache();
-builder.Services.AddSingleton<TokenExchangeLocks>();
-builder
-    .Services.AddHttpClient<ITokenExchangeService, TokenExchangeService>(client =>
-    {
-        client.Timeout = TimeSpan.FromSeconds(10);
-    })
-    .ConfigurePrimaryHttpMessageHandler(() =>
-        new SocketsHttpHandler
-        {
-            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
-            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(4),
-        }
-    );
-builder
-    .Services.AddHttpClient(
-        KeycloakTokenRefreshMiddleware.HttpClientName,
-        client =>
-        {
-            client.Timeout = TimeSpan.FromSeconds(10);
-        }
-    )
-    .ConfigurePrimaryHttpMessageHandler(() =>
-        new SocketsHttpHandler
-        {
-            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
-            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(4),
-        }
-    );
-builder.Services.AddScoped<KeycloakTokenRefreshMiddleware>();
+builder.Services.AddKeycloakTokenRefreshServices();
+builder.Services.AddKeycloakTokenExchangeServices();
 
-// YARP Reverse Proxy with Token Exchange
+// YARP Reverse Proxy — ITransformProvider is auto-discovered from DI
 builder
     .Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
-    .AddTokenExchangeTransform()
-    .ConfigureHttpClient((_, handler) =>
-    {
-        handler.PooledConnectionLifetime = TimeSpan.FromSeconds(30);
-        handler.PooledConnectionIdleTimeout = TimeSpan.FromSeconds(20);
-    });
+    .ConfigureHttpClient(
+        (_, handler) =>
+        {
+            handler.PooledConnectionLifetime = TimeSpan.FromSeconds(30);
+            handler.PooledConnectionIdleTimeout = TimeSpan.FromSeconds(20);
+        }
+    );
 
-//// Right scheme/host/port indent under Traefik
+// Right scheme/host/port under Traefik
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders =
@@ -99,15 +71,15 @@ builder
 
 var app = builder.Build();
 
+// UseRouting объявляем явно, чтобы у middleware токен-рефреша и токен-обмена был доступ к Endpoint и его метаданным.
+app.UseRouting();
 app.UseForwardedHeaders();
-
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseMiddleware<KeycloakTokenRefreshMiddleware>();
+app.UseKeycloakTokenRefresh();
+app.UseKeycloakTokenExchange();
 
 app.MapHealthChecks("/healthz");
-
-// Yarp. Proxy all routes in configuration
 app.MapReverseProxy();
 
 // BFF endpoints
@@ -115,13 +87,9 @@ app.MapGet(
     "/bff/login",
     async context =>
     {
-        // Trigger external login: redirect to Keycloak
         await context.ChallengeAsync(
             OpenIdConnectDefaults.AuthenticationScheme,
-            new AuthenticationProperties
-            {
-                RedirectUri = "/", // Where to return after login
-            }
+            new AuthenticationProperties { RedirectUri = "/" }
         );
     }
 );

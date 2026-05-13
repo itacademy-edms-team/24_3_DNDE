@@ -37,37 +37,26 @@ public record TokenExchangeResult(
     string? ErrorDescription
 );
 
-public class TokenExchangeService : ITokenExchangeService
+public class TokenExchangeService(
+    HttpClient httpClient,
+    IOptions<OidcOptions> oidcOptions,
+    IMemoryCache cache,
+    ILogger<TokenExchangeService> logger,
+    TokenExchangeSemaphores semaphores
+) : ITokenExchangeService
 {
-    private readonly HttpClient _httpClient;
-    private readonly OidcOptions _oidcOptions;
-    private readonly IMemoryCache _cache;
-    private readonly ILogger<TokenExchangeService> _logger;
+    private readonly OidcOptions _oidcOptions = oidcOptions.Value;
     private const string TokenExchangeGrantType = "urn:ietf:params:oauth:grant-type:token-exchange";
     private const string AccessTokenType = "urn:ietf:params:oauth:token-type:access_token";
 
-    private readonly ConcurrentDictionary<string, SemaphoreSlim> _semaphores;
-
-    public TokenExchangeService(
-        HttpClient httpClient,
-        IOptions<OidcOptions> oidcOptions,
-        IMemoryCache cache,
-        ILogger<TokenExchangeService> logger,
-        TokenExchangeLocks locks
-    )
-    {
-        _httpClient = httpClient;
-        _oidcOptions = oidcOptions.Value;
-        _cache = cache;
-        _logger = logger;
-        _semaphores = locks.Semaphores;
-    }
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _semaphores =
+        semaphores.Semaphores;
 
     public async Task<TokenExchangeResult> ExchangeTokenAsync(
         string subjectToken,
         string targetAudience,
         string[]? scopes = null,
-        CancellationToken cancellationToken = default
+        CancellationToken cancel = default
     )
     {
         // Cache key uses sub (stable across token refreshes) instead of token hash
@@ -77,11 +66,11 @@ public class TokenExchangeService : ITokenExchangeService
             $"token_exchange:{sub ?? subjectToken.GetHashCode().ToString()}:{targetAudience}:{scopesKey}";
 
         if (
-            _cache.TryGetValue(cacheKey, out TokenExchangeResult? cachedResult)
+            cache.TryGetValue(cacheKey, out TokenExchangeResult? cachedResult)
             && cachedResult != null
         )
         {
-            _logger.LogDebug(
+            logger.LogDebug(
                 "Returning cached exchanged token for audience {Audience}",
                 targetAudience
             );
@@ -90,13 +79,13 @@ public class TokenExchangeService : ITokenExchangeService
 
         // Prevent stampede: only one exchange per unique key at a time
         var sem = _semaphores.GetOrAdd(cacheKey, _ => new SemaphoreSlim(1, 1));
-        await sem.WaitAsync(cancellationToken);
+        await sem.WaitAsync(cancel);
         try
         {
             // Double-check after acquiring the lock
-            if (_cache.TryGetValue(cacheKey, out cachedResult) && cachedResult != null)
+            if (cache.TryGetValue(cacheKey, out cachedResult) && cachedResult != null)
             {
-                _logger.LogDebug(
+                logger.LogDebug(
                     "Returning cached exchanged token for audience {Audience} (after lock)",
                     targetAudience
                 );
@@ -127,18 +116,18 @@ public class TokenExchangeService : ITokenExchangeService
                 Content = new FormUrlEncodedContent(requestBody),
             };
 
-            _logger.LogDebug(
+            logger.LogDebug(
                 "Performing token exchange for audience {Audience} at {Endpoint}",
                 targetAudience,
                 tokenEndpoint
             );
 
-            var response = await _httpClient.SendAsync(request, cancellationToken);
-            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            var response = await httpClient.SendAsync(request, cancel);
+            var responseContent = await response.Content.ReadAsStringAsync(cancel);
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Token exchange failed with status {StatusCode}: {Response}",
                     response.StatusCode,
                     responseContent
@@ -186,10 +175,13 @@ public class TokenExchangeService : ITokenExchangeService
             // expires_in = full client lifetime even when the issued token's exp is limited
             // by the subject token's remaining lifetime. Trusting expires_in would cache a
             // stale token and cause silent 401s once the 5-minute JWT ClockSkew window closes.
-            var cacheExpiration = ComputeCacheDuration(tokenResponse.AccessToken, tokenResponse.ExpiresIn);
-            _cache.Set(cacheKey, result, cacheExpiration);
+            var cacheExpiration = ComputeCacheDuration(
+                tokenResponse.AccessToken,
+                tokenResponse.ExpiresIn
+            );
+            cache.Set(cacheKey, result, cacheExpiration);
 
-            _logger.LogDebug(
+            logger.LogDebug(
                 "Token exchange successful for audience {Audience}, expires in {ExpiresIn}s",
                 targetAudience,
                 tokenResponse.ExpiresIn
@@ -199,7 +191,7 @@ public class TokenExchangeService : ITokenExchangeService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Token exchange failed with exception");
+            logger.LogError(ex, "Token exchange failed with exception");
             return new TokenExchangeResult(
                 Success: false,
                 AccessToken: null,
