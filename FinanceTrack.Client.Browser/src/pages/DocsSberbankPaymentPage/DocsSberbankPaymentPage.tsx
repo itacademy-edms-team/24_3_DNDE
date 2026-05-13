@@ -1,4 +1,4 @@
-import { Alert, Box, Chip, Divider, Paper, Typography } from '@mui/material';
+import { Alert, Box, Divider, Paper, Typography } from '@mui/material';
 import ImageIcon from '@mui/icons-material/Image';
 import sberPayment000001 from '@/assets/docs/sberbank/payment/sberPayment000001.jpg';
 

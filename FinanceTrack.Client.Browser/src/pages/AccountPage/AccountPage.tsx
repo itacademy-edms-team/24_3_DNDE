@@ -121,7 +121,7 @@ function AccountPage() {
               )}
             </Box>
             <Typography variant="caption" color="text.secondary">
-              Сводное письмо отправляется за 7 дней и за 1 день до даты регулярных транзакций
+              Сводное письмо отправляется за 7 дней до даты регулярных транзакций
             </Typography>
           </Box>
 
