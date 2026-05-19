@@ -1,12 +1,17 @@
 ﻿using FinanceTrack.Gateway.Configuration;
 using FinanceTrack.Gateway.Extensions;
-using FinanceTrack.Gateway.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.HttpOverrides;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var logger = Log.Logger = new LoggerConfiguration().Enrich.FromLogContext().CreateLogger();
+builder.Host.UseSerilog((_, config) => config.ReadFrom.Configuration(builder.Configuration));
+
+logger.Information("Starting Web Host ...");
 
 // Configuration
 builder
@@ -17,16 +22,22 @@ builder
 
 // Services
 builder.Services.AddHealthChecks();
-builder.Services.AddMemoryCache();
-builder.Services.AddHttpClient<ITokenExchangeService, TokenExchangeService>();
+builder.Services.AddKeycloakTokenRefreshServices();
+builder.Services.AddKeycloakTokenExchangeServices();
 
-// YARP Reverse Proxy with Token Exchange
+// YARP Reverse Proxy — ITransformProvider is auto-discovered from DI
 builder
     .Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
-    .AddTokenExchangeTransform();
+    .ConfigureHttpClient(
+        (_, handler) =>
+        {
+            handler.PooledConnectionLifetime = TimeSpan.FromSeconds(30);
+            handler.PooledConnectionIdleTimeout = TimeSpan.FromSeconds(20);
+        }
+    );
 
-//// Right scheme/host/port indent under Traefik
+// Right scheme/host/port under Traefik
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders =
@@ -60,15 +71,15 @@ builder
 
 var app = builder.Build();
 
+// UseRouting объявляем явно, чтобы у middleware токен-рефреша и токен-обмена был доступ к Endpoint и его метаданным.
+app.UseRouting();
 app.UseForwardedHeaders();
-
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseKeycloakTokenRefresh();
+app.UseKeycloakTokenExchange();
 
 app.MapHealthChecks("/healthz");
-
-// Yarp. Proxy all routes in configuration
 app.MapReverseProxy();
 
 // BFF endpoints
@@ -76,13 +87,9 @@ app.MapGet(
     "/bff/login",
     async context =>
     {
-        // Trigger external login: redirect to Keycloak
         await context.ChallengeAsync(
             OpenIdConnectDefaults.AuthenticationScheme,
-            new AuthenticationProperties
-            {
-                RedirectUri = "/", // Where to return after login
-            }
+            new AuthenticationProperties { RedirectUri = "/" }
         );
     }
 );
@@ -97,18 +104,17 @@ app.MapGet(
 );
 
 app.MapGet(
-        "/bff/user",
-        (HttpContext ctx) =>
-        {
-            if (ctx.User.Identity is not { IsAuthenticated: true } identity)
-                return Results.Unauthorized();
+    "/bff/user",
+    (HttpContext ctx) =>
+    {
+        if (ctx.User.Identity is not { IsAuthenticated: true } identity)
+            return Results.Unauthorized();
 
-            var name = identity.Name;
-            var claims = ctx.User.Claims.Select(c => new { c.Type, c.Value });
+        var name = identity.Name;
+        var claims = ctx.User.Claims.Select(c => new { c.Type, c.Value });
 
-            return Results.Ok(new { name, claims });
-        }
-    )
-    .RequireAuthorization();
+        return Results.Ok(new { name, claims });
+    }
+);
 
 await app.RunAsync();

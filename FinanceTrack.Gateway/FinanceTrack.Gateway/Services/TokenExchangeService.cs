@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using System.Collections.Concurrent;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using FinanceTrack.Gateway.Configuration;
 using Microsoft.Extensions.Caching.Memory;
@@ -36,55 +37,61 @@ public record TokenExchangeResult(
     string? ErrorDescription
 );
 
-public class TokenExchangeService : ITokenExchangeService
+public class TokenExchangeService(
+    HttpClient httpClient,
+    IOptions<OidcOptions> oidcOptions,
+    IMemoryCache cache,
+    ILogger<TokenExchangeService> logger,
+    TokenExchangeSemaphores semaphores
+) : ITokenExchangeService
 {
-    private readonly HttpClient _httpClient;
-    private readonly OidcOptions _oidcOptions;
-    private readonly IMemoryCache _cache;
-    private readonly ILogger<TokenExchangeService> _logger;
-
+    private readonly OidcOptions _oidcOptions = oidcOptions.Value;
     private const string TokenExchangeGrantType = "urn:ietf:params:oauth:grant-type:token-exchange";
     private const string AccessTokenType = "urn:ietf:params:oauth:token-type:access_token";
 
-    public TokenExchangeService(
-        HttpClient httpClient,
-        IOptions<OidcOptions> oidcOptions,
-        IMemoryCache cache,
-        ILogger<TokenExchangeService> logger
-    )
-    {
-        _httpClient = httpClient;
-        _oidcOptions = oidcOptions.Value;
-        _cache = cache;
-        _logger = logger;
-    }
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _semaphores =
+        semaphores.Semaphores;
 
     public async Task<TokenExchangeResult> ExchangeTokenAsync(
         string subjectToken,
         string targetAudience,
         string[]? scopes = null,
-        CancellationToken cancellationToken = default
+        CancellationToken cancel = default
     )
     {
-        // Create cache key based on subject token hash, target audience and scopes
+        // Cache key uses sub (stable across token refreshes) instead of token hash
+        var sub = ExtractSub(subjectToken);
         var scopesKey = scopes != null ? string.Join(",", scopes) : "";
-        var cacheKey = $"token_exchange:{subjectToken.GetHashCode()}:{targetAudience}:{scopesKey}";
+        var cacheKey =
+            $"token_exchange:{sub ?? subjectToken.GetHashCode().ToString()}:{targetAudience}:{scopesKey}";
 
-        // Check cache first
         if (
-            _cache.TryGetValue(cacheKey, out TokenExchangeResult? cachedResult)
+            cache.TryGetValue(cacheKey, out TokenExchangeResult? cachedResult)
             && cachedResult != null
         )
         {
-            _logger.LogDebug(
+            logger.LogDebug(
                 "Returning cached exchanged token for audience {Audience}",
                 targetAudience
             );
             return cachedResult;
         }
 
+        // Prevent stampede: only one exchange per unique key at a time
+        var sem = _semaphores.GetOrAdd(cacheKey, _ => new SemaphoreSlim(1, 1));
+        await sem.WaitAsync(cancel);
         try
         {
+            // Double-check after acquiring the lock
+            if (cache.TryGetValue(cacheKey, out cachedResult) && cachedResult != null)
+            {
+                logger.LogDebug(
+                    "Returning cached exchanged token for audience {Audience} (after lock)",
+                    targetAudience
+                );
+                return cachedResult;
+            }
+
             var tokenEndpoint = $"{_oidcOptions.Bff.Authority}/protocol/openid-connect/token";
 
             var requestBody = new Dictionary<string, string>
@@ -109,18 +116,18 @@ public class TokenExchangeService : ITokenExchangeService
                 Content = new FormUrlEncodedContent(requestBody),
             };
 
-            _logger.LogDebug(
+            logger.LogDebug(
                 "Performing token exchange for audience {Audience} at {Endpoint}",
                 targetAudience,
                 tokenEndpoint
             );
 
-            var response = await _httpClient.SendAsync(request, cancellationToken);
-            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            var response = await httpClient.SendAsync(request, cancel);
+            var responseContent = await response.Content.ReadAsStringAsync(cancel);
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogWarning(
+                logger.LogWarning(
                     "Token exchange failed with status {StatusCode}: {Response}",
                     response.StatusCode,
                     responseContent
@@ -164,11 +171,17 @@ public class TokenExchangeService : ITokenExchangeService
                 ErrorDescription: null
             );
 
-            // Cache the result (expire slightly before the token expires)
-            var cacheExpiration = TimeSpan.FromSeconds(Math.Max(tokenResponse.ExpiresIn - 30, 10));
-            _cache.Set(cacheKey, result, cacheExpiration);
+            // Use the actual JWT exp claim for cache duration because Keycloak may return
+            // expires_in = full client lifetime even when the issued token's exp is limited
+            // by the subject token's remaining lifetime. Trusting expires_in would cache a
+            // stale token and cause silent 401s once the 5-minute JWT ClockSkew window closes.
+            var cacheExpiration = ComputeCacheDuration(
+                tokenResponse.AccessToken,
+                tokenResponse.ExpiresIn
+            );
+            cache.Set(cacheKey, result, cacheExpiration);
 
-            _logger.LogDebug(
+            logger.LogDebug(
                 "Token exchange successful for audience {Audience}, expires in {ExpiresIn}s",
                 targetAudience,
                 tokenResponse.ExpiresIn
@@ -178,7 +191,7 @@ public class TokenExchangeService : ITokenExchangeService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Token exchange failed with exception");
+            logger.LogError(ex, "Token exchange failed with exception");
             return new TokenExchangeResult(
                 Success: false,
                 AccessToken: null,
@@ -186,6 +199,69 @@ public class TokenExchangeService : ITokenExchangeService
                 Error: "exception",
                 ErrorDescription: ex.Message
             );
+        }
+        finally
+        {
+            sem.Release();
+        }
+    }
+
+    private TimeSpan ComputeCacheDuration(string accessToken, int expiresIn)
+    {
+        var buffer = _oidcOptions.TokenLifetime.ClockSkewBuffer;
+        var exp = ExtractExp(accessToken);
+        if (exp.HasValue)
+        {
+            var remaining = exp.Value - DateTimeOffset.UtcNow - buffer;
+            return remaining > TimeSpan.FromSeconds(10) ? remaining : TimeSpan.FromSeconds(10);
+        }
+        return TimeSpan.FromSeconds(Math.Max(expiresIn - (int)buffer.TotalSeconds, 10));
+    }
+
+    private static DateTimeOffset? ExtractExp(string jwtToken)
+    {
+        try
+        {
+            var parts = jwtToken.Split('.');
+            if (parts.Length < 2)
+                return null;
+            var payload = parts[1];
+            var padded = (payload.Length % 4) switch
+            {
+                2 => payload + "==",
+                3 => payload + "=",
+                _ => payload,
+            };
+            var bytes = Convert.FromBase64String(padded.Replace('-', '+').Replace('_', '/'));
+            using var doc = JsonDocument.Parse(bytes);
+            return doc.RootElement.TryGetProperty("exp", out var exp)
+                ? DateTimeOffset.FromUnixTimeSeconds(exp.GetInt64())
+                : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static string? ExtractSub(string jwtToken)
+    {
+        try
+        {
+            var payload = jwtToken.Split('.')[1];
+            var padded = (payload.Length % 4) switch
+            {
+                2 => payload + "==",
+                3 => payload + "=",
+                _ => payload,
+            };
+            var bytes = Convert.FromBase64String(padded.Replace('-', '+').Replace('_', '/'));
+            using var doc = JsonDocument.Parse(bytes);
+            return doc.RootElement.TryGetProperty("sub", out var sub) ? sub.GetString() : null;
+        }
+        catch
+        {
+            return null;
         }
     }
 

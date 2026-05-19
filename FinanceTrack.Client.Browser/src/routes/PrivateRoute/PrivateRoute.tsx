@@ -1,5 +1,6 @@
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode } from 'react';
 import { Box, CircularProgress } from '@mui/material';
+import { useQuery } from '@tanstack/react-query';
 
 import Unauthorized from '@/components/Unauthorized';
 
@@ -7,49 +8,34 @@ interface PrivateRouteProps {
   children: ReactNode;
 }
 
-type AuthStatus = 'loading' | 'authenticated' | 'unauthorized' | 'error';
+type AuthStatus = 'authenticated' | 'unauthorized' | 'error';
+
+const checkAuth = async (): Promise<AuthStatus> => {
+  try {
+    const response = await fetch('/bff/user', { method: 'GET', credentials: 'include' });
+    if (response.status === 401) return 'unauthorized';
+    if (response.ok) return 'authenticated';
+    return 'error';
+  } catch {
+    return 'error';
+  }
+};
 
 export function PrivateRoute({ children }: PrivateRouteProps) {
-  const [status, setStatus] = useState<AuthStatus>('loading');
+  const { data: status, isLoading } = useQuery({
+    queryKey: ['auth-status'],
+    queryFn: checkAuth,
+    // Кэшируем в памяти результат на 5 минут. Даже когда компонент размонтируется, данные будут доступны 5 минут.
+    gcTime: 5 * 60 * 1000,
+    // Данные считаем устаревшими через 30 секунд после получения
+    staleTime: 30 * 1000,
+    // Отправляем запрос на проверку авторизации каждые 30 секунд, пока компонент смонтирован
+    refetchInterval: 30 * 1000,
+    // Убираем автоматические повторы при ошибках.
+    retry: false,
+  });
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const checkAuth = async () => {
-      try {
-        const response = await fetch('/bff/user', {
-          method: 'GET',
-          credentials: 'include',
-        });
-
-        if (cancelled) return;
-
-        if (response.status === 401) {
-          setStatus('unauthorized');
-          return;
-        }
-
-        if (response.ok) {
-          setStatus('authenticated');
-          return;
-        }
-
-        setStatus('error');
-      } catch {
-        if (!cancelled) {
-          setStatus('error');
-        }
-      }
-    };
-
-    void checkAuth();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  if (status === 'loading') {
+  if (isLoading) {
     return (
       <Box
         sx={{
@@ -72,7 +58,7 @@ export function PrivateRoute({ children }: PrivateRouteProps) {
     return <Unauthorized />;
   }
 
-  // status === 'error'
+  // status === 'error' or undefined
   return (
     <Unauthorized message="Ошибка аутентификации. Войдите в аккаунт" />
   );

@@ -1,0 +1,15 @@
+ARG NODE_VERSION=24.12.0-alpine
+
+FROM node:${NODE_VERSION} AS builder
+
+WORKDIR /app
+
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+COPY . .
+RUN npm run build
+
+EXPOSE 5173
+
+CMD ["npm", "run", "preview"]

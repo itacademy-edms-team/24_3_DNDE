@@ -14,6 +14,11 @@ export default defineConfig(() => {
       strictPort: true,
       allowedHosts: ['client.browser', 'app.ft.localhost'],
     },
+    preview: {
+      host: true,
+      port: 5173,
+      strictPort: true,
+    },
     plugins: [
       react(),
       VitePWA({
@@ -22,7 +27,11 @@ export default defineConfig(() => {
         // switch to "true" to enable sw on development
         devOptions: { enabled: false },
         registerType: 'autoUpdate',
-        workbox: { globPatterns: ['**/*.{js,css,html}', '**/*.{svg,png,jpg,gif}'] },
+        workbox: {
+          globPatterns: ['**/*.{js,css,html}', '**/*.{svg,png,jpg,gif}'],
+          // Let BFF and API requests bypass the SW and go straight to the server
+          navigateFallbackDenylist: [/^\/bff/, /^\/api/],
+        },
       }),
     ],
     resolve: { alias: { '@': path.resolve(__dirname, './src') } },
