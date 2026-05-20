@@ -7,6 +7,7 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   Chip,
   CircularProgress,
   Dialog,
@@ -46,6 +47,7 @@ import RepeatIcon from '@mui/icons-material/Repeat';
 import ToggleOnIcon from '@mui/icons-material/ToggleOn';
 import ToggleOffIcon from '@mui/icons-material/ToggleOff';
 import QueryStatsIcon from '@mui/icons-material/QueryStats';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 
 import Loading from '@/components/Loading';
 
@@ -363,6 +365,22 @@ const createExpense = async (payload: CreateExpensePayload): Promise<{ id: strin
   return await res.json();
 };
 
+const suggestCategory = async (
+  name: string,
+  description: string | null,
+  type: string,
+): Promise<AiSuggestion | null> => {
+  const res = await fetch('/api/finance/Categories/Suggest', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ name, description, type }),
+  });
+  if (res.status === 404 || res.status === 503) return null;
+  if (!res.ok) throw new Error('AI suggestion failed');
+  return await res.json();
+};
+
 const deleteTransaction = async (transactionId: string): Promise<void> => {
   const res = await fetch(`/api/finance/Transactions/${transactionId}`, {
     method: 'DELETE',
@@ -434,6 +452,7 @@ type CreateIncomePayload = {
   operationDate: string;
   categoryId?: string | null;
   description?: string | null;
+  useAiCategory?: boolean;
 };
 
 type CreateExpensePayload = {
@@ -443,6 +462,13 @@ type CreateExpensePayload = {
   operationDate: string;
   categoryId?: string | null;
   description?: string | null;
+  useAiCategory?: boolean;
+};
+
+type AiSuggestion = {
+  categoryId: string;
+  categoryName: string;
+  categoryIcon: string | null;
 };
 
 type CreateTransferPayload = {
@@ -601,6 +627,10 @@ function WalletPage() {
     hasEndDate: false,
     description: '',
   });
+
+  const [useAiCategory, setUseAiCategory] = useState(false);
+  const [aiSuggestion, setAiSuggestion] = useState<AiSuggestion | null>(null);
+  const [aiSuggestionLoading, setAiSuggestionLoading] = useState(false);
 
   const { data: wallet, isLoading, isPending, error } = useQuery({
     queryKey: ['wallet', walletId],
@@ -1016,6 +1046,8 @@ function WalletPage() {
       categoryId: '',
       description: '',
     });
+    setUseAiCategory(false);
+    setAiSuggestion(null);
     setTransactionDialogOpen(true);
   };
 
@@ -1034,6 +1066,8 @@ function WalletPage() {
       categoryId: transaction.categoryId || '',
       description: transaction.description || '',
     });
+    setUseAiCategory(false);
+    setAiSuggestion(null);
     setTransactionDialogOpen(true);
   };
 
@@ -1048,6 +1082,32 @@ function WalletPage() {
       categoryId: '',
       description: '',
     });
+    setUseAiCategory(false);
+    setAiSuggestion(null);
+  };
+
+  const handleAiSuggest = async () => {
+    if (!transactionForm.name.trim()) {
+      setErrorDialog({ open: true, message: 'Для совета ИИ нужно ввести название транзакции' });
+      return;
+    }
+    setAiSuggestionLoading(true);
+    try {
+      const suggestion = await suggestCategory(
+        transactionForm.name.trim(),
+        transactionForm.description.trim() || null,
+        transactionType,
+      );
+      if (suggestion) {
+        setAiSuggestion(suggestion);
+      } else {
+        setErrorDialog({ open: true, message: 'ИИ не смог подобрать подходящую категорию' });
+      }
+    } catch {
+      setErrorDialog({ open: true, message: 'Не удалось получить совет ИИ' });
+    } finally {
+      setAiSuggestionLoading(false);
+    }
   };
 
   const handleSaveTransaction = () => {
@@ -1084,8 +1144,9 @@ function WalletPage() {
         name: transactionForm.name.trim(),
         amount,
         operationDate: transactionForm.operationDate,
-        categoryId: transactionForm.categoryId || null,
+        categoryId: useAiCategory ? null : transactionForm.categoryId || null,
         description: transactionForm.description.trim() || null,
+        useAiCategory,
       };
       createTransactionMutation.mutate(payload);
     }
@@ -2019,21 +2080,72 @@ function WalletPage() {
               InputLabelProps={{ shrink: true }}
             />
 
-            <FormControl fullWidth>
-              <InputLabel>Категория (опционально)</InputLabel>
-              <Select
-                value={transactionForm.categoryId}
-                label="Категория (опционально)"
-                onChange={(e) => setTransactionForm({ ...transactionForm, categoryId: e.target.value })}
-              >
-                <MenuItem value="">Без категории</MenuItem>
-                {(transactionType === 'Income' ? incomeCategories : expenseCategories).map((category) => (
-                  <MenuItem key={category.id} value={category.id}>
-                    {category.icon} {category.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <Box>
+              <FormControl fullWidth>
+                <InputLabel>Категория (опционально)</InputLabel>
+                <Select
+                  value={transactionForm.categoryId}
+                  label="Категория (опционально)"
+                  disabled={useAiCategory}
+                  onChange={(e) => setTransactionForm({ ...transactionForm, categoryId: e.target.value })}
+                >
+                  <MenuItem value="">Без категории</MenuItem>
+                  {(transactionType === 'Income' ? incomeCategories : expenseCategories).map((category) => (
+                    <MenuItem key={category.id} value={category.id}>
+                      {category.icon} {category.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              {transactionEditMode === 'create' && (
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={useAiCategory}
+                      onChange={(e) => {
+                        setUseAiCategory(e.target.checked);
+                        if (e.target.checked) setTransactionForm({ ...transactionForm, categoryId: '' });
+                      }}
+                    />
+                  }
+                  label="Назначить с помощью ИИ"
+                  sx={{ mt: 0.5 }}
+                />
+              )}
+
+              {transactionEditMode === 'edit' && (
+                <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={handleAiSuggest}
+                    disabled={aiSuggestionLoading}
+                    startIcon={
+                      aiSuggestionLoading ? (
+                        <CircularProgress size={14} />
+                      ) : (
+                        <AutoAwesomeIcon fontSize="small" />
+                      )
+                    }
+                  >
+                    {aiSuggestionLoading ? 'Запрос...' : 'Совет от ИИ'}
+                  </Button>
+                  {aiSuggestion && (
+                    <Chip
+                      label={`${aiSuggestion.categoryIcon ?? ''} ${aiSuggestion.categoryName}`.trim()}
+                      color="primary"
+                      variant="outlined"
+                      onClick={() => {
+                        setTransactionForm({ ...transactionForm, categoryId: aiSuggestion.categoryId });
+                        setAiSuggestion(null);
+                      }}
+                      onDelete={() => setAiSuggestion(null)}
+                    />
+                  )}
+                </Box>
+              )}
+            </Box>
 
             <TextField
               label="Описание (опционально)"

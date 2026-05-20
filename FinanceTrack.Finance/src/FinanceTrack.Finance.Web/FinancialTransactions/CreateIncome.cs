@@ -1,4 +1,5 @@
-﻿using FinanceTrack.Finance.Infrastructure.Data.Config;
+﻿using FinanceTrack.Finance.Core.Interfaces;
+using FinanceTrack.Finance.Infrastructure.Data.Config;
 using FinanceTrack.Finance.UseCases.FinancialTransactions.Income;
 using FinanceTrack.Finance.Web.Extensions;
 using FluentValidation;
@@ -14,6 +15,11 @@ public class CreateIncomeRequest
     public decimal Amount { get; set; }
     public DateOnly OperationDate { get; set; }
     public Guid? CategoryId { get; set; }
+
+    /// <summary>
+    /// When true and CategoryId is null, the AI service assigns a category automatically.
+    /// </summary>
+    public bool UseAiCategory { get; set; }
 }
 
 public class CreateIncomeResponse(Guid id)
@@ -39,7 +45,8 @@ public class CreateIncomeValidator : Validator<CreateIncomeRequest>
     }
 }
 
-public class CreateIncome(IMediator mediator) : Endpoint<CreateIncomeRequest, CreateIncomeResponse>
+public class CreateIncome(IMediator mediator, ICategoryAiService aiService)
+    : Endpoint<CreateIncomeRequest, CreateIncomeResponse>
 {
     public override void Configure()
     {
@@ -47,13 +54,26 @@ public class CreateIncome(IMediator mediator) : Endpoint<CreateIncomeRequest, Cr
         Roles("user");
     }
 
-    public override async Task HandleAsync(CreateIncomeRequest req, CancellationToken ct)
+    public override async Task HandleAsync(CreateIncomeRequest req, CancellationToken cancel)
     {
         var userId = User.GetUserId();
         if (string.IsNullOrWhiteSpace(userId))
         {
-            await SendUnauthorizedAsync(ct);
+            await SendUnauthorizedAsync(cancel);
             return;
+        }
+
+        var categoryId = req.CategoryId;
+        if (req.UseAiCategory && categoryId == null && aiService.IsEnabled)
+        {
+            var suggestion = await aiService.SuggestCategoryAsync(
+                req.Name,
+                req.Description,
+                "Income",
+                userId,
+                cancel
+            );
+            categoryId = suggestion?.Id;
         }
 
         var command = new CreateIncomeCommand(
@@ -63,13 +83,13 @@ public class CreateIncome(IMediator mediator) : Endpoint<CreateIncomeRequest, Cr
             req.Description,
             req.Amount,
             req.OperationDate,
-            req.CategoryId
+            categoryId
         );
-        var result = await mediator.Send(command, ct);
+        var result = await mediator.Send(command, cancel);
 
-        if (await this.SendResultIfNotOk(result, ct))
+        if (await this.SendResultIfNotOk(result, cancel))
             return;
 
-        await SendAsync(new CreateIncomeResponse(result.Value), 201, ct);
+        await SendAsync(new CreateIncomeResponse(result.Value), 201, cancel);
     }
 }

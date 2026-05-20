@@ -1,5 +1,6 @@
 ﻿using FinanceTrack.Finance.Core.Interfaces;
 using FinanceTrack.Finance.Core.Services;
+using FinanceTrack.Finance.Infrastructure.Ai;
 using FinanceTrack.Finance.Infrastructure.Data;
 using FinanceTrack.Finance.Infrastructure.Data.Config;
 using FinanceTrack.Finance.Infrastructure.Data.Queries;
@@ -26,6 +27,8 @@ public static class InfrastructureServiceExtensions
             config.GetConnectionString("DefaultConnection")
         );
         services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
+
+        AddYandexAiServices(services, config);
 
         services
             .AddScoped(typeof(IRepository<>), typeof(EfRepository<>))
@@ -59,5 +62,23 @@ public static class InfrastructureServiceExtensions
         logger.LogInformation("{Project} services registered", "Infrastructure");
 
         return services;
+    }
+
+    private static void AddYandexAiServices(IServiceCollection services, IConfiguration config)
+    {
+        services.Configure<YandexAiOptions>(config.GetSection(YandexAiOptions.SectionName));
+
+        var aiOptions =
+            config.GetSection(YandexAiOptions.SectionName).Get<YandexAiOptions>()
+            ?? new YandexAiOptions();
+
+        services
+            .AddHttpClient(YandexAiCategoryService.HttpClientName)
+            .ConfigurePrimaryHttpMessageHandler(_ => new YandexAiAuthHandler(aiOptions.ApiKey)
+            {
+                InnerHandler = new HttpClientHandler(),
+            });
+
+        services.AddScoped<ICategoryAiService, YandexAiCategoryService>();
     }
 }
