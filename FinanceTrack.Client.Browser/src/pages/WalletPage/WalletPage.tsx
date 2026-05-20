@@ -709,6 +709,7 @@ function WalletPage() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    isFetching: isTransactionsFetching,
   } = useInfiniteQuery({
     queryKey: ['transactions', walletId, filterFrom, filterTo],
     queryFn: ({ pageParam }) =>
@@ -1781,6 +1782,10 @@ function WalletPage() {
                 </FormControl>
               </Box>
             </Box>
+
+            {isTransactionsFetching && !isFetchingNextPage && (
+              <LinearProgress sx={{ borderRadius: 1 }} />
+            )}
 
             {allTransactions.length === 0 && filtersInitialized ? (
               <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
