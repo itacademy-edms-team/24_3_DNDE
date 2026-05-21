@@ -1,6 +1,13 @@
 ﻿# name: see .env
 services:
   financetrack.gateway:
+    user: "root" # нужен для update-ca-certificates, позже понижаем до app
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        update-ca-certificates 2>&1 | tail -1
+        exec su -s /bin/sh app -c "exec dotnet FinanceTrack.Gateway.dll"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_HTTP_PORTS=8080
@@ -13,9 +20,12 @@ services:
       - ${APPDATA}/Microsoft/UserSecrets:/root/.microsoft/usersecrets:ro
       - ${APPDATA}/ASP.NET/Https:/home/app/.aspnet/https:ro
       - ${APPDATA}/ASP.NET/Https:/root/.aspnet/https:ro
+      - ${LOCALAPPDATA}/mkcert/rootCA.pem:/usr/local/share/ca-certificates/mkcert-root.crt:ro
     networks:
       - default
       - finance_track_network
+    extra_hosts:
+      - "auth.ft.localhost:host-gateway"   # host-gateway → Windows host → Traefik :443
     
 
 

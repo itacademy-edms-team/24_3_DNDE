@@ -1,16 +1,34 @@
 http:
+  middlewares:
+    redirect-to-https:
+      redirectScheme:
+        scheme: https
+        permanent: true
+
   routers:
-    gateway:
+    gateway-http:
       rule: "Host(`app.ft.localhost`)"
       service: gateway
-      entryPoints:
-        - web
+      entryPoints: [web]
+      middlewares: [redirect-to-https]
 
-    keycloak:
+    gateway-https:
+      rule: "Host(`app.ft.localhost`)"
+      service: gateway
+      entryPoints: [websecure]
+      tls: {}
+
+    keycloak-http:
       rule: "Host(`auth.ft.localhost`)"
       service: keycloak
-      entryPoints:
-        - web
+      entryPoints: [web]
+      middlewares: [redirect-to-https]
+
+    keycloak-https:
+      rule: "Host(`auth.ft.localhost`)"
+      service: keycloak
+      entryPoints: [websecure]
+      tls: {}
 
   services:
     gateway:
@@ -22,4 +40,13 @@ http:
       loadBalancer:
         servers:
           - url: "http://auth.ft.localhost"
-          # port is 80 (inherited from traefik config)
+
+tls:
+  certificates:
+    - certFile: "/certs/ft-localhost.pem"
+      keyFile: "/certs/ft-localhost-key.pem"
+  stores:
+    default:
+      defaultCertificate:
+        certFile: "/certs/ft-localhost.pem"
+        keyFile: "/certs/ft-localhost-key.pem"

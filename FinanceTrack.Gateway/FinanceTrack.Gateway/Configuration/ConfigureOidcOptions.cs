@@ -41,15 +41,5 @@ public class ConfigureOidcOptions(IOptions<OidcOptions> oidcOptions, IHostEnviro
         options.SignedOutCallbackPath = "/bff/signout-callback-oidc";
         options.SignedOutRedirectUri = "/";
 
-        if (env.IsDevelopment())
-        {
-            options.RequireHttpsMetadata = false;
-            // http bypass section (dev only)
-            options.NonceCookie.SameSite = SameSiteMode.Unspecified;
-            options.NonceCookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
-
-            options.CorrelationCookie.SameSite = SameSiteMode.Lax;
-            options.CorrelationCookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
-        }
     }
 }

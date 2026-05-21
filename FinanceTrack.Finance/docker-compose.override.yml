@@ -17,6 +17,13 @@ services:
       retries: 5
   
   financetrack.finance.web:
+    user: "root" # для обновления сертификатов, затем понижаем до app
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        update-ca-certificates 2>&1 | tail -1
+        exec su -s /bin/sh app -c "exec dotnet FinanceTrack.Finance.Web.dll"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_HTTP_PORTS=8080
@@ -26,11 +33,14 @@ services:
     ports:
       - "16020:8080"
       # - "${APP_PORT_HTTPS_EXTERNAL}:8081"
+    extra_hosts:
+      - "auth.ft.localhost:host-gateway"
     volumes:
       - ${APPDATA}/Microsoft/UserSecrets:/home/app/.microsoft/usersecrets:ro
       - ${APPDATA}/Microsoft/UserSecrets:/root/.microsoft/usersecrets:ro
       - ${APPDATA}/ASP.NET/Https:/home/app/.aspnet/https:ro
       - ${APPDATA}/ASP.NET/Https:/root/.aspnet/https:ro
+      - ${LOCALAPPDATA}/mkcert/rootCA.pem:/usr/local/share/ca-certificates/mkcert-root.crt:ro
     networks:
       - default
       - finance_track_network

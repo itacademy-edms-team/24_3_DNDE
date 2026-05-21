@@ -28,7 +28,7 @@ services:
 
       KC_HTTP_ENABLED: "true"
       KC_PROXY_HEADERS: xforwarded
-      KC_HOSTNAME: auth.ft.localhost
+      KC_HOSTNAME: https://auth.ft.localhost
       KC_HOSTNAME_STRICT: "false"
     ports:
       - "${KC_PUBLIC_PORT}:${KC_HTTP_PORT}"

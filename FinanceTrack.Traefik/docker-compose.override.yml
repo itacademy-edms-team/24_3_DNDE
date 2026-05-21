@@ -2,9 +2,11 @@ services:
   traefik:
     ports:
       - "80:80"
+      - "443:443"
       - "9090:8080"
     volumes:
       - ./dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - ./certs:/certs:ro # development only
     networks:
       - finance_track_network
     restart: unless-stopped
