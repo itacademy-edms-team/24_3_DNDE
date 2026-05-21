@@ -80,7 +80,7 @@ public sealed class YandexAiCategoryService(
         return new AiCategorySuggestion(matched.Id, matched.Name, matched.Icon);
     }
 
-    private async Task<string?> CallYandexGptAsync(string prompt, CancellationToken ct)
+    private async Task<string?> CallYandexGptAsync(string prompt, CancellationToken cancel)
     {
         try
         {
@@ -99,7 +99,7 @@ public sealed class YandexAiCategoryService(
 
             var response = await chatClient.CompleteChatAsync(
                 [new UserChatMessage(prompt)],
-                cancellationToken: ct
+                cancellationToken: cancel
             );
 
             return response.Value.Content[0].Text;

@@ -44,15 +44,8 @@ public class SuggestCategory(ICategoryAiService aiService)
     {
         if (!aiService.IsEnabled)
         {
-            await SendAsync(
-                new SuggestCategoryResponse
-                {
-                    CategoryId = Guid.Empty,
-                    CategoryName = "AI categorization is not enabled",
-                },
-                503,
-                cancel
-            );
+            AddError("AI categorization is not enabled.");
+            await SendErrorsAsync(503, cancel);
             return;
         }
 
