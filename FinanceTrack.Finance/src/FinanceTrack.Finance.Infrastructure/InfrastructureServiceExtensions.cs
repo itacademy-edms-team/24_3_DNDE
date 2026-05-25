@@ -78,5 +78,6 @@ public static class InfrastructureServiceExtensions
             });
 
         services.AddScoped<ICategoryAiService, YandexAiCategoryService>();
+        services.AddScoped<IWalletInsightsAiService, YandexAiInsightsService>();
     }
 }

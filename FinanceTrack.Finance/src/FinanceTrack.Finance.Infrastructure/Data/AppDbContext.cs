@@ -3,6 +3,7 @@ using FinanceTrack.Finance.Core.FinancialTransactionAggregate;
 using FinanceTrack.Finance.Core.RecurringTransactionAggregate;
 using FinanceTrack.Finance.Core.UserAggregate;
 using FinanceTrack.Finance.Core.WalletAggregate;
+using FinanceTrack.Finance.Core.WalletInsightAggregate;
 
 namespace FinanceTrack.Finance.Infrastructure.Data;
 
@@ -19,6 +20,7 @@ public class AppDbContext(
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<FinancialTransaction> FinancialTransactions => Set<FinancialTransaction>();
     public DbSet<RecurringTransaction> RecurringTransactions => Set<RecurringTransaction>();
+    public DbSet<WalletInsight> WalletInsights => Set<WalletInsight>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
