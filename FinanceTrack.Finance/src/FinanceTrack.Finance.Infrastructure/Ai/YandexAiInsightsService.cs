@@ -25,9 +25,17 @@ public sealed class YandexAiInsightsService(
         CancellationToken cancel
     )
     {
-        var anomalies = await CallYandexGptAsync(BuildAnomaliesPrompt(input), cancel);
-        var trends = await CallYandexGptAsync(BuildTrendsPrompt(input), cancel);
-        var expenseStructure = await CallYandexGptAsync(BuildExpenseStructurePrompt(input), cancel);
+        var anomalies = input.PriorMonthsAverageExpenses.Count == 0
+            ? "Недостаточно данных для выявления аномалий: за предыдущие 3 месяца расходов не было. Как только накопится история, здесь появится анализ отклонений."
+            : await CallYandexGptAsync(BuildAnomaliesPrompt(input), cancel);
+
+        var trends = input.MonthlyFlows.Count < 2
+            ? "Недостаточно данных для анализа трендов: нужна история хотя бы за два месяца."
+            : await CallYandexGptAsync(BuildTrendsPrompt(input), cancel);
+
+        var expenseStructure = input.CurrentMonthExpenses.Count == 0
+            ? "В текущем месяце расходов ещё нет — структура расходов не может быть проанализирована."
+            : await CallYandexGptAsync(BuildExpenseStructurePrompt(input), cancel);
 
         string? recommendations = null;
         if (input.Goal is not null)
