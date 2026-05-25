@@ -1,5 +1,6 @@
 ﻿using FinanceTrack.Finance.Core.Interfaces;
 using FinanceTrack.Finance.Core.Services;
+using FinanceTrack.Finance.Infrastructure.Ai;
 using FinanceTrack.Finance.Infrastructure.Data;
 using FinanceTrack.Finance.Infrastructure.Data.Config;
 using FinanceTrack.Finance.Infrastructure.Data.Queries;
@@ -11,6 +12,7 @@ using FinanceTrack.Finance.UseCases.FullTextSearch;
 using FinanceTrack.Finance.UseCases.ImportTransactions;
 using FinanceTrack.Finance.UseCases.Wallets;
 using FinanceTrack.Finance.UseCases.Wallets.List;
+using Microsoft.Extensions.Options;
 
 namespace FinanceTrack.Finance.Infrastructure;
 
@@ -26,6 +28,8 @@ public static class InfrastructureServiceExtensions
             config.GetConnectionString("DefaultConnection")
         );
         services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
+
+        AddYandexAiServices(services, config);
 
         services
             .AddScoped(typeof(IRepository<>), typeof(EfRepository<>))
@@ -59,5 +63,21 @@ public static class InfrastructureServiceExtensions
         logger.LogInformation("{Project} services registered", "Infrastructure");
 
         return services;
+    }
+
+    private static void AddYandexAiServices(IServiceCollection services, IConfiguration config)
+    {
+        services.Configure<YandexAiOptions>(config.GetSection(YandexAiOptions.SectionName));
+
+        services
+            .AddHttpClient(YandexAiCategoryService.HttpClientName)
+            .AddHttpMessageHandler(sp =>
+            {
+                var options = sp.GetRequiredService<IOptions<YandexAiOptions>>().Value;
+                return new YandexAiAuthHandler(options.ApiKey);
+            });
+
+        services.AddScoped<ICategoryAiService, YandexAiCategoryService>();
+        services.AddScoped<IWalletInsightsAiService, YandexAiInsightsService>();
     }
 }

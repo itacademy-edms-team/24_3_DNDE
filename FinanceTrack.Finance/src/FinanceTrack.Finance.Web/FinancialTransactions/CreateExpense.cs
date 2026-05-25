@@ -1,4 +1,5 @@
-﻿using FinanceTrack.Finance.Infrastructure.Data.Config;
+﻿using FinanceTrack.Finance.Core.Interfaces;
+using FinanceTrack.Finance.Infrastructure.Data.Config;
 using FinanceTrack.Finance.UseCases.FinancialTransactions.Expense;
 using FinanceTrack.Finance.Web.Extensions;
 using FluentValidation;
@@ -14,6 +15,11 @@ public class CreateExpenseRequest
     public decimal Amount { get; set; }
     public DateOnly OperationDate { get; set; }
     public Guid? CategoryId { get; set; }
+
+    /// <summary>
+    /// When true and CategoryId is null, the AI service assigns a category automatically.
+    /// </summary>
+    public bool UseAiCategory { get; set; }
 }
 
 public class CreateExpenseResponse(Guid id)
@@ -39,7 +45,7 @@ public class CreateExpenseValidator : Validator<CreateExpenseRequest>
     }
 }
 
-public class CreateExpense(IMediator mediator)
+public class CreateExpense(IMediator mediator, ICategoryAiService aiService)
     : Endpoint<CreateExpenseRequest, CreateExpenseResponse>
 {
     public override void Configure()
@@ -48,13 +54,26 @@ public class CreateExpense(IMediator mediator)
         Roles("user");
     }
 
-    public override async Task HandleAsync(CreateExpenseRequest req, CancellationToken ct)
+    public override async Task HandleAsync(CreateExpenseRequest req, CancellationToken cancel)
     {
         var userId = User.GetUserId();
         if (string.IsNullOrWhiteSpace(userId))
         {
-            await SendUnauthorizedAsync(ct);
+            await SendUnauthorizedAsync(cancel);
             return;
+        }
+
+        var categoryId = req.CategoryId;
+        if (req.UseAiCategory && categoryId == null && aiService.IsEnabled)
+        {
+            var suggestion = await aiService.SuggestCategoryAsync(
+                req.Name,
+                req.Description,
+                "Expense",
+                userId,
+                cancel
+            );
+            categoryId = suggestion?.Id;
         }
 
         var command = new CreateExpenseCommand(
@@ -64,13 +83,13 @@ public class CreateExpense(IMediator mediator)
             req.Description,
             req.Amount,
             req.OperationDate,
-            req.CategoryId
+            categoryId
         );
-        var result = await mediator.Send(command, ct);
+        var result = await mediator.Send(command, cancel);
 
-        if (await this.SendResultIfNotOk(result, ct))
+        if (await this.SendResultIfNotOk(result, cancel))
             return;
 
-        await SendAsync(new CreateExpenseResponse(result.Value), 201, ct);
+        await SendAsync(new CreateExpenseResponse(result.Value), 201, cancel);
     }
 }

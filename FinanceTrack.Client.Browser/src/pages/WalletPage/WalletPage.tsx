@@ -3,16 +3,19 @@ import { useNavigate, useParams } from 'react-router';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import {
+  Alert,
   Box,
   Button,
   Card,
   CardContent,
+  Checkbox,
   Chip,
   CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  Divider,
   FormControl,
   FormControlLabel,
   IconButton,
@@ -46,6 +49,7 @@ import RepeatIcon from '@mui/icons-material/Repeat';
 import ToggleOnIcon from '@mui/icons-material/ToggleOn';
 import ToggleOffIcon from '@mui/icons-material/ToggleOff';
 import QueryStatsIcon from '@mui/icons-material/QueryStats';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 
 import Loading from '@/components/Loading';
 
@@ -166,6 +170,17 @@ const formatDisplayName = (displayName: string): string => {
   if (displayName.length <= 75) return displayName;
   return displayName.slice(0, 72) + '...';
 }
+
+const formatDateTime = (dateStr: string): string => {
+  const date = new Date(dateStr);
+  return date.toLocaleString('ru-RU', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
 
 const formatDateShort = (dateStr: string): string => {
   const date = new Date(dateStr);
@@ -363,6 +378,46 @@ const createExpense = async (payload: CreateExpensePayload): Promise<{ id: strin
   return await res.json();
 };
 
+const suggestCategory = async (
+  name: string,
+  description: string | null,
+  type: string,
+): Promise<AiSuggestion | null> => {
+  const res = await fetch('/api/finance/Categories/Suggest', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ name, description, type }),
+  });
+  if (res.status === 404 || res.status === 503) return null;
+  if (!res.ok) throw new Error('AI suggestion failed');
+  return await res.json();
+};
+
+const fetchWalletInsights = async (
+  walletId: string,
+  insightMonth: string,
+): Promise<WalletInsight | null> => {
+  const res = await fetch(
+    `/api/finance/Wallets/${walletId}/Insights?insightMonth=${insightMonth}`,
+    { credentials: 'include' },
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(getErrorMessage('загрузки наблюдений', res.status));
+  return await res.json();
+};
+
+const generateWalletInsights = async (walletId: string): Promise<WalletInsight> => {
+  const res = await fetch(`/api/finance/Wallets/${walletId}/Insights/Generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: '{}',
+  });
+  if (!res.ok) throw new Error(getErrorMessage('генерации наблюдений', res.status));
+  return await res.json();
+};
+
 const deleteTransaction = async (transactionId: string): Promise<void> => {
   const res = await fetch(`/api/finance/Transactions/${transactionId}`, {
     method: 'DELETE',
@@ -434,6 +489,7 @@ type CreateIncomePayload = {
   operationDate: string;
   categoryId?: string | null;
   description?: string | null;
+  useAiCategory?: boolean;
 };
 
 type CreateExpensePayload = {
@@ -443,6 +499,13 @@ type CreateExpensePayload = {
   operationDate: string;
   categoryId?: string | null;
   description?: string | null;
+  useAiCategory?: boolean;
+};
+
+type AiSuggestion = {
+  categoryId: string;
+  categoryName: string;
+  categoryIcon: string | null;
 };
 
 type CreateTransferPayload = {
@@ -539,6 +602,14 @@ type RecurringTransactionFormState = {
   description: string;
 };
 
+type WalletInsight = {
+  anomaliesText: string | null;
+  trendsText: string | null;
+  expenseStructureText: string | null;
+  recommendationsText: string | null;
+  generatedAtUtc: string;
+};
+
 function WalletPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -570,6 +641,7 @@ function WalletPage() {
 
   // Фильтры по датам
   const now = new Date();
+  const insightMonthParam = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
   const [filterStartYear, setFilterStartYear] = useState<number>(now.getFullYear());
   const [filterStartMonth, setFilterStartMonth] = useState<number>(now.getMonth() + 1);
   const [filterEndYear, setFilterEndYear] = useState<number>(now.getFullYear());
@@ -601,6 +673,10 @@ function WalletPage() {
     hasEndDate: false,
     description: '',
   });
+
+  const [useAiCategory, setUseAiCategory] = useState(false);
+  const [aiSuggestion, setAiSuggestion] = useState<AiSuggestion | null>(null);
+  const [aiSuggestionLoading, setAiSuggestionLoading] = useState(false);
 
   const { data: wallet, isLoading, isPending, error } = useQuery({
     queryKey: ['wallet', walletId],
@@ -679,6 +755,7 @@ function WalletPage() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    isFetching: isTransactionsFetching,
   } = useInfiniteQuery({
     queryKey: ['transactions', walletId, filterFrom, filterTo],
     queryFn: ({ pageParam }) =>
@@ -948,6 +1025,24 @@ function WalletPage() {
     },
   });
 
+  const { data: walletInsights, isLoading: isInsightsLoading } = useQuery({
+    queryKey: ['wallet', walletId, 'insights', insightMonthParam],
+    queryFn: () => fetchWalletInsights(walletId!, insightMonthParam),
+    enabled: !!walletId && !wallet?.isArchived,
+    retry: false,
+  });
+
+  const generateInsightsMutation = useMutation({
+    mutationFn: () => generateWalletInsights(walletId!),
+    onSuccess: (data) => {
+      queryClient.setQueryData(['wallet', walletId, 'insights', insightMonthParam], data);
+    },
+    onError: (error: Error) => {
+      console.error('Failed to generate insights:', error);
+      setErrorDialog({ open: true, message: error.message || 'Ошибка генерации наблюдений' });
+    },
+  });
+
   const handleOpenEditDialog = () => {
     if (wallet) {
       setFormState({
@@ -1016,6 +1111,8 @@ function WalletPage() {
       categoryId: '',
       description: '',
     });
+    setUseAiCategory(false);
+    setAiSuggestion(null);
     setTransactionDialogOpen(true);
   };
 
@@ -1034,6 +1131,8 @@ function WalletPage() {
       categoryId: transaction.categoryId || '',
       description: transaction.description || '',
     });
+    setUseAiCategory(false);
+    setAiSuggestion(null);
     setTransactionDialogOpen(true);
   };
 
@@ -1048,6 +1147,32 @@ function WalletPage() {
       categoryId: '',
       description: '',
     });
+    setUseAiCategory(false);
+    setAiSuggestion(null);
+  };
+
+  const handleAiSuggest = async () => {
+    if (!transactionForm.name.trim()) {
+      setErrorDialog({ open: true, message: 'Для совета ИИ нужно ввести название транзакции' });
+      return;
+    }
+    setAiSuggestionLoading(true);
+    try {
+      const suggestion = await suggestCategory(
+        transactionForm.name.trim(),
+        transactionForm.description.trim() || null,
+        transactionType,
+      );
+      if (suggestion) {
+        setAiSuggestion(suggestion);
+      } else {
+        setErrorDialog({ open: true, message: 'ИИ не смог подобрать подходящую категорию' });
+      }
+    } catch {
+      setErrorDialog({ open: true, message: 'Не удалось получить совет ИИ' });
+    } finally {
+      setAiSuggestionLoading(false);
+    }
   };
 
   const handleSaveTransaction = () => {
@@ -1084,8 +1209,9 @@ function WalletPage() {
         name: transactionForm.name.trim(),
         amount,
         operationDate: transactionForm.operationDate,
-        categoryId: transactionForm.categoryId || null,
+        categoryId: useAiCategory ? null : transactionForm.categoryId || null,
         description: transactionForm.description.trim() || null,
+        useAiCategory,
       };
       createTransactionMutation.mutate(payload);
     }
@@ -1450,6 +1576,90 @@ function WalletPage() {
         </Box>
       )}
 
+      {/* Секция AI-наблюдений */}
+      {!wallet.isArchived && (
+        <Card variant="outlined" sx={{ mb: 3 }}>
+          <CardContent>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <AutoAwesomeIcon color="primary" fontSize="small" />
+                <Typography variant="h6">Наблюдения за текущий месяц от Яндекс ИИ</Typography>
+              </Box>
+              {walletInsights && !generateInsightsMutation.isPending && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<AutoAwesomeIcon />}
+                  onClick={() => generateInsightsMutation.mutate()}
+                >
+                  Обновить
+                </Button>
+              )}
+            </Box>
+
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              Нейросети могут ошибаться в наблюдениях
+            </Alert>
+
+            {isInsightsLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+                <CircularProgress />
+              </Box>
+            ) : generateInsightsMutation.isPending ? (
+              <Box sx={{ py: 2 }}>
+                <LinearProgress sx={{ borderRadius: 1 }} />
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5, textAlign: 'center' }}>
+                  Генерируем наблюдения…
+                </Typography>
+              </Box>
+            ) : walletInsights === null ? (
+              <Box sx={{ textAlign: 'center', py: 3 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  Наблюдения за текущий месяц ещё не сгенерированы.
+                </Typography>
+                <Button
+                  variant="contained"
+                  startIcon={<AutoAwesomeIcon />}
+                  onClick={() => generateInsightsMutation.mutate()}
+                >
+                  Сгенерировать
+                </Button>
+              </Box>
+            ) : walletInsights ? (
+              <Stack spacing={2}>
+                <Typography variant="caption" color="text.secondary">
+                  Сгенерировано: {formatDateTime(walletInsights.generatedAtUtc)}
+                </Typography>
+                {walletInsights.anomaliesText && (
+                  <>
+                    <Divider />
+                    <InsightSection title="Аномалии" text={walletInsights.anomaliesText} />
+                  </>
+                )}
+                {walletInsights.trendsText && (
+                  <>
+                    <Divider />
+                    <InsightSection title="Тренды" text={walletInsights.trendsText} />
+                  </>
+                )}
+                {walletInsights.expenseStructureText && (
+                  <>
+                    <Divider />
+                    <InsightSection title="Структура расходов" text={walletInsights.expenseStructureText} />
+                  </>
+                )}
+                {walletInsights.recommendationsText && (
+                  <>
+                    <Divider />
+                    <InsightSection title="Рекомендации" text={walletInsights.recommendationsText} />
+                  </>
+                )}
+              </Stack>
+            ) : null}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Секция рекуррентных транзакций */}
       {!wallet.isArchived && (
         <Card variant="outlined" sx={{ mb: 3 }}>
@@ -1720,6 +1930,10 @@ function WalletPage() {
                 </FormControl>
               </Box>
             </Box>
+
+            {isTransactionsFetching && !isFetchingNextPage && (
+              <LinearProgress sx={{ borderRadius: 1 }} />
+            )}
 
             {allTransactions.length === 0 && filtersInitialized ? (
               <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
@@ -2019,21 +2233,72 @@ function WalletPage() {
               InputLabelProps={{ shrink: true }}
             />
 
-            <FormControl fullWidth>
-              <InputLabel>Категория (опционально)</InputLabel>
-              <Select
-                value={transactionForm.categoryId}
-                label="Категория (опционально)"
-                onChange={(e) => setTransactionForm({ ...transactionForm, categoryId: e.target.value })}
-              >
-                <MenuItem value="">Без категории</MenuItem>
-                {(transactionType === 'Income' ? incomeCategories : expenseCategories).map((category) => (
-                  <MenuItem key={category.id} value={category.id}>
-                    {category.icon} {category.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <Box>
+              <FormControl fullWidth>
+                <InputLabel>Категория (опционально)</InputLabel>
+                <Select
+                  value={transactionForm.categoryId}
+                  label="Категория (опционально)"
+                  disabled={useAiCategory}
+                  onChange={(e) => setTransactionForm({ ...transactionForm, categoryId: e.target.value })}
+                >
+                  <MenuItem value="">Без категории</MenuItem>
+                  {(transactionType === 'Income' ? incomeCategories : expenseCategories).map((category) => (
+                    <MenuItem key={category.id} value={category.id}>
+                      {category.icon} {category.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              {transactionEditMode === 'create' && (
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={useAiCategory}
+                      onChange={(e) => {
+                        setUseAiCategory(e.target.checked);
+                        if (e.target.checked) setTransactionForm({ ...transactionForm, categoryId: '' });
+                      }}
+                    />
+                  }
+                  label="Назначить с помощью ИИ"
+                  sx={{ mt: 0.5 }}
+                />
+              )}
+
+              {transactionEditMode === 'edit' && (
+                <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={handleAiSuggest}
+                    disabled={aiSuggestionLoading}
+                    startIcon={
+                      aiSuggestionLoading ? (
+                        <CircularProgress size={14} />
+                      ) : (
+                        <AutoAwesomeIcon fontSize="small" />
+                      )
+                    }
+                  >
+                    {aiSuggestionLoading ? 'Запрос...' : 'Совет от ИИ'}
+                  </Button>
+                  {aiSuggestion && (
+                    <Chip
+                      label={`${aiSuggestion.categoryIcon ?? ''} ${aiSuggestion.categoryName}`.trim()}
+                      color="primary"
+                      variant="outlined"
+                      onClick={() => {
+                        setTransactionForm({ ...transactionForm, categoryId: aiSuggestion.categoryId });
+                        setAiSuggestion(null);
+                      }}
+                      onDelete={() => setAiSuggestion(null)}
+                    />
+                  )}
+                </Box>
+              )}
+            </Box>
 
             <TextField
               label="Описание (опционально)"
@@ -2376,6 +2641,19 @@ function ErrorDialog({ open, message, onClose }: ErrorDialogProps) {
         </Button>
       </DialogActions>
     </Dialog>
+  );
+}
+
+function InsightSection({ title, text }: { title: string; text: string }) {
+  return (
+    <Box>
+      <Typography variant="subtitle2" color="primary" gutterBottom>
+        {title}
+      </Typography>
+      <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+        {text}
+      </Typography>
+    </Box>
   );
 }
 
