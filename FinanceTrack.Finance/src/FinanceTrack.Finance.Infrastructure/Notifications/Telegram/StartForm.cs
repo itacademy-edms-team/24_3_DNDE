@@ -1,4 +1,4 @@
-﻿using Ardalis.Result;
+using Ardalis.Result;
 using FinanceTrack.Finance.UseCases.Users.TelegramBotNotifications;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,7 +28,15 @@ public class StartForm(IServiceScopeFactory scopeFactory) : AutoCleanForm
             return;
         }
 
-        // /start без параметров - приветствие
+        // Команда /disconnect — сразу отключаем без промежуточного экрана с кнопкой.
+        // Удобно когда инлайн-кнопки уже не видны (например, после напоминания).
+        if (message.IsBotCommand && message.BotCommand == "/disconnect")
+        {
+            await HandleDisconnect();
+            return;
+        }
+
+        // /start без параметров или любое другое сообщение — приветствие с кнопкой
         _buttons = new ButtonForm();
         _buttons.AddButtonRow(
             new ButtonBase(
@@ -38,8 +46,8 @@ public class StartForm(IServiceScopeFactory scopeFactory) : AutoCleanForm
         );
         _message =
             "👋 Добро пожаловать в бот FinanceTrack!\n\n"
-            + "Для подключения уведомлений - перейдите по ссылке с сайта.\n"
-            + "Для отключения - нажмите кнопку ниже.";
+            + "Для подключения уведомлений — перейдите по ссылке с сайта.\n"
+            + "Для отключения — нажмите кнопку ниже или введите /disconnect.";
     }
 
     public override async Task Action(MessageResult message)
@@ -50,22 +58,7 @@ public class StartForm(IServiceScopeFactory scopeFactory) : AutoCleanForm
         if (call?.Value != "disconnect")
             return;
 
-        using var scope = scopeFactory.CreateScope();
-        var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
-
-        var result = await mediator.Send(
-            new DisableTelegramBotNotificationsByChatIdCommand(Device.DeviceId)
-        );
-
-        if (result.IsSuccess)
-        {
-            _message = "✅ Telegram-уведомления успешно отключены.";
-            _buttons = null; // не показываем кнопку "Отключить уведомления"
-        }
-        else
-        {
-            _message = $"❌ {string.Join(", ", result.Errors)}";
-        }
+        await HandleDisconnect();
     }
 
     public override async Task Render(MessageResult message)
@@ -77,6 +70,27 @@ public class StartForm(IServiceScopeFactory scopeFactory) : AutoCleanForm
 
         _message = null;
         _buttons = null;
+    }
+
+    private async Task HandleDisconnect()
+    {
+        using var scope = scopeFactory.CreateScope();
+        var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+
+        var result = await mediator.Send(
+            new DisableTelegramBotNotificationsByChatIdCommand(Device.DeviceId)
+        );
+
+        if (result.IsSuccess)
+        {
+            _message = "✅ Telegram-уведомления успешно отключены.";
+            _buttons = null; // не показываем кнопку — уже отключили
+        }
+        else
+        {
+            _message = $"❌ {string.Join(", ", result.Errors)}";
+            // _buttons остаются от Load() — кнопка показывается снова
+        }
     }
 
     private async Task HandlePrimaryCode(string param)

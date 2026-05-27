@@ -1,6 +1,8 @@
 ﻿using FinanceTrack.Finance.Infrastructure.Configurations;
 using Microsoft.Extensions.Hosting;
+using Telegram.Bot.Types;
 using TelegramBotBase.Builder;
+using TelegramBotBase.Commands;
 
 namespace FinanceTrack.Finance.Infrastructure.Notifications.Telegram;
 
@@ -28,7 +30,11 @@ public sealed class TelegramBotHostedService(
             .DefaultMessageLoop()
             .WithServiceProvider<StartForm>(serviceProvider)
             .NoProxy()
-            .CustomCommands(_ => { })
+            .CustomCommands(cmds =>
+            {
+                cmds.Add("start", "Главное меню / Подключить уведомления");
+                cmds.Add("disconnect", "Отключить Telegram-уведомления");
+            })
             .NoSerialization()
             .UseRussian()
             .UseThreadPool(2, 2)
@@ -44,6 +50,14 @@ public sealed class TelegramBotHostedService(
             );
 
         await _bot.Start();
+
+        await _bot.Client.SetBotCommands(
+            new List<BotCommand>
+            {
+                new() { Command = "start", Description = "Главное меню / Подключить уведомления" },
+                new() { Command = "disconnect", Description = "Отключить Telegram-уведомления" },
+            }
+        );
 
         logger.LogInformation("Telegram bot started: @{BotUsername}", config.BotUsername);
     }

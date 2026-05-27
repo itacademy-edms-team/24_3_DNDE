@@ -206,7 +206,6 @@ function AccountPage() {
             <Box sx={{ mt: 3 }}>
               <Typography
                 variant="body1"
-                color="text.secondary"
                 gutterBottom
               >
                 Telegram-уведомления о предстоящих регулярных транзакциях
