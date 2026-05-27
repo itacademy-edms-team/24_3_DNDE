@@ -1,10 +1,12 @@
 ﻿using FinanceTrack.Finance.Core.Interfaces;
 using FinanceTrack.Finance.Core.Services;
 using FinanceTrack.Finance.Infrastructure.Ai;
+using FinanceTrack.Finance.Infrastructure.Configurations;
 using FinanceTrack.Finance.Infrastructure.Data;
 using FinanceTrack.Finance.Infrastructure.Data.Config;
 using FinanceTrack.Finance.Infrastructure.Data.Queries;
 using FinanceTrack.Finance.Infrastructure.Notifications;
+using FinanceTrack.Finance.Infrastructure.Notifications.Telegram;
 using FinanceTrack.Finance.Infrastructure.PdfImport;
 using FinanceTrack.Finance.UseCases.Analytics;
 using FinanceTrack.Finance.UseCases.FinancialTransactions.List;
@@ -30,6 +32,7 @@ public static class InfrastructureServiceExtensions
         services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
 
         AddYandexAiServices(services, config);
+        AddTelegramBotServices(services, config);
 
         services
             .AddScoped(typeof(IRepository<>), typeof(EfRepository<>))
@@ -63,6 +66,15 @@ public static class InfrastructureServiceExtensions
         logger.LogInformation("{Project} services registered", "Infrastructure");
 
         return services;
+    }
+
+    private static void AddTelegramBotServices(IServiceCollection services, IConfiguration config)
+    {
+        services.Configure<TelegramBotOptions>(config.GetSection(TelegramBotOptions.SectionName));
+        services.AddSingleton<ITelegramBotOptions>(sp =>
+            sp.GetRequiredService<IOptions<TelegramBotOptions>>().Value
+        );
+        services.AddHostedService<TelegramBotHostedService>();
     }
 
     private static void AddYandexAiServices(IServiceCollection services, IConfiguration config)

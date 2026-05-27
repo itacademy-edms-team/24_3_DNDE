@@ -103,6 +103,14 @@ const routes: Routes = [
     protected: true,
   },
   {
+    component: asyncComponentLoader(
+      () => import('@/pages/TelegramNotificationsPage'),
+    ),
+    path: '/account/telegram-notifications',
+    title: '',
+    protected: true,
+  },
+  {
     component: asyncComponentLoader(() => import('@/pages/NotFound')),
     path: '*',
   },

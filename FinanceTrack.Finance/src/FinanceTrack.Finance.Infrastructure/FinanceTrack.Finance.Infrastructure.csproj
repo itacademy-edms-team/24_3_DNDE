@@ -19,6 +19,7 @@
         <PackageReference Include="SQLite" />
         <PackageReference Include="MR.AspNetCore.Pagination" />
         <PackageReference Include="OpenAI" />
+        <PackageReference Include="TelegramBotBase" />
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\FinanceTrack.Finance.Core\FinanceTrack.Finance.Core.csproj" />
