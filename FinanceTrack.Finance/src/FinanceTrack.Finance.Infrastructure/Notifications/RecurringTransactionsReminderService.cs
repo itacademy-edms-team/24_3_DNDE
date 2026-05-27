@@ -7,14 +7,7 @@ using FinanceTrack.Finance.Core.UserAggregate.Specifications;
 
 namespace FinanceTrack.Finance.Infrastructure.Notifications;
 
-// TODO: раздельная отправка по каналам - что нужно изменить:
-// 1. Добавить LastTelegramReminderDate в RecurringTransaction + миграция БД.
-// 2. Создать RecurringTransactionsForTelegramReminderSpec (фильтр по своему флагу).
-// 3. Разделить этот класс на EmailReminderService и TelegramReminderService.
-// 4. BackgroundService вызывает оба сервиса независимо.
-// Это позволит повторно отправить только по одному каналу, если первый упал,
-// а также правильно обрабатывать пользователей, подключивших только один канал.
-
+// WARN: при разделении отправки уведомлений на разные каналы потребуются некоторые изменения.
 public class RecurringTransactionsReminderService(
     ILogger<RecurringTransactionsReminderService> logger,
     IEmailSender emailSender,
