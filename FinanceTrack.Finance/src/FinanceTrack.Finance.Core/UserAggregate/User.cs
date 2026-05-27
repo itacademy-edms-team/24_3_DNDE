@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 using FinanceTrack.Finance.Core.Shared;
@@ -12,6 +13,8 @@ public class User : GuidEntityBase, IAggregateRoot
     public string Email { get; private set; } = string.Empty;
 
     public bool IsEmailNotificationsEnabled { get; private set; } = false;
+    public long? TelegramChatId { get; private set; }
+    public bool IsTelegramNotificationsEnabled { get; private set; } = false;
 
     // ORM
     private User() { }
@@ -46,6 +49,20 @@ public class User : GuidEntityBase, IAggregateRoot
     public User DisableEmailNotifications()
     {
         IsEmailNotificationsEnabled = false;
+        return this;
+    }
+
+    public User ConnectTelegramBot(long telegramChatId)
+    {
+        TelegramChatId = telegramChatId;
+        IsTelegramNotificationsEnabled = true;
+        return this;
+    }
+
+    public User DisconnectTelegramBot()
+    {
+        TelegramChatId = null;
+        IsTelegramNotificationsEnabled = false;
         return this;
     }
 }

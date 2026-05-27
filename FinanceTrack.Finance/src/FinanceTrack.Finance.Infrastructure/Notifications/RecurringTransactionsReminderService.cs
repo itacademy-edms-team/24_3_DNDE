@@ -7,9 +7,11 @@ using FinanceTrack.Finance.Core.UserAggregate.Specifications;
 
 namespace FinanceTrack.Finance.Infrastructure.Notifications;
 
-public class EmailReminderService(
-    ILogger<EmailReminderService> logger,
+// WARN: при разделении отправки уведомлений на разные каналы потребуются некоторые изменения.
+public class RecurringTransactionsReminderService(
+    ILogger<RecurringTransactionsReminderService> logger,
     IEmailSender emailSender,
+    ITelegramSender telegramSender,
     IRepository<RecurringTransaction> recurringRepository,
     IReadRepository<User> userRepository,
     IUnitOfWork unitOfWork
@@ -17,6 +19,8 @@ public class EmailReminderService(
 {
     public async Task SendRemindersAsync(DateOnly today, CancellationToken cancel = default)
     {
+        // Одна выборка для двух внешних каналов.
+        // При раздельной отправке потребуются изменения в Core.
         var transactions = await recurringRepository.ListAsync(
             new RecurringTransactionsForReminderSpec(today),
             cancel
@@ -36,7 +40,16 @@ public class EmailReminderService(
             var userId = Guid.Parse(group.Key);
             var user = await userRepository.FirstOrDefaultAsync(new UserByIdSpec(userId), cancel);
 
-            if (user is null || !user.IsEmailNotificationsEnabled)
+            if (user is null)
+                continue;
+
+            // При раздельной отправке здесь не будет общего continue - каждый канал
+            // проверяется независимо и помечает свой флаг отдельно.
+            var hasAnyChannel =
+                user.IsEmailNotificationsEnabled
+                || (user.IsTelegramNotificationsEnabled && user.TelegramChatId.HasValue);
+
+            if (!hasAnyChannel)
                 continue;
 
             var items = group
@@ -49,19 +62,35 @@ public class EmailReminderService(
                 ))
                 .ToList();
 
-            await emailSender.SendEmailAsync(
-                user.Email,
-                "Напоминание: предстоящие платежи",
-                BuildEmailBody(items)
-            );
+            if (user.IsEmailNotificationsEnabled)
+            {
+                await emailSender.SendEmailAsync(
+                    user.Email,
+                    "Напоминание: предстоящие платежи",
+                    BuildEmailBody(items)
+                );
+            }
 
+            if (user.IsTelegramNotificationsEnabled && user.TelegramChatId.HasValue)
+            {
+                await telegramSender.SendMessageAsync(
+                    user.TelegramChatId.Value,
+                    BuildTelegramMessage(items),
+                    cancel
+                );
+            }
+
+            // Единый флаг для обоих каналов. При раздельной отправке будет
+            // MarkEmailReminderSent / MarkTelegramReminderSent - вызываются независимо.
             foreach (var item in group)
                 item.Rule.MarkEmailReminderSent(today);
 
             logger.LogInformation(
-                "Sent reminder to user {UserId} for {Count} upcoming transactions",
+                "Sent reminder to user {UserId} for {Count} upcoming transactions (email={Email}, telegram={Telegram})",
                 userId,
-                items.Count
+                items.Count,
+                user.IsEmailNotificationsEnabled,
+                user.IsTelegramNotificationsEnabled && user.TelegramChatId.HasValue
             );
         }
 
@@ -100,6 +129,22 @@ public class EmailReminderService(
             sb.AppendLine($"{walletGroup.Key}:");
             foreach (var item in walletGroup.OrderBy(i => i.DueDate))
                 sb.AppendLine($"• {item.Name} — {item.Amount:F2} ₽, {item.DueDate:dd.MM.yyyy}");
+        }
+
+        return sb.ToString();
+    }
+
+    private static string BuildTelegramMessage(IReadOnlyList<ReminderItem> items)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("🔔 Предстоящие платежи:");
+
+        foreach (var walletGroup in items.GroupBy(i => i.WalletName))
+        {
+            sb.AppendLine();
+            sb.AppendLine($"{walletGroup.Key}:");
+            foreach (var item in walletGroup.OrderBy(i => i.DueDate))
+                sb.AppendLine($"  • {item.Name} — {item.Amount:F2} ₽  ({item.DueDate:dd.MM.yyyy})");
         }
 
         return sb.ToString();
