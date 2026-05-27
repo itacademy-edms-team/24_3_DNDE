@@ -33,7 +33,7 @@ public class RecurringTransactionBackgroundService(
                 }
 
                 var reminderService =
-                    scope.ServiceProvider.GetRequiredService<EmailReminderService>();
+                    scope.ServiceProvider.GetRequiredService<RecurringTransactionsReminderService>();
                 await reminderService.SendRemindersAsync(today, cancel);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)

@@ -60,8 +60,8 @@ public static class InfrastructureServiceExtensions
             >()
             .AddScoped<IWalletTransactionListQueryService, WalletTransactionListQueryService>()
             .AddScoped<IUserWalletListQueryService, UserWalletListQueryService>()
-            // Email notifications
-            .AddScoped<EmailReminderService>();
+            // Email and Telegram notifications
+            .AddScoped<RecurringTransactionsReminderService>();
 
         logger.LogInformation("{Project} services registered", "Infrastructure");
 
@@ -74,6 +74,9 @@ public static class InfrastructureServiceExtensions
         services.AddSingleton<ITelegramBotOptions>(sp =>
             sp.GetRequiredService<IOptions<TelegramBotOptions>>().Value
         );
+        // Singleton: TelegramBotClient потокобезопасен, переиспользует HTTP-соединение.
+        // Используем только для отправки сообщений. Polling'ом занимается TelegramBotHostedService.
+        services.AddSingleton<ITelegramSender, TelegramSender>();
         services.AddHostedService<TelegramBotHostedService>();
     }
 
