@@ -1,0 +1,24 @@
+# .NET build output
+bin/
+obj/
+*.user
+*.suo
+
+# NuGet
+nupkg/
+*.nupkg
+*.snupkg
+NuGet.Config
+project.lock.json
+project.assets.json
+
+# Rider / IntelliJ
+.idea/
+
+# VS Code
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
