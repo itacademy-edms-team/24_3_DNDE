@@ -1,7 +1,7 @@
 ﻿using EDMS1.CommandLog.Commands;
 using EDMS1.CommandLog.Models;
 
-namespace EDMS1.CommandLog;
+namespace EDMS1.CommandLog.Services;
 
 /// <summary>
 /// Сервис логирования вызовов команд.

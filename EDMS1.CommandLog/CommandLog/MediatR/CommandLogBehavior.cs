@@ -1,6 +1,7 @@
 ﻿using EDMS1.CommandLog.Extensions;
 using EDMS1.CommandLog.Commands;
 using EDMS1.CommandLog.Models;
+using EDMS1.CommandLog.Services;
 using MediatR;
 using Newtonsoft.Json;
 using ValidationException = FluentValidation.ValidationException;

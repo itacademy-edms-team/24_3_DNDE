@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using EDMS1.CommandLog.Extensions;
+using EDMS1.CommandLog.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
