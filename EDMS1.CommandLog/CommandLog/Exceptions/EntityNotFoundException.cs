@@ -28,7 +28,7 @@ public class EntityNotFoundException(string entityName, string fieldName, string
     /// </summary>
     /// <param name="entityName">See <see cref="EntityName"/>.</param>
     /// <param name="fieldName">See <see cref="FieldName"/>.</param>
-    /// <param name="idAsString">Identifier of entity..</param>
+    /// <param name="id">Identifier of entity.</param>
     public EntityNotFoundException(string entityName, string fieldName, Guid id)
         : this(entityName, fieldName, id.ToString())
     { }

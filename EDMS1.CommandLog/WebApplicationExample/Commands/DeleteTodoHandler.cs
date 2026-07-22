@@ -1,7 +1,6 @@
 ﻿using EDMS1.CommandLog.Exceptions;
 using EDMS1.CommandLog.Models;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using WebApplicationExample.Database;
 using WebApplicationExample.Models;
 

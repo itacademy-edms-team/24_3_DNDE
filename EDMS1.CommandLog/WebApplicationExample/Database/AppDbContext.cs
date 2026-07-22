@@ -1,5 +1,4 @@
-﻿using EDMS1.CommandLog.Extensions;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using WebApplicationExample.Models;
 
 namespace WebApplicationExample.Database;

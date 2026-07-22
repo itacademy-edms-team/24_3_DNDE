@@ -4,8 +4,17 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace EDMS1.CommandLog.Extensions;
 
+/// <summary>
+/// Набор расширений для конфигурации таблиц CommandLog в хосте.
+/// </summary>
 public static class ModelBuilderExtensions
 {
+    /// <summary>
+    /// Добавляет таблицу журнала команд (<see cref="CommandLogEntry"/>) в модель контекста хоста.
+    /// Вызывать в <see cref="DbContext.OnModelCreating"/> того контекста,
+    /// через который будет работать <c>CommandLogService</c>.
+    /// </summary>
+    /// <param name="builder">Строитель модели контекста хоста.</param>
     public static void UseCommandLog(this ModelBuilder builder)
     {
         builder.Entity<CommandLogEntry>(ConfigureLogEntry);
