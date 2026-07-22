@@ -1,6 +1,5 @@
 ﻿using System.Runtime.Serialization;
 using EDMS1.CommandLog.Commands;
-using EDMS1.CommandLog.Db;
 using EDMS1.CommandLog.Exceptions;
 using EDMS1.CommandLog.Models;
 using MediatR;
@@ -11,24 +10,30 @@ using Newtonsoft.Json;
 namespace EDMS1.CommandLog.Services;
 
 /// <summary>
+/// <para>
 /// Сервис логирования вызовов команд.
+/// </para>
+/// <remarks>
+/// Пример реализации взят из <see href="https://github.com/dotnet/eShop/tree/main/src/IntegrationEventLogEF">eShop</see>
+/// </remarks>
 /// </summary>
-public class CommandLogService : ICommandLogService
+public class CommandLogService<TContext> : ICommandLogService
+    where TContext : DbContext
 {
     private readonly ICommandTypes _commandTypes;
     private readonly IMediator _mediator;
-    private readonly CommandLogDbContext _commandLogDbContext;
-    private readonly ILogger<CommandLogService> _logger;
+    private readonly TContext _dbContext;
+    private readonly ILogger<CommandLogService<TContext>> _logger;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="CommandLogService"/> class.
+    /// Initializes a new instance of the <see cref="CommandLogService{TContext}"/> class.
     /// </summary>
-    public CommandLogService(DbContext commandLogDbContext, ICommandTypes commandTypes, ILogger<CommandLogService> logger, IMediator mediator)
+    public CommandLogService(TContext dbContext, ICommandTypes commandTypes, ILogger<CommandLogService<TContext>> logger, IMediator mediator)
     {
         _commandTypes = commandTypes;
         _logger = logger;
         _mediator = mediator;
-        _commandLogDbContext = (CommandLogDbContext)commandLogDbContext;
+        _dbContext = dbContext;
     }
 
     /// <inheritdoc/>
@@ -41,9 +46,9 @@ public class CommandLogService : ICommandLogService
             null,
             result.Comment);
 
-        _commandLogDbContext.CommandLogs.Add(commandLogEntry);
+        _dbContext.Set<CommandLogEntry>().Add(commandLogEntry);
 
-        await _commandLogDbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync();
     }
 
     /// <inheritdoc/>
@@ -56,9 +61,9 @@ public class CommandLogService : ICommandLogService
             message,
             null);
 
-        _commandLogDbContext.CommandLogs.Add(commandLogEntry);
+        _dbContext.Set<CommandLogEntry>().Add(commandLogEntry);
 
-        await _commandLogDbContext.SaveChangesAsync();
+        await _dbContext.SaveChangesAsync();
     }
 
     /// <inheritdoc/>
@@ -78,7 +83,7 @@ public class CommandLogService : ICommandLogService
     /// <inheritdoc/>
     public async Task RetryCommandsAsync(CancellationToken cancel)
     {
-        var commandLogs = await _commandLogDbContext.CommandLogs.AsNoTracking()
+        var commandLogs = await _dbContext.Set<CommandLogEntry>().AsNoTracking()
             .Where(x => x.Status == CommandStatus.Retry.ToString())
             .OrderBy(x => x.CreationTime)
             .Take(1000)
@@ -116,12 +121,12 @@ public class CommandLogService : ICommandLogService
 
     private async Task<CommandLogEntry> UpdateLogStatusAsync(Guid id, CommandStatus status, CancellationToken cancel)
     {
-        var commandLog = await _commandLogDbContext.CommandLogs.FindAsync([id], cancel)
+        var commandLog = await _dbContext.Set<CommandLogEntry>().FindAsync([id], cancel)
             ?? throw new EntityNotFoundException(nameof(CommandLogEntry), nameof(CommandLogEntry.CommandLogId), id);
 
         commandLog.Status = status.ToString();
 
-        await _commandLogDbContext.SaveChangesAsync(cancel);
+        await _dbContext.SaveChangesAsync(cancel);
 
         return commandLog;
     }
