@@ -10,7 +10,7 @@
 
 ## Setup
 
-В приложении-хосте в DbContext, который будет использовать CommandLog:
+В приложении-хосте в DbContext, который будет использовать CommandLog, вызовите `UseCommandLog();`:
 ```csharp
 using EDMS1.CommandLog.Extensions;
 
