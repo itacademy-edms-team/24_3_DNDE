@@ -1,0 +1,40 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RootNamespace>EDMS1.CommandLog</RootNamespace>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <PackageId>CommandLog</PackageId>
+        <Version>0.1.0</Version>
+        <Company>EDMS1</Company>
+        <Authors>Лысаковский Александр</Authors>
+        <Description>Nuget-пакет с функциональностью журнала команд (CommandLog).</Description>
+        <PackageTags>logging;commands;audit;csharp;dotnet</PackageTags>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+    </PropertyGroup>
+    
+    <ItemGroup>
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.22" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.22" />
+        <PackageReference Include="MediatR" Version="12.5.0" />
+        <PackageReference Include="FluentValidation" Version="12.1.1" />
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.22" />
+        <PackageReference Include="Microsoft.AspNetCore.OData" Version="8.3.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
+    
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="\" />
+        <None Include="CONTRIBUTING.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
+
+</Project>
