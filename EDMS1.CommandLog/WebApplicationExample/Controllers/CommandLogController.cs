@@ -7,7 +7,7 @@ namespace WebApplicationExample.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class CommandLogController(CommandLogDbContext dbContext) : ControllerBase
+public class CommandLogController(DbContext dbContext) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetPaged(
