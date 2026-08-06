@@ -2,6 +2,7 @@
 using EDMS1.CommandLog.Commands;
 using EDMS1.CommandLog.Exceptions;
 using EDMS1.CommandLog.Models;
+using EDMS1.CommandLog.Resolvers;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -17,10 +18,10 @@ namespace EDMS1.CommandLog.Services;
 /// Пример реализации взят из <see href="https://github.com/dotnet/eShop/tree/main/src/IntegrationEventLogEF">eShop</see>
 /// </remarks>
 /// </summary>
-public class CommandLogService<TContext> : ICommandLogService
+internal sealed class CommandLogService<TContext> : ICommandLogService
     where TContext : DbContext
 {
-    private readonly ICommandTypes _commandTypes;
+    private readonly CommandTypeResolver _typeResolver;
     private readonly IMediator _mediator;
     private readonly TContext _dbContext;
     private readonly ILogger<CommandLogService<TContext>> _logger;
@@ -28,9 +29,9 @@ public class CommandLogService<TContext> : ICommandLogService
     /// <summary>
     /// Initializes a new instance of the <see cref="CommandLogService{TContext}"/> class.
     /// </summary>
-    public CommandLogService(TContext dbContext, ICommandTypes commandTypes, ILogger<CommandLogService<TContext>> logger, IMediator mediator)
+    public CommandLogService(TContext dbContext, CommandTypeResolver typeResolver, ILogger<CommandLogService<TContext>> logger, IMediator mediator)
     {
-        _commandTypes = commandTypes;
+        _typeResolver = typeResolver;
         _logger = logger;
         _mediator = mediator;
         _dbContext = dbContext;
@@ -110,9 +111,9 @@ public class CommandLogService<TContext> : ICommandLogService
 
     private async Task RetryCommandAsync(CommandLogEntry cmdLogEntry, CancellationToken cancel)
     {
-        var command = JsonConvert.DeserializeObject(cmdLogEntry.Command, _commandTypes[cmdLogEntry.CommandName])
+        var command = JsonConvert.DeserializeObject(cmdLogEntry.Command, _typeResolver.Resolve(cmdLogEntry.CommandName))
             ?? throw new SerializationException(
-                $"Cannot deserialize retry command {cmdLogEntry.Command} to type {_commandTypes[cmdLogEntry.CommandName]}.");
+                $"Cannot deserialize retry command {cmdLogEntry.Command} to type {cmdLogEntry.CommandName}.");
         
         await UpdateLogStatusAsync(cmdLogEntry.CommandLogId, CommandStatus.RetryProcessed, cancel);
 

@@ -29,20 +29,20 @@ public class AppDbContext : DbContext
 Там, где регистрируете сервисы, вызовите `AddCommandLogService`, указав два параметра:
 - **Обобщённый параметр `<TContext>`** — `DbContext`, где используется `UseCommandLog();`. Сервис журнала будет
 писать команды именно в этот контекст.
-- **Аргумент `assemblyMarkerType`** — любой тип из сборки, где лежат ваши команды (`ICommand`). Нужен чтобы найти эту сборку и просканировать её: модуль составит список всех команд и их имён. Список используется при повторной обработке (retry), чтобы восстановить команду из сохранённого JSON.
 ```csharp
 using EDMS1.CommandLog.Extensions;
 
 ...
-builder.Services.AddCommandLogService<AppDbContext>(typeof(SomeCommand));
+builder.Services.AddCommandLogService<AppDbContext>();
 ...
 ```
 
-Там, где настраивается MediatR, вызовите `AddCommandLogBehavior();`:
+Там, где настраивается MediatR, зарегистрируйте все сборки, в которых используются команды и вызовите `AddCommandLogBehavior();`:
 ```csharp
 builder.Services.AddMediatR(cfg => 
     {
-        cfg.RegisterServicesFromAssembly(typeof(SomeCommand).Assembly);
+        cfg.RegisterServicesFromAssembly(typeof(CommandFromAssembly1).Assembly);
+        cfg.RegisterServicesFromAssembly(typeof(CommandFromAssembly2).Assembly);
         ...
         cfg.AddCommandLogBehavior();
         ...

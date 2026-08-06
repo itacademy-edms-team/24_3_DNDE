@@ -11,11 +11,10 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Регистрируем самый нижний узел в дереве наследования.
 builder.Services.AddDbContext<AppDbContext>(o => o.UseInMemoryDatabase("example"));
 builder.Services.AddScoped<DbContext>(sp => sp.GetRequiredService<AppDbContext>());
 
-builder.Services.AddCommandLogService<AppDbContext>(typeof(AddTodo));
+builder.Services.AddCommandLogService<AppDbContext>();
 
 builder.Services.AddMediatR(config =>
 {

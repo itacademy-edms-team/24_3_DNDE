@@ -2,6 +2,7 @@ using EDMS1.CommandLog.BackgroundServices;
 using EDMS1.CommandLog.Commands;
 using EDMS1.CommandLog.Helpers;
 using EDMS1.CommandLog.Models;
+using EDMS1.CommandLog.Resolvers;
 using EDMS1.CommandLog.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,15 +33,10 @@ public static class ServiceCollectionExtensions
     /// Используется для поиска команд и построения карты "имя:тип" для десериализации при повторной обработке.
     /// </param>
     /// <returns>Та же коллекция сервисов для построения цепочки вызовов.</returns>
-    public static IServiceCollection AddCommandLogService<TContext>(this IServiceCollection services, Type assemblyMarkerType)
+    public static IServiceCollection AddCommandLogService<TContext>(this IServiceCollection services)
         where TContext : DbContext
     {
-        var dictionary = assemblyMarkerType.Assembly
-            .GetTypes()
-            .Where(x => x.IsAssignableTo(typeof(ICommand)) && x.IsClass && !x.IsAbstract)
-            .ToDictionary(x => x.Name);
-
-        services.AddSingleton<ICommandTypes>(_ => new CommandTypes(dictionary));
+        services.AddSingleton<CommandTypeResolver>();
         
         services.AddScoped<ICommandLogService, CommandLogService<TContext>>();
         
