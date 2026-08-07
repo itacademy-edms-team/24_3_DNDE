@@ -1,5 +1,4 @@
 using System.Runtime.Serialization;
-using EDMS1.CommandLog.Commands;
 using EDMS1.CommandLog.Exceptions;
 using EDMS1.CommandLog.IntegrationTests.Helpers;
 using EDMS1.CommandLog.IntegrationTests.Infrastructure;
@@ -16,23 +15,15 @@ namespace EDMS1.CommandLog.IntegrationTests;
 /// <summary>
 /// Набор тестов для проверки работоспособности ретрая команд.
 /// </summary>
-public class RetryTests : IDisposable
+public class RetryTests : IntegrationTestBase
 {
-	// per-test конфигурация
-	private readonly TestWebApplicationFactory _factory = new();
-
-	public void Dispose()
-	{
-		_factory.Dispose();
-	}
-
 	[Fact]
 	public async Task LogRetryCommandAsync_FailedEntry_MarksEntryAsRetry()
 	{
 		Guid commandLogId;
 
 		// Arrange
-		using (var scope = _factory.Services.CreateScope())
+		using (var scope = CreateScope())
 		{
 			var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
@@ -51,7 +42,7 @@ public class RetryTests : IDisposable
 		}
 
 		// Act
-		using (var scope = _factory.Services.CreateScope())
+		using (var scope = CreateScope())
 		{
 			var svc = scope.ServiceProvider.GetRequiredService<ICommandLogService>();
 			await svc.LogRetryCommandAsync(commandLogId);
@@ -59,12 +50,12 @@ public class RetryTests : IDisposable
 
 
 		// Assert
-		using (var scope = _factory.Services.CreateScope())
+		using (var scope = CreateScope())
 		{
 			var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
 			var entry = await dbContext.FindAsync<CommandLogEntry>([commandLogId],
-				TestContext.Current.CancellationToken);
+				Ct);
 
 			Assert.NotNull(entry);
 			Assert.Equal(CommandStatus.Retry.ToString(), entry.Status);
@@ -80,7 +71,7 @@ public class RetryTests : IDisposable
 		// Act & Assert
 		await Assert.ThrowsAsync<EntityNotFoundException>(async () =>
 		{
-			using var scope = _factory.Services.CreateScope();
+			using var scope = CreateScope();
 			var svc = scope.ServiceProvider.GetRequiredService<ICommandLogService>();
 			await svc.LogRetryCommandAsync(commandLogId);
 		});
@@ -91,10 +82,9 @@ public class RetryTests : IDisposable
 	{
 		Guid commandLogId;
 		Guid todoId;
-		string command;
 
 		// Arrange
-		using (var scope = _factory.Services.CreateScope())
+		using (var scope = CreateScope())
 		{
 			var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
@@ -113,31 +103,29 @@ public class RetryTests : IDisposable
 
 			commandLogId = entry.CommandLogId;
 			todoId = todo.Id;
-			command = entry.Command;
 		}
 
 		// Act
-		using (var scope = _factory.Services.CreateScope())
+		using (var scope = CreateScope())
 		{
 			var svc = scope.ServiceProvider.GetRequiredService<ICommandLogService>();
-			await svc.RetryCommandNowAsync(commandLogId, TestContext.Current.CancellationToken);
+			await svc.RetryCommandNowAsync(commandLogId, Ct);
 		}
 
 		// Assert
-		using (var scope = _factory.Services.CreateScope())
+		using (var scope = CreateScope())
 		{
 			var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-			var retryEntry = await dbContext.Set<CommandLogEntry>()
-				.SingleAsync(e => e.Command == command && e.Status == CommandStatus.RetryProcessed.ToString(),
-					TestContext.Current.CancellationToken);
+			var retryEntry = await dbContext.FindAsync<CommandLogEntry>([commandLogId], Ct);
+			Assert.NotNull(retryEntry);
 			Assert.Equal(CommandStatus.RetryProcessed.ToString(), retryEntry.Status);
 
 			Assert.Equal(1, await dbContext.Set<CommandLogEntry>()
 				.CountAsync(e => e.Status == CommandStatus.Successful.ToString(),
-					TestContext.Current.CancellationToken));
+					Ct));
 
-			var todo = await dbContext.FindAsync<Todo>([todoId], TestContext.Current.CancellationToken);
+			var todo = await dbContext.FindAsync<Todo>([todoId], Ct);
 			Assert.NotNull(todo);
 		}
 	}
@@ -151,9 +139,9 @@ public class RetryTests : IDisposable
 		// Act & Assert
 		await Assert.ThrowsAsync<EntityNotFoundException>(async () =>
 		{
-			using var scope = _factory.Services.CreateScope();
+			using var scope = CreateScope();
 			var svc = scope.ServiceProvider.GetRequiredService<ICommandLogService>();
-			await svc.RetryCommandNowAsync(commandLogId, TestContext.Current.CancellationToken);
+			await svc.RetryCommandNowAsync(commandLogId, Ct);
 		});
 	}
 
@@ -163,7 +151,7 @@ public class RetryTests : IDisposable
 		Guid commandLogId;
 
 		// Arrange
-		using (var scope = _factory.Services.CreateScope())
+		using (var scope = CreateScope())
 		{
 			var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
@@ -179,7 +167,7 @@ public class RetryTests : IDisposable
 				null);
 
 			entry.Command = "null";
-			await dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+			await dbContext.SaveChangesAsync(Ct);
 
 			commandLogId = entry.CommandLogId;
 		}
@@ -187,17 +175,17 @@ public class RetryTests : IDisposable
 		// Act & Assert
 		await Assert.ThrowsAsync<SerializationException>(async () =>
 		{
-			using var scope = _factory.Services.CreateScope();
+			using var scope = CreateScope();
 			var svc = scope.ServiceProvider.GetRequiredService<ICommandLogService>();
-			await svc.RetryCommandNowAsync(commandLogId, TestContext.Current.CancellationToken);
+			await svc.RetryCommandNowAsync(commandLogId, Ct);
 		});
 	}
 
 	[Fact]
-	public async Task RetryCommandsAsync_FailedEntriesAmount1000_Retries1000Successfully()
+	public async Task RetryCommandsAsync_1000RetryEntries_ProcessesAllAndLogsSuccess()
 	{
 		// Arrange
-		using (var scope = _factory.Services.CreateScope())
+		using (var scope = CreateScope())
 		{
 			var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
@@ -213,39 +201,39 @@ public class RetryTests : IDisposable
 				todos,
 				Guid.NewGuid(),
 				CommandStatus.Retry,
-				"Couldn't connect to the database.",
+				null,
 				null);
 		}
 
 		// Act
-		using (var scope = _factory.Services.CreateScope())
+		using (var scope = CreateScope())
 		{
 			var svc = scope.ServiceProvider.GetRequiredService<ICommandLogService>();
-			await svc.RetryCommandsAsync(TestContext.Current.CancellationToken);
+			await svc.RetryCommandsAsync(Ct);
 		}
 
 		// Assert
-		using (var scope = _factory.Services.CreateScope())
+		using (var scope = CreateScope())
 		{
 			var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
 			Assert.Equal(1000,
 				await dbContext.Set<CommandLogEntry>()
 					.CountAsync(e => e.Status == CommandStatus.RetryProcessed.ToString(),
-						TestContext.Current.CancellationToken));
+						Ct));
 			Assert.Equal(1000,
 				await dbContext.Set<CommandLogEntry>()
 					.CountAsync(e => e.Status == CommandStatus.Successful.ToString(),
-						TestContext.Current.CancellationToken));
-			Assert.Equal(1000, await dbContext.Set<Todo>().CountAsync(TestContext.Current.CancellationToken));
+						Ct));
+			Assert.Equal(1000, await dbContext.Set<Todo>().CountAsync(Ct));
 		}
 	}
 
 	[Fact]
-	public async Task RetryCommandsAsync_FailedAndNotACommandEntriesAmount1000_RetriesFailedSuccessfully()
+	public async Task RetryCommandsAsync_MixedValidAndCorruptedEntries_ProcessesValidLeavesCorruptedAsRetry()
 	{
 		// Arrange
-		using (var scope = _factory.Services.CreateScope())
+		using (var scope = CreateScope())
 		{
 			var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
@@ -261,36 +249,82 @@ public class RetryTests : IDisposable
 				todos,
 				Guid.NewGuid(),
 				CommandStatus.Retry,
-				"Couldn't connect to the database.",
+				null,
 				null)).ToArray();
 
 			foreach (var entry in entries.Take(500)) entry.Command = "null";
 
-			await dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+			await dbContext.SaveChangesAsync(Ct);
 		}
 
 		// Act
-		using (var scope = _factory.Services.CreateScope())
+		using (var scope = CreateScope())
 		{
 			var svc = scope.ServiceProvider.GetRequiredService<ICommandLogService>();
-			await svc.RetryCommandsAsync(TestContext.Current.CancellationToken);
+			await svc.RetryCommandsAsync(Ct);
 		}
 
 		// Assert
-		using (var scope = _factory.Services.CreateScope())
+		using (var scope = CreateScope())
 		{
 			var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
 			Assert.Equal(500,
 				await dbContext.Set<CommandLogEntry>().CountAsync(e => e.Status == CommandStatus.Retry.ToString(),
-					TestContext.Current.CancellationToken));
+					Ct));
 			Assert.Equal(500, await dbContext.Set<CommandLogEntry>().CountAsync(
 				e => e.Status == CommandStatus.RetryProcessed.ToString(),
-				TestContext.Current.CancellationToken));
+				Ct));
 			Assert.Equal(500,
 				await dbContext.Set<CommandLogEntry>()
 					.CountAsync(e => e.Status == CommandStatus.Successful.ToString(),
-						TestContext.Current.CancellationToken));
+						Ct));
+		}
+	}
+
+	[Theory]
+	[InlineData(CommandStatus.Successful)]
+	[InlineData(CommandStatus.Failed)]
+	[InlineData(CommandStatus.RetryProcessed)]
+	public async Task RetryCommandsAsync_NonRetryStatus_NotProcessed(CommandStatus status)
+	{
+		// Arrange
+		using (var scope = CreateScope())
+		{
+			var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+			var todos = new List<AddTodo>();
+			for (var i = 0; i < 1000; i++)
+				todos.Add(new AddTodo
+				{
+					Title = $"{Guid.NewGuid()}",
+					Description = $"{Guid.NewGuid()}"
+				});
+
+			await CommandLogSeeder.SeedManyAsync(dbContext,
+				todos,
+				Guid.NewGuid(),
+				status,
+				null,
+				null);
+		}
+
+		// Act
+		using (var scope = CreateScope())
+		{
+			var svc = scope.ServiceProvider.GetRequiredService<ICommandLogService>();
+			await svc.RetryCommandsAsync(Ct);
+		}
+
+		// Assert
+		using (var scope = CreateScope())
+		{
+			var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+			Assert.Equal(0, await dbContext.Set<Todo>().CountAsync(Ct));
+			Assert.Equal(1000,
+				await dbContext.Set<CommandLogEntry>().CountAsync(e => e.Status == status.ToString(),
+					Ct));
 		}
 	}
 }

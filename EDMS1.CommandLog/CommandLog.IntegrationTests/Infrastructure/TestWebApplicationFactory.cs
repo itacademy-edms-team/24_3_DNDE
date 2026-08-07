@@ -15,7 +15,7 @@ namespace EDMS1.CommandLog.IntegrationTests.Infrastructure;
 /// </summary>
 public class TestWebApplicationFactory : WebApplicationFactory<Program>
 {
-	protected readonly string _dbName = DbNameCreator.CreateDbName();
+	protected readonly string DbName = DbNameCreator.CreateDbName();
 
 	protected override void ConfigureWebHost(IWebHostBuilder builder)
 	{
@@ -23,7 +23,7 @@ public class TestWebApplicationFactory : WebApplicationFactory<Program>
 		{
 			services.RemoveAll<DbContextOptions<AppDbContext>>();
 			services.RemoveAll<DbContextOptions>();
-			services.AddDbContext<AppDbContext>(o => o.UseInMemoryDatabase(_dbName));
+			services.AddDbContext<AppDbContext>(o => o.UseInMemoryDatabase(DbName));
 
 			services.RemoveAll<IHostedService>();
 		});
