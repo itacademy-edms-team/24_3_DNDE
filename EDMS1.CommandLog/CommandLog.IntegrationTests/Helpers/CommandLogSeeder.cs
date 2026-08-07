@@ -23,9 +23,9 @@ public static class CommandLogSeeder
 	{
 		var entries = new List<CommandLogEntry>();
 
-		foreach (var cmd in commands)
+		foreach (var command in commands)
 		{
-			var entry = CommandLogEntry.Create(cmd, transactionId, status, failureMessage, comment);
+			var entry = CommandLogEntry.Create(command, transactionId, status, failureMessage, comment);
 			db.Add(entry);
 
 			entries.Add(entry);
