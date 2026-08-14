@@ -14,38 +14,34 @@ namespace EDMS1.CommandLog.Extensions;
 /// </summary>
 public static class ServiceCollectionExtensions
 {
-    /// <summary>
-    /// <para>
-    /// Регистрация логирующихся команд: сервис журнала, контекст команды,
-    /// доступ к провайдеру и фоновый сервис повторной обработки.
-    /// </para>
-    /// <remarks>
-    /// Пример регистрации CommandLogService взят из <see href="https://github.com/dotnet/eShop/blob/main/src/Catalog.API/Extensions/Extensions.cs">eShop</see>
-    /// </remarks>
-    /// </summary>
-    /// <typeparam name="TContext">
-    /// Тип <see cref="DbContext"/> хоста, в модель которого добавлена таблица журнала (через <c>UseCommandLog</c>).
-    /// Через него сервис записывает команды журнала.
-    /// </typeparam>
-    /// <param name="services">Коллекция сервисов.</param>
-    /// <param name="assemblyMarkerType">
-    /// Любой тип из сборки, где объявлены команды (<see cref="ICommand"/>).
-    /// Используется для поиска команд и построения карты "имя:тип" для десериализации при повторной обработке.
-    /// </param>
-    /// <returns>Та же коллекция сервисов для построения цепочки вызовов.</returns>
-    public static IServiceCollection AddCommandLogService<TContext>(this IServiceCollection services)
-        where TContext : DbContext
-    {
-        services.AddSingleton<CommandTypeResolver>();
-        
-        services.AddScoped<ICommandLogService, CommandLogService<TContext>>();
-        
-        services.AddScoped<ICommandContext, CommandContext>();
-        
-        services.AddHttpContextAccessor();
-        services.AddSingleton<ServiceProviderAccessor>();
-        services.AddHostedService<CommandLogRetryBackgroundService>();
+	/// <summary>
+	/// <para>
+	/// Регистрация логирующихся команд: сервис журнала, контекст команды,
+	/// доступ к провайдеру и фоновый сервис повторной обработки.
+	/// </para>
+	/// <remarks>
+	/// Пример регистрации CommandLogService взят из <see href="https://github.com/dotnet/eShop/blob/main/src/Catalog.API/Extensions/Extensions.cs">eShop</see>
+	/// </remarks>
+	/// </summary>
+	/// <typeparam name="TContext">
+	/// Тип <see cref="DbContext"/> хоста, в модель которого добавлена таблица журнала (через <c>UseCommandLog</c>).
+	/// Через него сервис записывает команды журнала.
+	/// </typeparam>
+	/// <param name="services">Коллекция сервисов.</param>
+	/// <returns>Та же коллекция сервисов для построения цепочки вызовов.</returns>
+	public static IServiceCollection AddCommandLogService<TContext>(this IServiceCollection services)
+		where TContext : DbContext
+	{
+		services.AddSingleton<CommandTypeResolver>();
 
-        return services;
-    }
+		services.AddScoped<ICommandLogService, CommandLogService<TContext>>();
+
+		services.AddScoped<ICommandContext, CommandContext>();
+
+		services.AddHttpContextAccessor();
+		services.AddSingleton<ServiceProviderAccessor>();
+		services.AddHostedService<CommandLogRetryBackgroundService>();
+
+		return services;
+	}
 }
