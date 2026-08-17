@@ -5,6 +5,7 @@ using EDMS1.CommandLog.Models;
 using EDMS1.CommandLog.Resolvers;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
@@ -19,116 +20,130 @@ namespace EDMS1.CommandLog.Services;
 /// </remarks>
 /// </summary>
 internal sealed class CommandLogService<TContext> : ICommandLogService
-    where TContext : DbContext
+	where TContext : DbContext
 {
-    private readonly CommandTypeResolver _typeResolver;
-    private readonly IMediator _mediator;
-    private readonly TContext _dbContext;
-    private readonly ILogger<CommandLogService<TContext>> _logger;
+	private readonly CommandTypeResolver _typeResolver;
+	private readonly IServiceScopeFactory _scopeFactory;
+	private readonly ILogger<CommandLogService<TContext>> _logger;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="CommandLogService{TContext}"/> class.
-    /// </summary>
-    public CommandLogService(TContext dbContext, CommandTypeResolver typeResolver, ILogger<CommandLogService<TContext>> logger, IMediator mediator)
-    {
-        _typeResolver = typeResolver;
-        _logger = logger;
-        _mediator = mediator;
-        _dbContext = dbContext;
-    }
+	/// <summary>
+	/// Initializes a new instance of the <see cref="CommandLogService{TContext}"/> class.
+	/// </summary>
+	public CommandLogService(
+		CommandTypeResolver typeResolver,
+		ILogger<CommandLogService<TContext>> logger, IServiceScopeFactory scopeFactory)
+	{
+		_typeResolver = typeResolver;
+		_logger = logger;
+		_scopeFactory = scopeFactory;
+	}
 
-    /// <inheritdoc/>
-    public async Task LogCommandAsync(ICommand command, CommandResult result, Guid transactionId)
-    {
-        var commandLogEntry = CommandLogEntry.Create(
-            command,
-            transactionId,
-            result.Status,
-            null,
-            result.Comment);
+	/// <inheritdoc/>
+	public async Task LogCommandAsync(ICommand command, CommandResult result, Guid transactionId)
+	{
+		var commandLogEntry = CommandLogEntry.Create(
+			command,
+			transactionId,
+			result.Status,
+			null,
+			result.Comment);
 
-        _dbContext.Set<CommandLogEntry>().Add(commandLogEntry);
+		using var journalScope = _scopeFactory.CreateScope();
+		var commandLogDbContext = journalScope.ServiceProvider.GetRequiredService<TContext>();
 
-        await _dbContext.SaveChangesAsync();
-    }
+		commandLogDbContext.Set<CommandLogEntry>().Add(commandLogEntry);
 
-    /// <inheritdoc/>
-    public async Task LogFailedCommandAsync(ICommand command, Guid transactionId, string message)
-    {
-        var commandLogEntry = CommandLogEntry.Create(
-            command,
-            transactionId,
-            CommandStatus.Failed,
-            message,
-            null);
+		await commandLogDbContext.SaveChangesAsync();
+	}
 
-        _dbContext.Set<CommandLogEntry>().Add(commandLogEntry);
+	/// <inheritdoc/>
+	public async Task LogFailedCommandAsync(ICommand command, Guid transactionId, string message)
+	{
+		var commandLogEntry = CommandLogEntry.Create(
+			command,
+			transactionId,
+			CommandStatus.Failed,
+			message,
+			null);
 
-        await _dbContext.SaveChangesAsync();
-    }
+		using var journalScope = _scopeFactory.CreateScope();
+		var commandLogDbContext = journalScope.ServiceProvider.GetRequiredService<TContext>();
 
-    /// <inheritdoc/>
-    public Task LogRetryCommandAsync(Guid id)
-    {
-        return UpdateLogStatusAsync(id, CommandStatus.Retry, CancellationToken.None);
-    }
+		commandLogDbContext.Set<CommandLogEntry>().Add(commandLogEntry);
 
-    /// <inheritdoc/>
-    public async Task RetryCommandNowAsync(Guid id, CancellationToken cancel)
-    {
-        var commandLog = await UpdateLogStatusAsync(id, CommandStatus.Retry, cancel);
+		await commandLogDbContext.SaveChangesAsync();
+	}
 
-        await RetryCommandAsync(commandLog, cancel);
-    }
+	/// <inheritdoc/>
+	public Task LogRetryCommandAsync(Guid id)
+	{
+		return UpdateLogStatusAsync(id, CommandStatus.Retry, CancellationToken.None);
+	}
 
-    /// <inheritdoc/>
-    public async Task RetryCommandsAsync(CancellationToken cancel)
-    {
-        var commandLogs = await _dbContext.Set<CommandLogEntry>().AsNoTracking()
-            .Where(x => x.Status == CommandStatus.Retry.ToString())
-            .OrderBy(x => x.CreationTime)
-            .Take(1000)
-            .ToListAsync(cancel);
+	/// <inheritdoc/>
+	public async Task RetryCommandNowAsync(Guid id, CancellationToken cancel)
+	{
+		var commandLog = await UpdateLogStatusAsync(id, CommandStatus.Retry, cancel);
 
-        foreach (var commandLog in commandLogs)
-        {
-            try
-            {
-                await RetryCommandAsync(commandLog, cancel);
-            }
-            catch (OperationCanceledException)
-            {
-                _logger.LogInformation("Retrying of commands was cancelled.");
+		await RetryCommandAsync(commandLog, cancel);
+	}
 
-                throw;
-            }
-            catch (Exception e)
-            {
-                _logger.LogError(e, "Retrying of commands was failed.");
-            }
-        }
-    }
+	/// <inheritdoc/>
+	public async Task RetryCommandsAsync(CancellationToken cancel)
+	{
+		using var journalScope = _scopeFactory.CreateScope();
+		var commandLogDbContext = journalScope.ServiceProvider.GetRequiredService<TContext>();
 
-    private async Task RetryCommandAsync(CommandLogEntry cmdLogEntry, CancellationToken cancel)
-    {
-        var command = JsonConvert.DeserializeObject(cmdLogEntry.Command, _typeResolver.Resolve(cmdLogEntry.CommandName))
-            ?? throw new SerializationException(
-                $"Cannot deserialize retry command {cmdLogEntry.Command} to type {cmdLogEntry.CommandName}.");
-        
-        await UpdateLogStatusAsync(cmdLogEntry.CommandLogId, CommandStatus.RetryProcessed, cancel);
+		var commandLogs = await commandLogDbContext.Set<CommandLogEntry>().AsNoTracking()
+			.Where(x => x.Status == CommandStatus.Retry.ToString())
+			.OrderBy(x => x.CreationTime)
+			.Take(1000)
+			.ToListAsync(cancel);
 
-        await _mediator.Send(command, cancel);
-    }
+		foreach (var commandLog in commandLogs)
+			try
+			{
+				await RetryCommandAsync(commandLog, cancel);
+			}
+			catch (OperationCanceledException)
+			{
+				_logger.LogInformation("Retrying of commands was cancelled.");
 
-    private async Task<CommandLogEntry> UpdateLogStatusAsync(Guid id, CommandStatus status, CancellationToken cancel)
-    {
-        var commandLog = await _dbContext.Set<CommandLogEntry>().FindAsync([id], cancel)
-            ?? throw new EntityNotFoundException(nameof(CommandLogEntry), nameof(CommandLogEntry.CommandLogId), id);
+				throw;
+			}
+			catch (Exception e)
+			{
+				_logger.LogError(e, "Retrying of commands was failed.");
+			}
+	}
 
-        commandLog.Status = status.ToString();
+	private async Task RetryCommandAsync(CommandLogEntry cmdLogEntry, CancellationToken cancel)
+	{
+		var command = JsonConvert.DeserializeObject(cmdLogEntry.Command, _typeResolver.Resolve(cmdLogEntry.CommandName))
+		              ?? throw new SerializationException(
+			              $"Cannot deserialize retry command {cmdLogEntry.Command} to type {cmdLogEntry.CommandName}.");
 
-        await _dbContext.SaveChangesAsync(cancel);
+		await UpdateLogStatusAsync(cmdLogEntry.CommandLogId, CommandStatus.RetryProcessed, cancel);
 
-        return commandLog;
-    }
+		using var commandScope = _scopeFactory.CreateScope();
+		var mediator = commandScope.ServiceProvider.GetRequiredService<IMediator>();
+
+		await mediator.Send(command, cancel);
+	}
+
+	private async Task<CommandLogEntry> UpdateLogStatusAsync(Guid id, CommandStatus status, CancellationToken cancel)
+	{
+		using var journalScope = _scopeFactory.CreateScope();
+		var commandLogDbContext = journalScope.ServiceProvider.GetRequiredService<TContext>();
+
+		var commandLog = await commandLogDbContext.Set<CommandLogEntry>().FindAsync([id], cancel)
+		                 ?? throw new EntityNotFoundException(nameof(CommandLogEntry),
+			                 nameof(CommandLogEntry.CommandLogId), id);
+
+		commandLog.Status = status.ToString();
+
+		await commandLogDbContext.SaveChangesAsync(cancel);
+
+		return commandLog;
+	}
 }

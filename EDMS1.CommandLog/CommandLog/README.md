@@ -33,7 +33,7 @@ public class AppDbContext : DbContext
 Там, где регистрируете сервисы, вызовите `AddCommandLogService<TContext>`:
 
 - **Обобщённый параметр `<TContext>`** — `DbContext`, где используется `UseCommandLog();`. Сервис журнала будет
-  писать команды именно в этот контекст.
+  писать команды в отдельный контекст данного типа.
 
 ```csharp
 using EDMS1.CommandLog.Extensions;
