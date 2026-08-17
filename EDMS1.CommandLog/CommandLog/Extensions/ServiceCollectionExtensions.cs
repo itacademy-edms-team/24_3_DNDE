@@ -34,7 +34,7 @@ public static class ServiceCollectionExtensions
 	{
 		services.AddSingleton<CommandTypeResolver>();
 
-		services.AddScoped<ICommandLogService, CommandLogService<TContext>>();
+		services.AddSingleton<ICommandLogService, CommandLogService<TContext>>();
 
 		services.AddScoped<ICommandContext, CommandContext>();
 

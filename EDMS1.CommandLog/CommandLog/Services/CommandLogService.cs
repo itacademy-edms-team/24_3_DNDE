@@ -19,42 +19,23 @@ namespace EDMS1.CommandLog.Services;
 /// Пример реализации взят из <see href="https://github.com/dotnet/eShop/tree/main/src/IntegrationEventLogEF">eShop</see>
 /// </remarks>
 /// </summary>
-internal sealed class CommandLogService<TContext> : ICommandLogService, IDisposable, IAsyncDisposable
+internal sealed class CommandLogService<TContext> : ICommandLogService
 	where TContext : DbContext
 {
 	private readonly CommandTypeResolver _typeResolver;
-	private readonly IMediator _mediator;
-	private readonly TContext _appDbContext;
-	private readonly ILogger<CommandLogService<TContext>> _logger;
-
-	// Нужны для получения DbContext, используемого в журналировании
 	private readonly IServiceScopeFactory _scopeFactory;
-	private IServiceScope? _journalScope;
-
-	private TContext CommandLogDbContext
-	{
-		get
-		{
-			_journalScope ??= _scopeFactory.CreateScope();
-			return _journalScope.ServiceProvider.GetRequiredService<TContext>();
-		}
-	}
+	private readonly ILogger<CommandLogService<TContext>> _logger;
 
 	/// <summary>
 	/// Initializes a new instance of the <see cref="CommandLogService{TContext}"/> class.
 	/// </summary>
-	public CommandLogService(IServiceScopeFactory scopeFactory, TContext appDbContext,
+	public CommandLogService(
 		CommandTypeResolver typeResolver,
-		ILogger<CommandLogService<TContext>> logger, IMediator mediator)
+		ILogger<CommandLogService<TContext>> logger, IServiceScopeFactory scopeFactory)
 	{
 		_typeResolver = typeResolver;
 		_logger = logger;
-		_mediator = mediator;
 		_scopeFactory = scopeFactory;
-
-		// Этот же dbContext используют обработчики команд.
-		// Нужен для подготовки контекста между ретраями команд (см. блок finally в RetryCommandsAsync).
-		_appDbContext = appDbContext;
 	}
 
 	/// <inheritdoc/>
@@ -67,9 +48,12 @@ internal sealed class CommandLogService<TContext> : ICommandLogService, IDisposa
 			null,
 			result.Comment);
 
-		CommandLogDbContext.Set<CommandLogEntry>().Add(commandLogEntry);
+		using var journalScope = _scopeFactory.CreateScope();
+		var commandLogDbContext = journalScope.ServiceProvider.GetRequiredService<TContext>();
 
-		await CommandLogDbContext.SaveChangesAsync();
+		commandLogDbContext.Set<CommandLogEntry>().Add(commandLogEntry);
+
+		await commandLogDbContext.SaveChangesAsync();
 	}
 
 	/// <inheritdoc/>
@@ -82,9 +66,12 @@ internal sealed class CommandLogService<TContext> : ICommandLogService, IDisposa
 			message,
 			null);
 
-		CommandLogDbContext.Set<CommandLogEntry>().Add(commandLogEntry);
+		using var journalScope = _scopeFactory.CreateScope();
+		var commandLogDbContext = journalScope.ServiceProvider.GetRequiredService<TContext>();
 
-		await CommandLogDbContext.SaveChangesAsync();
+		commandLogDbContext.Set<CommandLogEntry>().Add(commandLogEntry);
+
+		await commandLogDbContext.SaveChangesAsync();
 	}
 
 	/// <inheritdoc/>
@@ -104,7 +91,10 @@ internal sealed class CommandLogService<TContext> : ICommandLogService, IDisposa
 	/// <inheritdoc/>
 	public async Task RetryCommandsAsync(CancellationToken cancel)
 	{
-		var commandLogs = await CommandLogDbContext.Set<CommandLogEntry>().AsNoTracking()
+		using var journalScope = _scopeFactory.CreateScope();
+		var commandLogDbContext = journalScope.ServiceProvider.GetRequiredService<TContext>();
+
+		var commandLogs = await commandLogDbContext.Set<CommandLogEntry>().AsNoTracking()
 			.Where(x => x.Status == CommandStatus.Retry.ToString())
 			.OrderBy(x => x.CreationTime)
 			.Take(1000)
@@ -125,10 +115,6 @@ internal sealed class CommandLogService<TContext> : ICommandLogService, IDisposa
 			{
 				_logger.LogError(e, "Retrying of commands was failed.");
 			}
-			finally
-			{
-				_appDbContext.ChangeTracker.Clear();
-			}
 	}
 
 	private async Task RetryCommandAsync(CommandLogEntry cmdLogEntry, CancellationToken cancel)
@@ -139,32 +125,25 @@ internal sealed class CommandLogService<TContext> : ICommandLogService, IDisposa
 
 		await UpdateLogStatusAsync(cmdLogEntry.CommandLogId, CommandStatus.RetryProcessed, cancel);
 
-		await _mediator.Send(command, cancel);
+		using var commandScope = _scopeFactory.CreateScope();
+		var mediator = commandScope.ServiceProvider.GetRequiredService<IMediator>();
+
+		await mediator.Send(command, cancel);
 	}
 
 	private async Task<CommandLogEntry> UpdateLogStatusAsync(Guid id, CommandStatus status, CancellationToken cancel)
 	{
-		var commandLog = await CommandLogDbContext.Set<CommandLogEntry>().FindAsync([id], cancel)
+		using var journalScope = _scopeFactory.CreateScope();
+		var commandLogDbContext = journalScope.ServiceProvider.GetRequiredService<TContext>();
+
+		var commandLog = await commandLogDbContext.Set<CommandLogEntry>().FindAsync([id], cancel)
 		                 ?? throw new EntityNotFoundException(nameof(CommandLogEntry),
 			                 nameof(CommandLogEntry.CommandLogId), id);
 
 		commandLog.Status = status.ToString();
 
-		await CommandLogDbContext.SaveChangesAsync(cancel);
+		await commandLogDbContext.SaveChangesAsync(cancel);
 
 		return commandLog;
-	}
-
-	public void Dispose()
-	{
-		_journalScope?.Dispose();
-	}
-
-	public async ValueTask DisposeAsync()
-	{
-		if (_journalScope is IAsyncDisposable journalScopeAsyncDisposable)
-			await journalScopeAsyncDisposable.DisposeAsync();
-		else
-			_journalScope?.Dispose();
 	}
 }
