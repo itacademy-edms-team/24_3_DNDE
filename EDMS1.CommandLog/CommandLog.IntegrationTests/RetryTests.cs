@@ -740,4 +740,54 @@ public class RetryTests : IntegrationTestBase
 				.CountAsync(e => e.Status == CommandStatus.Failed.ToString(), Ct));
 		}
 	}
+
+	[Fact]
+	public async Task RetryCommandsAsync_MultipleAlreadyCreatedTodos_LogsEachFailureWithoutCascade()
+	{
+		const int createdCount = 3;
+		var addCommands = new List<AddTodo>();
+
+		// Arrange
+		// Создаём 3 сущности.
+		using (var scope = CreateScope())
+		{
+			var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+			for (var i = 0; i < createdCount; i++)
+			{
+				var command = new AddTodo { Title = $"Todo{i}", Description = $"Todo{i} description" };
+				await mediator.Send(command, Ct);
+				addCommands.Add(command);
+			}
+		}
+
+		// Эти же команды дублируем в БД со статусом Retry
+		using (var scope = CreateScope())
+		{
+			var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+			await CommandLogSeeder.SeedManyAsync(dbContext, addCommands, Guid.NewGuid(), CommandStatus.Retry, null,
+				null);
+		}
+
+		// Act
+		using (var scope = CreateScope())
+		{
+			var svc = scope.ServiceProvider.GetRequiredService<ICommandLogService>();
+			await svc.RetryCommandsAsync(Ct);
+		}
+
+		// Assert
+		using (var scope = CreateScope())
+		{
+			var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+			Assert.Equal(createdCount, await dbContext.Set<Todo>().CountAsync(Ct));
+			Assert.Equal(createdCount, await dbContext.Set<CommandLogEntry>()
+				.CountAsync(e => e.Status == CommandStatus.RetryProcessed.ToString(), Ct));
+			Assert.Equal(createdCount, await dbContext.Set<CommandLogEntry>()
+				.CountAsync(e => e.Status == CommandStatus.Failed.ToString(), Ct));
+			Assert.Equal(createdCount, await dbContext.Set<CommandLogEntry>()
+				.CountAsync(e => e.Status == CommandStatus.Successful.ToString(), Ct));
+			Assert.Equal(createdCount * 3, await dbContext.Set<CommandLogEntry>().CountAsync(Ct));
+		}
+	}
 }
