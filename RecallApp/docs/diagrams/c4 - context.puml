@@ -10,22 +10,22 @@ Person(personStaff, "Сотрудник", "Служебный персонал: 
 
 System(systemRecallApp, "RecallApp", "Система для запоминания учебного материала с поддержкой различных образовательных методик и форматов")
 
-System_Ext(extSystemAuth, "OAuth-провайдер", "Optional Description")
-System_Ext(extSystemObjectStorage, "Объектное хранилище", "Optional Description")
-System_Ext(extSystemPaymentGateway, "Платёжный шлюз", "Optional Description")
-System_Ext(extSystemEmail, "Email-сервис", "Optional Description")
-System_Ext(extSystemPush, "Push-сервис", "Optional Description")
-System_Ext(extSystemAiAgent, "ИИ-агент", "Optional Description")
+System_Ext(extSystemAuth, "OAuth-провайдер", "Вход через Яндекс, VK и другие соцсети")
+System_Ext(extSystemObjectStorage, "Объектное хранилище", "Хранение медиафайлов: изображения, видео, аудио, документы")
+System_Ext(extSystemPaymentGateway, "Платёжный провайдер", "Приём оплаты подписки")
+System_Ext(extSystemEmail, "Email-провайдер", "Доставка писем на почту")
+System_Ext(extSystemPush, "Push-провайдер", "Доставка push-уведомлений")
+System_Ext(extSystemAiAgent, "ИИ-агент", "Внешний ИИ-ассистент пользователя")
 
 Rel(personGuest, systemRecallApp, "Играет в матчах, видит лидерборд и свой результат; \n Смотрит фрагменты наборов")
 Rel(personUser, systemRecallApp, "Создаёт и публикует наборы; \n Проходит и учит материал; \n Создаёт, хостит и играет в матчах; \n Состоит в учебных группах")
 Rel(personStaff, systemRecallApp, "Управляет системой; \n Модерирует контент")
 
-Rel(systemRecallApp, extSystemAuth, "Label", "Optional Technology")
-Rel(systemRecallApp, extSystemObjectStorage, "Label", "Optional Technology")
-Rel(systemRecallApp, extSystemPaymentGateway, "Label", "Optional Technology")
-Rel(systemRecallApp, extSystemEmail, "Label", "Optional Technology")
-Rel(systemRecallApp, extSystemPush, "Label", "Optional Technology")
+Rel(systemRecallApp, extSystemAuth, "Делегирует вход в систему", "OAuth 2.0 / OIDC")
+Rel(systemRecallApp, extSystemObjectStorage, "Хранит и отдаёт медиафайлы", "S3 API / HTTPS")
+Rel(systemRecallApp, extSystemPaymentGateway, "Проводит платежи и возвраты", "HTTPS")
+Rel(systemRecallApp, extSystemEmail, "Рассылает письма", "SMTP / REST API")
+Rel(systemRecallApp, extSystemPush, "Рассылает push-уведомления", "Web Push / REST API")
 Rel_U(extSystemAiAgent, systemRecallApp, "Читает / меняет данные", "MCP")
 
 SHOW_LEGEND()
