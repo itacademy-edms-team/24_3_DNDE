@@ -1,0 +1,33 @@
+@startuml C4 - Context - RecallApp
+top to bottom direction
+
+!include <C4/C4_Container>
+
+Person(personGuest, "Гость", "Optional Description")
+Person(personUser, "Пользователь", "Optional Description")
+Person(personStaff, "Сотрудник", "Optional Description")
+Person(robotAgent, "ИИ-агент", "Optional Description", robot)
+
+System(systemRecallApp, "RecallApp", "Optional Description")
+
+' Container(containerAlias, "Label", "Technology", "Optional Description")
+
+System_Ext(extSystemAuth, "OAuth-провайдер", "Optional Description")
+System_Ext(extSystemObjectStorage, "Объектное хранилище", "Optional Description")
+System_Ext(extSystemEmail, "Email-сервис", "Optional Description")
+System_Ext(extSystemPush, "Push-сервис", "Optional Description")
+
+Rel(personGuest, systemRecallApp, "Label", "Optional Technology")
+Rel(personUser, systemRecallApp, "Label", "Optional Technology")
+Rel(personStaff, systemRecallApp, "Label", "Optional Technology")
+Rel(robotAgent, systemRecallApp, "Label", "MCP")
+
+Rel(systemRecallApp, extSystemAuth, "Label", "Optional Technology")
+Rel(systemRecallApp, extSystemObjectStorage, "Label", "Optional Technology")
+Rel(systemRecallApp, extSystemEmail, "Label", "Optional Technology")
+Rel(systemRecallApp, extSystemPush, "Label", "Optional Technology")
+
+
+SHOW_LEGEND()
+
+@enduml
