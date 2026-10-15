@@ -8,7 +8,7 @@ Person(personGuest, "Гость", "Неавторизованный посети
 Person(personUser, "Пользователь", "Учащиеся, студенты, родители. \n С учётной записью")
 Person(personStaff, "Сотрудник", "Служебный персонал: администраторы и модераторы")
 
-System(systemRecallApp, "RecallApp", "Optional Description")
+System(systemRecallApp, "RecallApp", "Система для запоминания учебного материала с поддержкой различных образовательных методик и форматов")
 
 System_Ext(extSystemAuth, "OAuth-провайдер", "Optional Description")
 System_Ext(extSystemObjectStorage, "Объектное хранилище", "Optional Description")
