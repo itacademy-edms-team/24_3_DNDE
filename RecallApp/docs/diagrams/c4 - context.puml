@@ -4,9 +4,9 @@ top to bottom direction
 
 !include <C4/C4_Context>
 
-Person(personGuest, "Гость", "Optional Description")
-Person(personUser, "Пользователь", "Optional Description")
-Person(personStaff, "Сотрудник", "Optional Description")
+Person(personGuest, "Гость", "Неавторизованный посетитель")
+Person(personUser, "Пользователь", "Учащиеся, студенты, родители. \n С учётной записью")
+Person(personStaff, "Сотрудник", "Служебный персонал: администраторы и модераторы")
 
 System(systemRecallApp, "RecallApp", "Optional Description")
 
@@ -17,9 +17,9 @@ System_Ext(extSystemEmail, "Email-сервис", "Optional Description")
 System_Ext(extSystemPush, "Push-сервис", "Optional Description")
 System_Ext(extSystemAiAgent, "ИИ-агент", "Optional Description")
 
-Rel(personGuest, systemRecallApp, "Label", "Optional Technology")
-Rel(personUser, systemRecallApp, "Label", "Optional Technology")
-Rel(personStaff, systemRecallApp, "Label", "Optional Technology")
+Rel(personGuest, systemRecallApp, "Играет в матчах, видит лидерборд и свой результат; \n Смотрит фрагменты наборов")
+Rel(personUser, systemRecallApp, "Создаёт и публикует наборы; \n Проходит и учит материал; \n Создаёт, хостит и играет в матчах; \n Состоит в учебных группах")
+Rel(personStaff, systemRecallApp, "Управляет системой; \n Модерирует контент")
 
 Rel(systemRecallApp, extSystemAuth, "Label", "Optional Technology")
 Rel(systemRecallApp, extSystemObjectStorage, "Label", "Optional Technology")
