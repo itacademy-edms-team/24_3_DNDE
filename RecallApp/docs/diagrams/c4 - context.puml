@@ -12,10 +12,11 @@ System(systemRecallApp, "RecallApp", "Система для запоминани
 
 System_Ext(extSystemAuth, "OAuth-провайдер", "Вход через Яндекс, VK и другие соцсети")
 System_Ext(extSystemObjectStorage, "Объектное хранилище", "Хранение медиафайлов: изображения, видео, аудио, документы")
-System_Ext(extSystemPaymentGateway, "Платёжный провайдер", "Приём оплаты подписки")
-System_Ext(extSystemEmail, "Email-провайдер", "Доставка писем на почту")
+System_Ext(extSystemPaymentGateway, "Платёжный провайдер", "Приём оплаты и возвратов по подписке")
+System_Ext(extSystemEmail, "Email-провайдер", "Доставка писем")
 System_Ext(extSystemPush, "Push-провайдер", "Доставка push-уведомлений")
 System_Ext(extSystemAiAgent, "ИИ-агент", "Внешний ИИ-ассистент пользователя")
+System_Ext(extSystemLlm, "ИИ-сервис (LLM)", "Оценка свободных ответов")
 
 Rel(personGuest, systemRecallApp, "Играет в матчах, видит лидерборд и свой результат; \n Смотрит фрагменты наборов")
 Rel(personUser, systemRecallApp, "Создаёт и публикует наборы; \n Проходит и учит материал; \n Создаёт, хостит и играет в матчах; \n Состоит в учебных группах")
@@ -24,9 +25,10 @@ Rel(personStaff, systemRecallApp, "Управляет системой; \n Мо�
 Rel(systemRecallApp, extSystemAuth, "Делегирует вход в систему", "OAuth 2.0 / OIDC")
 Rel(systemRecallApp, extSystemObjectStorage, "Хранит и отдаёт медиафайлы", "S3 API / HTTPS")
 Rel(systemRecallApp, extSystemPaymentGateway, "Проводит платежи и возвраты", "HTTPS")
-Rel(systemRecallApp, extSystemEmail, "Рассылает письма", "SMTP / REST API")
-Rel(systemRecallApp, extSystemPush, "Рассылает push-уведомления", "Web Push / REST API")
-Rel_U(extSystemAiAgent, systemRecallApp, "Читает / меняет данные", "MCP")
+Rel(systemRecallApp, extSystemEmail, "Отправляет письма", "SMTP / REST API")
+Rel(systemRecallApp, extSystemPush, "Отправляет push-уведомления", "Web Push / REST API")
+Rel_U(extSystemAiAgent, systemRecallApp, "Автоматизирует работу \n с контентом", "MCP")
+Rel(systemRecallApp, extSystemLlm, "Оценивает свободные ответы", "REST API / HTTPS")
 
 SHOW_LEGEND()
 
