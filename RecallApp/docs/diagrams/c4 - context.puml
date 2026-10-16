@@ -4,6 +4,8 @@ top to bottom direction
 
 !include <C4/C4_Context>
 
+AddElementTag("offscope", $bgColor="#ff0000", $fontColor="#FFFFFF", $borderColor="#6B6B6B", $legendText="Вне 8-мес горизонта")
+
 Person(personGuest, "Гость", "Неавторизованный посетитель")
 Person(personUser, "Пользователь", "Учащиеся, студенты, родители. \n С учётной записью")
 Person(personStaff, "Сотрудник", "Служебный персонал: администраторы и модераторы")
@@ -15,8 +17,8 @@ System_Ext(extSystemObjectStorage, "Объектное хранилище", "Х�
 System_Ext(extSystemPaymentGateway, "Платёжный провайдер", "Приём оплаты и возвратов по подписке")
 System_Ext(extSystemEmail, "Email-провайдер", "Доставка писем")
 System_Ext(extSystemPush, "Push-провайдер", "Доставка push-уведомлений")
-System_Ext(extSystemAiAgent, "ИИ-агент", "Внешний ИИ-ассистент пользователя")
-System_Ext(extSystemLlm, "ИИ-сервис (LLM)", "Оценка свободных ответов")
+System_Ext(extSystemAiAgent, "ИИ-агент", "Внешний ИИ-ассистент пользователя", $tags="offscope")
+System_Ext(extSystemLlm, "ИИ-сервис (LLM)", "Оценка свободных ответов", $tags="offscope")
 
 Rel(personGuest, systemRecallApp, "Играет в матчах, видит лидерборд и свой результат; \n Смотрит фрагменты наборов")
 Rel(personUser, systemRecallApp, "Создаёт и публикует наборы; \n Проходит и учит материал; \n Создаёт, хостит и играет в матчах; \n Состоит в учебных группах")
