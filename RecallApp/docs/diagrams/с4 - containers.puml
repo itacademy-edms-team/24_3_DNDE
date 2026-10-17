@@ -13,6 +13,7 @@ Container(spaBackOffice, "Веб-приложение (BackOffice)", "React", "�
 Container(webBff, "Backend for Frontend публичного веб-приложения", "ASP.NET Core; OIDC confidential")
 Container(webBackOfficeBff, "Backend for Frontend административной панели", "ASP.NET Core; OIDC confidential")
 Container(iam, "Система управления пользователями и их глобальными/служебными ролями", "Keycloak")
+Container(modularMonolithApp, "Модульное бэкенд приложение", "ASP.NET Core")
 Container(tbd, "...")
 
 Rel(personGuest, spa, "Играет в матчах, видит лидерборд и свой результат; \n Смотрит фрагменты наборов", "HTTPS")
@@ -25,8 +26,8 @@ Rel(spaBackOffice, webBackOfficeBff, "Использует BFF для взаим
 Rel(webBff, iam, "Аутентифицирует пользователей, обменивает код на токены", "HTTPS / OIDC")
 Rel(webBackOfficeBff, iam, "Аутентифицирует пользователей, обменивает код на токены", "HTTPS / OIDC")
 
-Rel_R(webBff, tbd, "Взаимодействует с backend-сервисами", "HTTPS")
-Rel_R(webBackOfficeBff, tbd, "Взаимодействует с backend-сервисами", "HTTPS")
+Rel_R(webBff, modularMonolithApp, "Взаимодействует с backend-сервисами", "HTTPS / WebSocket")
+Rel_R(webBackOfficeBff, modularMonolithApp, "Взаимодействует с backend-сервисами", "HTTPS")
 
 SHOW_LEGEND()
 
