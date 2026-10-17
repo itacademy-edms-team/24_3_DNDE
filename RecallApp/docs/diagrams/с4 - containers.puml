@@ -1,0 +1,31 @@
+@startuml C4 - Containers - RecallApp
+title Система RecallApp на уровне контейнеров
+top to bottom direction
+
+!include <C4/C4_Container>
+
+Person(personGuest, "Гость", "Неавторизованный посетитель")
+Person(personUser, "Пользователь", "Учащиеся, студенты, родители. \n С учётной записью")
+Person(personStaff, "Сотрудник", "Служебный персонал: администраторы и модераторы")
+
+Container(spa, "Веб-приложение", "React", "Приложение для гостей и пользователей")
+Container(spaBackOffice, "Веб-приложение (BackOffice)", "React", "Административная панель для сотрудников")
+Container(webBff, "Spa BFF", "Backend for Frontend публичного веб-приложения")
+Container(webBackOfficeBff, "Spa BFF", "Backend for Frontend административной панели")
+Container(iam, "IAM", "Система управления пользователями и их ролями")
+
+Rel_R(personGuest, spa, "Играет в матчах, видит лидерборд и свой результат; \n Смотрит фрагменты наборов", "HTTPS")
+Rel_R(personUser, spa, "Создаёт и публикует наборы; \n Проходит и учит материал; \n Создаёт, хостит и играет в матчах; \n Состоит в учебных группах", "HTTPS")
+Rel_R(personStaff, spaBackOffice, "Управляет системой; \n Модерирует контент", "HTTPS")
+
+Rel_R(spa, webBff, "Использует BFF для взаимодействия с backend-сервисами", "HTTPS")
+Rel_R(spaBackOffice, webBackOfficeBff, "Использует BFF для взаимодействия с backend-сервисами", "HTTPS")
+Rel_R(webBff, iam, "Проверяет аутентификацию и авторизацию пользователей", "HTTPS")
+Rel_R(webBackOfficeBff, iam, "Проверяет аутентификацию и авторизацию пользователей", "HTTPS")
+Rel_B(iam, webBff, "Возвращает информацию о пользователях и их ролях; \n Проводит аутентификацию и авторизацию", "HTTPS")
+Rel_B(iam, webBackOfficeBff, "Возвращает информацию о пользователях и их ролях; \n Проводит аутентификацию и авторизацию", "HTTPS")
+
+
+SHOW_LEGEND()
+
+@enduml
