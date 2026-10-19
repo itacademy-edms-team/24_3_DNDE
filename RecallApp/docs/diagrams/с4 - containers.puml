@@ -26,7 +26,8 @@ Rel(spaBackOffice, webBackOfficeBff, "Использует BFF для взаим
 Rel(webBff, iam, "Аутентифицирует пользователей, обменивает код на токены", "HTTPS / OIDC")
 Rel(webBackOfficeBff, iam, "Аутентифицирует пользователей, обменивает код на токены", "HTTPS / OIDC")
 
-Rel_R(webBff, modularMonolithApp, "Взаимодействует с backend-сервисами", "HTTPS / WebSocket")
+Rel_R(spa, modularMonolithApp, "Realtime-взаимодействует с backend-сервисами", "WebSocket (SignalR)")
+Rel_R(webBff, modularMonolithApp, "Взаимодействует с backend-сервисами", "HTTPS")
 Rel_R(webBackOfficeBff, modularMonolithApp, "Взаимодействует с backend-сервисами", "HTTPS")
 
 SHOW_LEGEND()
