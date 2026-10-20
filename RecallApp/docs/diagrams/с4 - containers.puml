@@ -21,7 +21,7 @@ Container(mcpServer, "MCP-сервер", "ASP.NET Core, MCP", "Единая то
 
 System_Ext(externalAiAgent, "ИИ-агент", "ИИ-ассистент пользователя", $sprite="robot")
 System_Ext(extSystemAuth, "OAuth-провайдер", "Вход через Яндекс, VK и другие соцсети")
-System_Ext(extSystemObjectStorage, "Объектное хранилище", "Хранение медиафайлов: изображения, видео, аудио, документы")
+System_Ext(extSystemObjectStorage, "Объектное хранилище", "Хранение медиафайлов")
 System_Ext(extSystemPaymentGateway, "Платёжный провайдер", "Приём оплаты и возвратов по подписке")
 System_Ext(extSystemEmail, "Email-провайдер", "Доставка писем")
 System_Ext(extSystemPush, "Push-провайдер", "Доставка push-уведомлений")
@@ -46,7 +46,8 @@ Rel(externalAiAgent, mcpServer, "Вызывает MCP-инструменты о�
 Rel(mcpServer, modularMonolithApp, "Вызывает доменные сервисы делегированными правами, минуя BFF", "HTTPS")
 
 Rel(iam, extSystemAuth, "Делегирует вход в систему", "OAuth 2.0 / OIDC")
-Rel(modularMonolithApp, extSystemObjectStorage, "Хранит и отдаёт медиафайлы", "S3 API / HTTPS")
+Rel(modularMonolithApp, extSystemObjectStorage, "Подписывает presigned-ссылки, управляет объектами", "S3 API / HTTPS")
+Rel(spa, extSystemObjectStorage, "Загружает и скачивает медиа по presigned / публичным ссылкам", "HTTPS")
 Rel(modularMonolithApp, extSystemPaymentGateway, "Проводит платежи и возвраты", "HTTPS")
 Rel(modularMonolithApp, extSystemEmail, "Отправляет письма", "SMTP / REST API")
 Rel(modularMonolithApp, extSystemPush, "Отправляет push-уведомления", "Web Push / REST API")
