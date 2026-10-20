@@ -15,7 +15,9 @@ Container(webBackOfficeBff, "Backend for Frontend административно
 Container(iam, "Система управления пользователями и их глобальными/служебными ролями", "Keycloak")
 Container(modularMonolithApp, "Модульное бэкенд приложение", "ASP.NET Core")
 ContainerDb(modularMonolithAppDb, "База данных модульного бэкенд приложения", "PostgreSQL", "Доменные данные в реляционных таблицах; Полиморфные поля элементов хранятся в JSONB")
-Container(tbd, "...")
+Container(mcpServer, "MCP-сервер", "ASP.NET Core, MCP", "Единая точка доступа для внешних ИИ-агентов к контенту: чтение, создание, генерация наборов; аутентифицирует агента fine-grained токеном")
+
+System_Ext(externalAiAgent, "Внешний ИИ-агент", "ИИ-ассистент пользователя", $sprite="robot")
 
 Rel(personGuest, spa, "Играет в матчах, видит лидерборд и свой результат; \n Смотрит фрагменты наборов", "HTTPS")
 Rel(personUser, spa, "Создаёт и публикует наборы; \n Проходит и учит материал; \n Создаёт, хостит и играет в матчах; \n Состоит в учебных группах", "HTTPS")
@@ -31,6 +33,9 @@ Rel(modularMonolithApp, modularMonolithAppDb, "Читает / Записывае
 Rel_R(spa, modularMonolithApp, "Realtime-взаимодействует с backend-сервисами", "WebSocket (SignalR)")
 Rel_R(webBff, modularMonolithApp, "Взаимодействует с backend-сервисами", "HTTPS")
 Rel_R(webBackOfficeBff, modularMonolithApp, "Взаимодействует с backend-сервисами", "HTTPS")
+
+Rel(externalAiAgent, mcpServer, "Вызывает MCP-инструменты от имени пользователя", "HTTPS / MCP, fine-grained токен")
+Rel(mcpServer, modularMonolithApp, "Вызывает доменные сервисы делегированными правами, минуя BFF", "HTTPS")
 
 SHOW_LEGEND()
 
