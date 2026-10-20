@@ -4,6 +4,8 @@ top to bottom direction
 
 !include <C4/C4_Container>
 
+AddElementTag("offscope", $bgColor="#ff0000", $fontColor="#FFFFFF", $borderColor="#6B6B6B", $legendText="Вне 8-мес горизонта")
+
 Person(personGuest, "Гость", "Неавторизованный посетитель")
 Person(personUser, "Пользователь", "Учащиеся, студенты, родители. \n С учётной записью")
 Person(personStaff, "Сотрудник", "Служебный персонал: администраторы и модераторы")
@@ -15,9 +17,15 @@ Container(webBackOfficeBff, "Backend for Frontend административно
 Container(iam, "Система управления пользователями и их глобальными/служебными ролями", "Keycloak")
 Container(modularMonolithApp, "Модульное бэкенд приложение", "ASP.NET Core")
 ContainerDb(modularMonolithAppDb, "База данных модульного бэкенд приложения", "PostgreSQL", "Доменные данные в реляционных таблицах; Полиморфные поля элементов хранятся в JSONB")
-Container(mcpServer, "MCP-сервер", "ASP.NET Core, MCP", "Единая точка доступа для внешних ИИ-агентов к контенту: чтение, создание, генерация наборов; аутентифицирует агента fine-grained токеном")
+Container(mcpServer, "MCP-сервер", "ASP.NET Core, MCP", "Единая точка доступа для внешних ИИ-агентов к контенту: чтение, создание, генерация наборов; аутентифицирует агента fine-grained токеном", $tags="offscope")
 
-System_Ext(externalAiAgent, "Внешний ИИ-агент", "ИИ-ассистент пользователя", $sprite="robot")
+System_Ext(externalAiAgent, "ИИ-агент", "ИИ-ассистент пользователя", $sprite="robot")
+System_Ext(extSystemAuth, "OAuth-провайдер", "Вход через Яндекс, VK и другие соцсети")
+System_Ext(extSystemObjectStorage, "Объектное хранилище", "Хранение медиафайлов: изображения, видео, аудио, документы")
+System_Ext(extSystemPaymentGateway, "Платёжный провайдер", "Приём оплаты и возвратов по подписке")
+System_Ext(extSystemEmail, "Email-провайдер", "Доставка писем")
+System_Ext(extSystemPush, "Push-провайдер", "Доставка push-уведомлений")
+System_Ext(extSystemLlm, "ИИ-сервис (LLM)", "Оценка свободных ответов", $tags="offscope")
 
 Rel(personGuest, spa, "Играет в матчах, видит лидерборд и свой результат; \n Смотрит фрагменты наборов", "HTTPS")
 Rel(personUser, spa, "Создаёт и публикует наборы; \n Проходит и учит материал; \n Создаёт, хостит и играет в матчах; \n Состоит в учебных группах", "HTTPS")
@@ -29,13 +37,20 @@ Rel(spaBackOffice, webBackOfficeBff, "Использует BFF для взаим
 Rel(webBff, iam, "Аутентифицирует пользователей, обменивает код на токены", "HTTPS / OIDC")
 Rel(webBackOfficeBff, iam, "Аутентифицирует пользователей, обменивает код на токены", "HTTPS / OIDC")
 
-Rel(modularMonolithApp, modularMonolithAppDb, "Читает / Записывает")
+Rel_R(modularMonolithApp, modularMonolithAppDb, "Читает / Записывает")
 Rel_R(spa, modularMonolithApp, "Realtime-взаимодействует с backend-сервисами", "WebSocket (SignalR)")
 Rel_R(webBff, modularMonolithApp, "Взаимодействует с backend-сервисами", "HTTPS")
 Rel_R(webBackOfficeBff, modularMonolithApp, "Взаимодействует с backend-сервисами", "HTTPS")
 
 Rel(externalAiAgent, mcpServer, "Вызывает MCP-инструменты от имени пользователя", "HTTPS / MCP, fine-grained токен")
 Rel(mcpServer, modularMonolithApp, "Вызывает доменные сервисы делегированными правами, минуя BFF", "HTTPS")
+
+Rel(iam, extSystemAuth, "Делегирует вход в систему", "OAuth 2.0 / OIDC")
+Rel(modularMonolithApp, extSystemObjectStorage, "Хранит и отдаёт медиафайлы", "S3 API / HTTPS")
+Rel(modularMonolithApp, extSystemPaymentGateway, "Проводит платежи и возвраты", "HTTPS")
+Rel(modularMonolithApp, extSystemEmail, "Отправляет письма", "SMTP / REST API")
+Rel(modularMonolithApp, extSystemPush, "Отправляет push-уведомления", "Web Push / REST API")
+Rel(modularMonolithApp, extSystemLlm, "Оценивает свободные ответы", "REST API / HTTPS")
 
 SHOW_LEGEND()
 
