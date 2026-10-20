@@ -14,7 +14,7 @@ System(systemRecallApp, "RecallApp", "Система для запоминани
 
 System_Ext(extSystemAuth, "OAuth-провайдер", "Вход через Яндекс, VK и другие соцсети")
 System_Ext(extSystemObjectStorage, "Объектное хранилище", "Хранение медиафайлов: изображения, видео, аудио, документы")
-System_Ext(extSystemPaymentGateway, "Платёжный провайдер", "Приём оплаты и возвратов по подписке")
+System_Ext(extSystemPaymentGateway, "Платёжный провайдер", "Приём оплаты и возвратов по подписке", $tags="offscope")
 System_Ext(extSystemEmail, "Email-провайдер", "Доставка писем")
 System_Ext(extSystemPush, "Push-провайдер", "Доставка push-уведомлений")
 System_Ext(extSystemAiAgent, "ИИ-агент", "Внешний ИИ-ассистент пользователя", $tags="offscope")
