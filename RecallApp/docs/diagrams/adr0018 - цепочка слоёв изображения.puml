@@ -1,0 +1,47 @@
+@startuml ADR 0018 - Цепочка слоёв проверки изображения
+title Слои проверки изображения: от клиента к хранилищу и отдаче
+left to right direction
+
+rectangle "Клиент" {
+  rectangle "UX-проверка\nтип / вес\n(не доверенная)" as c1
+}
+
+rectangle "Монолит: выдача ссылки" {
+  rectangle "Право на загрузку" as m1
+  rectangle "Квота объёма" as m2
+  rectangle "Подпись с ограничениями\n(вес, content-type, ключ)" as m3
+}
+
+rectangle "Хранилище: запись" {
+  rectangle "Строгая проверка ограничений подписи\n(вес, content-type)" as s1
+}
+
+rectangle "Монолит: подтверждение" {
+  rectangle "Белый список форматов\n(PNG / JPEG / WebP)" as v1
+  rectangle "Пиксель-лимит\n(против бомбы)" as v2
+  rectangle "Антивирус (опц.)" as v3
+  rectangle "Пересжатие (re-encode)\nлибы пропатчены / в песочнице" as v4
+  rectangle "Привязка к элементу" as v5
+}
+
+rectangle "Отдача" {
+  rectangle "Отдельный домен +\nContent-Type / Content-Disposition" as d1
+}
+
+rectangle "Back-office (асинхронно)" {
+  rectangle "Модерация и репорты" as mo1
+}
+
+c1 --> m1
+m1 --> m2
+m2 --> m3
+m3 --> s1
+s1 --> v1
+v1 --> v2
+v2 --> v3
+v3 --> v4
+v4 --> v5
+v5 --> d1
+d1 ..> mo1 : реактивно
+
+@enduml
