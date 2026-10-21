@@ -70,7 +70,7 @@ Realtime stateful и чувствителен к задержке - он **пе�
 - [ADR 0012](0012-стек-бэкенда.md) - стек C# / .NET.
 - [ADR 0011](0011-подход-к-фронтенду.md) - фронт на React, клиент SignalR.
 - [ADR 0002](0002-bff-для-клиентских-приложений.md) - BFF; выдача connection ticket, обход BFF для WS.
-- [План платформы §3.7](../../24_3_DNDE.wiki/RecallApp-План-платформы.md) - мультиплеер, вход гостя по коду.
-- [План платформы §4](../../24_3_DNDE.wiki/RecallApp-План-платформы.md) - realtime отдельным слоем, НФТ по задержке.
-- [US «Мультиплеер»](../../24_3_DNDE.wiki/RecallApp-US-Мультиплеер.md) - сценарии матча, переподключение.
+- [План платформы §3.7](https://github.com/itacademy-edms-team/24_3_DNDE/wiki/RecallApp-План-платформы) - мультиплеер, вход гостя по коду.
+- [План платформы §4](https://github.com/itacademy-edms-team/24_3_DNDE/wiki/RecallApp-План-платформы) - realtime отдельным слоем, НФТ по задержке.
+- [US «Мультиплеер»](https://github.com/itacademy-edms-team/24_3_DNDE/wiki/RecallApp-US-Мультиплеер) - сценарии матча, переподключение.
 - [C4-Container](../diagrams/с4%20-%20containers.puml) - realtime внутри монолита.
