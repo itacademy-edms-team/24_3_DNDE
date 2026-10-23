@@ -51,6 +51,24 @@
 BFF_WEB_OIDC_CLIENT_SECRET=<ВАШ_CLIENT_SECRET_ИЗ_BFF_WEB>
 ```
 
+## Политика сессий (ADR 0027)
+
+1. Перейдите в realm `recallapp`.
+
+2. Realm Settings -> Login:
+- Remember me: `ON`
+
+3. Realm Settings -> Sessions:
+- SSO Session Idle: `30 Minutes`
+- SSO Session Max: `10 Hours`
+- SSO Session Idle Remember Me: `30 Days`
+- SSO Session Max Remember Me: `90 Days`
+
+4. Realm Settings -> Tokens:
+- Access Token Lifespan: `5 Minutes`
+- Revoke Refresh Token: `ON`
+- Refresh Token Max Reuse: `0`
+
 ## Бэкап realm
 
 Ручной экспорт realm в папку вне репозитория (с пользователями):
