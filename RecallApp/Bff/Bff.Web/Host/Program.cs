@@ -1,3 +1,7 @@
+using Host.Configuration;
+using Host.Infrastructure;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.HttpOverrides;
 using NLog;
 using NLog.Web;
@@ -15,7 +19,12 @@ try
     bootstrapLogger.Info("Starting Web Host...");
 
     // Configuration
-    // Right scheme/host/port forward
+    builder.Services.AddOptions<OidcOptions>()
+        .Bind(builder.Configuration.GetSection(OidcOptions.SectionName))
+        .ValidateDataAnnotations()
+        .ValidateOnStart();
+
+    // Right scheme/host/port forward (за edge-прокси, ADR 0026)
     builder.Services.Configure<ForwardedHeadersOptions>(options =>
     {
         options.ForwardedHeaders =
@@ -28,6 +37,33 @@ try
 
     // Services
     builder.Services.AddHealthChecks();
+
+    // Серверное хранилище сессии (ADR 0021): in-memory за IDistributedCache, Redis по триггеру.
+    builder.Services.AddDistributedMemoryCache();
+    builder.Services.AddSingleton<ITicketStore, DistributedCacheTicketStore>();
+
+    // BFF-аутентификация: cookie-сессия + OIDC-вход в Keycloak (ADR 0002).
+    builder.Services.ConfigureOptions<ConfigureOidcOptions>();
+    builder.Services
+        .AddAuthentication(options =>
+        {
+            options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+            options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
+        })
+        .AddCookie(options =>
+        {
+            options.Cookie.Name = "recall_bff";
+            options.Cookie.HttpOnly = true;
+            options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+            options.Cookie.SameSite = SameSiteMode.Lax;
+            options.ExpireTimeSpan = TimeSpan.FromHours(8);
+            options.SlidingExpiration = true;
+        })
+        .AddOpenIdConnect();
+    
+    builder.Services
+        .AddOptions<CookieAuthenticationOptions>(CookieAuthenticationDefaults.AuthenticationScheme)
+        .Configure<ITicketStore>((options, store) => options.SessionStore = store);
 
     builder.Services.AddControllers();
 
@@ -49,6 +85,7 @@ try
 
     app.UseRouting();
 
+    app.UseAuthentication();
     app.UseAuthorization();
 
     app.MapHealthChecks("/healthz");

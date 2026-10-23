@@ -2,11 +2,41 @@
 
 ## Первичная настройка Realm
 
+### RecallApp
+
 1. Создайте Realm `recallapp`. Перейдите в него.
 
 2. Создайте клиент `RecallApp`:
    1. Client type: `OpenID Connect`
    2. Client ID: `RecallApp`
+   3. Остальное: OFF
+   4. Valid redirect URIs: `https://bff.localhost/signin-oidc`
+   5.  Valid post logout redirect URIs: `https://bff.localhost/signout-callback-oidc`
+   6.  Web origins: `https://bff.localhost`
+
+3. Перейдите в клиент, вкладка Roles -> Create Role
+   1. Role Name: `app-user`
+   2. Description: `Пользователь приложения RecallApp`
+
+4. Перейдите в Realm Settings -> User Registration -> Assign role -> Client roles
+   1. Найдите в списке app-user, отметьте
+   2. Assign
+
+5. Перейдите на вкладку Users -> Create User
+   1. Username: `testuser`
+   2. Email: `test@recallapp.local`
+   3. First Name: `test`
+   4. Last Name: `user`
+
+6. Откройте созданного пользователя -> Credentials -> Set password
+   1. Задайте пароль, запомните его
+   2. Temporary: OFF
+
+### Bff.Web
+
+1. Создайте клиент `Bff.Web`:
+   1. Client type: `OpenID Connect`
+   2. Client ID: `Bff.Web`
    3. Client authentication: ON
    4. Authorization: OFF
    5. Authentication flow: Standard flow ON
@@ -17,22 +47,17 @@
    10. Valid post logout redirect URIs: `https://bff.localhost/signout-callback-oidc`
    11. Web origins: `https://bff.localhost`
 
-3. Перейдите в созданный ранее клиент. Запомните Client Secret - он поднадобится для Bff.Web
+2. Перейдите в созданный ранее клиент. Запомните Client Secret - он поднадобится для Bff.Web
 
-4. Снова перейдите в клиент, вкладка Roles -> Create Role
-   1. Role Name: `app-user`
-   2. Description: `Пользователь приложения RecallApp`
+3. В корневом .env добавьте/обновите строчку:
+```
+BFF_WEB_OIDC_CLIENT_SECRET=<ВАШ_CLIENT_SECRET_ИЗ_BFF_WEB>
+```
 
-5. Перейдите в Realm Settings -> User Registration -> Assign role -> Client roles
-   1. Найдите в списке app-user, отметьте
-   2. Assign
+## Бэкап realm
 
-6. Перейдите на вкладку Users -> Create User
-   1. Username: `testuser`
-   2. Email: `test@recallapp.local`
-   3. First Name: `test`
-   4. Last Name: `user`
+Ручной экспорт realm в папку вне репозитория (с пользователями):
 
-7. Откройте созданного пользователя -> Credentials -> Set password
-   1. Задайте пароль, запомните его
-   3. Temporary: OFF
+```powershell
+./Iam/export-realm.ps1 -OutDir D:\backups\recallapp
+```
