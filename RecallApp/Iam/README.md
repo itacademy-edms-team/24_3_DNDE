@@ -10,9 +10,6 @@
    1. Client type: `OpenID Connect`
    2. Client ID: `RecallApp`
    3. Остальное: OFF
-   4. Valid redirect URIs: `https://bff.localhost/signin-oidc`
-   5.  Valid post logout redirect URIs: `https://bff.localhost/signout-callback-oidc`
-   6.  Web origins: `https://bff.localhost`
 
 3. Перейдите в клиент, вкладка Roles -> Create Role
    1. Role Name: `app-user`
