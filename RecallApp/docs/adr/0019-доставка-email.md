@@ -1,6 +1,6 @@
 # ADR 0019. Доставка email: отправитель и канал
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-10-22
 - **Decision-maker(s):** Aleksandr
 - **Owner:** Aleksandr

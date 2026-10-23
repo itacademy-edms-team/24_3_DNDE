@@ -1,6 +1,6 @@
 # ADR 0024. Авторизация: client-роли приложения поверх IAM
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-10-23
 - **Decision-maker(s):** Aleksandr
 - **Owner:** Aleksandr
