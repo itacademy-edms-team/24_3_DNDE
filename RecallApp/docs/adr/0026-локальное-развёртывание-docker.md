@@ -1,6 +1,6 @@
 # ADR 0026. Локальное развёртывание в Docker
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-10-23
 - **Decision-maker(s):** Aleksandr
 - **Owner:** Aleksandr
