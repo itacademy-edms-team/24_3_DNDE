@@ -4,7 +4,6 @@ namespace Host.Configuration;
 
 /// <summary>
 /// Настройки OIDC-клиента BFF (Keycloak). Секция "Oidc" в конфигурации.
-/// ClientSecret приходит из окружения (.env), не хранится в репозитории.
 /// </summary>
 public sealed class OidcOptions
 {
@@ -41,4 +40,10 @@ public sealed class TokenLifetimeOptions
     /// Вычитается из времени жизни токена при расчёте expires_at, сохраняемого в cookie.
     /// </summary>
     public TimeSpan ClockSkewBuffer { get; set; } = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// Через сколько времени простоя запись замка сессии считается мёртвой и удаляется уборщиком.
+    /// Должна быть заметно больше частоты обновлений токена, чтобы активную сессию не удалило между обновлениями.
+    /// </summary>
+    public TimeSpan SessionLockIdle { get; set; } = TimeSpan.FromMinutes(30);
 }

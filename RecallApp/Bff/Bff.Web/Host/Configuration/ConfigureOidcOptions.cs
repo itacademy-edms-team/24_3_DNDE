@@ -1,3 +1,5 @@
+using Host.Services;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
@@ -51,6 +53,15 @@ public sealed class ConfigureOidcOptions(IOptions<OidcOptions> oidc)
             // Клиентские роли RecallApp лежат в resource_access (ADR 0024);
             // плоского claim "roles" без маппера Keycloak нет - маппинг ролей в Этапе C.
             RoleClaimType = "roles",
+        };
+
+        // Стабильный идентификатор BFF-сессии ставится один раз при входе и переживает refresh.
+        // Ключ сериализации обновления токенов (session-over-session, ADR 0027).
+        options.Events ??= new OpenIdConnectEvents();
+        options.Events.OnTokenValidated = ctx =>
+        {
+            ctx.Properties?.SetString(BffSessionKeys.SessionId, Guid.NewGuid().ToString("N"));
+            return Task.CompletedTask;
         };
     }
 }

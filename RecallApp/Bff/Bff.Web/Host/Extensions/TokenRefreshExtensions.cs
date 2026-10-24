@@ -13,6 +13,7 @@ public static class TokenRefreshExtensions
     )
     {
         services.AddSingleton<TokenRefreshSemaphores>();
+        services.AddHostedService<TokenRefreshSessionJanitor>();
         services.AddScoped<ITokenRefreshService, TokenRefreshService>();
         services.AddScoped<TokenRefreshMiddleware>();
         services
