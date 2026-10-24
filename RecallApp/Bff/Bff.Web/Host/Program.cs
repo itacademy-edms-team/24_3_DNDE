@@ -1,4 +1,5 @@
 using Host.Configuration;
+using Host.Extensions;
 using Host.Infrastructure;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
@@ -60,10 +61,12 @@ try
             options.SlidingExpiration = true;
         })
         .AddOpenIdConnect();
-    
+
     builder.Services
         .AddOptions<CookieAuthenticationOptions>(CookieAuthenticationDefaults.AuthenticationScheme)
         .Configure<ITicketStore>((options, store) => options.SessionStore = store);
+
+    builder.Services.AddKeycloakTokenRefreshServices();
 
     builder.Services.AddControllers();
 
@@ -86,6 +89,7 @@ try
     app.UseRouting();
 
     app.UseAuthentication();
+    app.UseKeycloakTokenRefresh();
     app.UseAuthorization();
 
     app.MapHealthChecks("/healthz");
