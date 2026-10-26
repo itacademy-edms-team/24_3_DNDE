@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security.Claims;
 using System.Text.Json;
 using Host.Configuration;
+using Host.Infrastructure;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.Extensions.Options;
@@ -179,7 +180,13 @@ public sealed class TokenRefreshService(
             return false;
         }
 
-        await StoreNewTokensAsync(context, tokenResponse, refreshToken, clockSkewBuffer)
+        await StoreNewTokensAsync(
+                context,
+                tokenResponse,
+                refreshToken,
+                clockSkewBuffer,
+                _oidcOptions.SsoSession
+            )
             .ConfigureAwait(false);
         return true;
     }
@@ -222,7 +229,8 @@ public sealed class TokenRefreshService(
         HttpContext context,
         JsonDocument tokenResponse,
         string fallbackRefreshToken,
-        TimeSpan clockSkewBuffer
+        TimeSpan clockSkewBuffer,
+        SsoSessionOptions sso
     )
     {
         using (tokenResponse)
@@ -256,6 +264,13 @@ public sealed class TokenRefreshService(
                     new() { Name = "expires_at", Value = newExpiresAt },
                 ]
             );
+
+            // Когерентность cookie (ADR 0027).
+            // SignInAsync ниже отменяет встроенное скольжение cookie в этом запросе (FinishResponseAsync не продлевает, если был SignIn),
+            // и в cookie уйдут даты из authResult.Properties.
+            // Поэтому окно начинаем заново сами:
+            // IssuedUtc = now, ExpiresUtc = now + SSO Idle режима (режим по маркеру bff_remember_me).
+            SessionCookiePolicy.ResetWindow(authResult.Properties!, sso, DateTimeOffset.UtcNow);
 
             await context
                 .SignInAsync(

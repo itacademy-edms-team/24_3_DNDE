@@ -2,6 +2,7 @@ using Host.Configuration;
 using Host.Extensions;
 using Host.Infrastructure;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.HttpOverrides;
 using NLog;
@@ -57,14 +58,25 @@ try
             options.Cookie.HttpOnly = true;
             options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
             options.Cookie.SameSite = SameSiteMode.Lax;
-            options.ExpireTimeSpan = TimeSpan.FromHours(8);
+
+            // Окно сессии задаётся на входе per-mode (SessionCookiePolicy.Apply: IssuedUtc + ExpiresUtc
+            // = SSO Idle режима, ADR 0027). Встроенное скольжение продлевает с сохранением длины окна
+            // (ExpiresUtc - IssuedUtc), поэтому 30 минут / 30 дней держатся сами.
             options.SlidingExpiration = true;
         })
         .AddOpenIdConnect();
 
     builder.Services
         .AddOptions<CookieAuthenticationOptions>(CookieAuthenticationDefaults.AuthenticationScheme)
-        .Configure<ITicketStore>((options, store) => options.SessionStore = store);
+        .Configure<ITicketStore, IOptions<OidcOptions>>(
+            (options, store, oidc) =>
+            {
+                options.SessionStore = store;
+                // Запасной срок, если на входе ExpiresUtc не передан: короткий обычный SSO Idle,
+                // а не дефолтные 14 дней.
+                options.ExpireTimeSpan = oidc.Value.SsoSession.SessionIdle;
+            }
+        );
 
     builder.Services.AddKeycloakTokenRefreshServices();
 

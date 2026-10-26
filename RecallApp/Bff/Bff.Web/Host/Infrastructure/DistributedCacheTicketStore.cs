@@ -1,6 +1,8 @@
+using Host.Configuration;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Options;
 
 namespace Host.Infrastructure;
 
@@ -9,9 +11,12 @@ namespace Host.Infrastructure;
 /// Лежит на сервере, в cookie уходит только ключ сессии.
 /// Текущий вид: in-memory <see cref="IDistributedCache"/>.
 /// </summary>
-public sealed class DistributedCacheTicketStore(IDistributedCache cache) : ITicketStore
+public sealed class DistributedCacheTicketStore(IDistributedCache cache, IOptions<OidcOptions> oidc)
+    : ITicketStore
 {
     private const string KeyPrefix = "bff-session:";
+
+    private readonly TimeSpan _fallbackLifetime = oidc.Value.SsoSession.SessionIdle;
 
     public async Task<string> StoreAsync(AuthenticationTicket ticket)
     {
@@ -22,12 +27,11 @@ public sealed class DistributedCacheTicketStore(IDistributedCache cache) : ITick
 
     public async Task RenewAsync(string key, AuthenticationTicket ticket)
     {
-        var options = new DistributedCacheEntryOptions();
-        var expiresUtc = ticket.Properties.ExpiresUtc;
-        if (expiresUtc.HasValue)
-            options.SetAbsoluteExpiration(expiresUtc.Value);
-        else
-            options.SetSlidingExpiration(TimeSpan.FromHours(8));
+        // Запись живёт ровно до конца окна сессии (ExpiresUtc), чтобы стор и cookie истекали
+        // одновременно (ADR 0027). Cookie-схема проставляет ExpiresUtc до вызова стора, поэтому
+        // ветка без него защитная: берём короткий обычный SSO Idle, как и запасной ExpireTimeSpan.
+        var expiresUtc = ticket.Properties.ExpiresUtc ?? DateTimeOffset.UtcNow + _fallbackLifetime;
+        var options = new DistributedCacheEntryOptions().SetAbsoluteExpiration(expiresUtc);
 
         var bytes = TicketSerializer.Default.Serialize(ticket);
         await cache.SetAsync(key, bytes, options).ConfigureAwait(false);

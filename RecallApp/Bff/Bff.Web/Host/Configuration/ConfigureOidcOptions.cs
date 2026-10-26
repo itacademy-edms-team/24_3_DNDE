@@ -1,3 +1,4 @@
+using Host.Infrastructure;
 using Host.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
@@ -55,12 +56,30 @@ public sealed class ConfigureOidcOptions(IOptions<OidcOptions> oidc)
             RoleClaimType = "roles",
         };
 
-        // Стабильный идентификатор BFF-сессии ставится один раз при входе и переживает refresh.
-        // Ключ сериализации обновления токенов (session-over-session, ADR 0027).
+        // Срабатывает после проверки id_token, то есть только для входа, который точно состоится.
+        // Здесь же ещё доступен сырой ответ token-endpoint (refresh_expires_in в SaveTokens не попадает).
         options.Events ??= new OpenIdConnectEvents();
         options.Events.OnTokenValidated = ctx =>
         {
-            ctx.Properties?.SetString(BffSessionKeys.SessionId, Guid.NewGuid().ToString("N"));
+            var properties = ctx.Properties!;
+
+            // Стабильный идентификатор BFF-сессии: ставится один раз, переживает refresh.
+            // Ключ сериализации обновления токенов (session-over-session, ADR 0027).
+            properties.SetString(BffSessionKeys.SessionId, Guid.NewGuid().ToString("N"));
+
+            // Режим «запомнить меня»: Keycloak не кладёт его в токен, но refresh-токен живёт по SSO Idle режима (~30 мин против ~30 дней).
+            // TokenEndpointResponse: {access_token, id_token, refresh_token, expires_in, refresh_expires_in, ...}.
+            string? raw = null;
+            ctx.TokenEndpointResponse?.Parameters.TryGetValue("refresh_expires_in", out raw);
+            var refreshTokenLifetime = long.TryParse(raw, out var seconds)
+                ? TimeSpan.FromSeconds(seconds)
+                : TimeSpan.Zero;
+            var isRememberMe = refreshTokenLifetime > _oidc.TokenLifetime.RememberMeThreshold;
+
+            // Персистентность и окно cookie по режиму (ADR 0027).
+            // Дальше окно держит встроенное скольжение cookie и token-refresh (ResetWindow).
+            SessionCookiePolicy.Apply(properties, isRememberMe, _oidc.SsoSession, DateTimeOffset.UtcNow);
+
             return Task.CompletedTask;
         };
     }
