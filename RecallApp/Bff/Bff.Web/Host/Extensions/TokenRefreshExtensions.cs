@@ -21,7 +21,9 @@ public static class TokenRefreshExtensions
                 TokenRefreshService.HttpClientName,
                 client =>
                 {
-                    client.Timeout = TimeSpan.FromSeconds(10);
+                    // Запрос ждёт под замком сессии: держим таймаут коротким.
+                    // Если за 5 сек. не успели, то по ответу идём или на ретрай, или на SignOut.
+                    client.Timeout = TimeSpan.FromSeconds(5);
                 }
             )
             .ConfigurePrimaryHttpMessageHandler(() =>

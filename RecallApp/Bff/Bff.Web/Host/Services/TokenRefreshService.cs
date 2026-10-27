@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Net;
 using System.Security.Claims;
 using System.Text.Json;
 using Host.Configuration;
@@ -16,7 +17,9 @@ public interface ITokenRefreshService
 
 /// <summary>
 /// Сервис обновления access-токена.
-/// Обновление токена сериализуется на sub, при провале refresh делает sign-out серверной сессии.
+/// Обновление сериализуется на BFF-сессию.
+/// Отказ Keycloak (400/401) делает sign-out серверной сессии;
+/// временный сбой (5xx, таймаут, сеть, битый ответ) сессию сохраняет и откладывает повтор на <see cref="TokenLifetimeOptions.RefreshRetryBackoff"/>.
 /// </summary>
 public sealed class TokenRefreshService(
     IHttpClientFactory httpClientFactory,
@@ -112,6 +115,10 @@ public sealed class TokenRefreshService(
         if (timeUntilExpiry > refreshThreshold)
             return;
 
+        // Пауза после временного сбоя: не встаём в очередь на замок, чтобы не ждать таймаут Keycloak.
+        if (IsInRetryBackoff(sessionKey))
+            return;
+
         var sem = semaphores.Semaphores.GetOrAdd(sessionKey, _ => new SemaphoreSlim(1, 1));
         await sem.WaitAsync().ConfigureAwait(false);
         try
@@ -127,6 +134,11 @@ public sealed class TokenRefreshService(
                 );
                 return;
             }
+
+            // Повторная проверка паузы: запросы, ждавшие замок во время неудачной попытки,
+            // не должны сразу повторять её.
+            if (IsInRetryBackoff(sessionKey))
+                return;
 
             logger.LogInformation(
                 "Performing token refresh for session={SessionKey} (sub={Sub})",
@@ -145,20 +157,42 @@ public sealed class TokenRefreshService(
                 return;
             }
 
-            var succeeded = await RefreshAndStoreTokensAsync(
+            var outcome = await RefreshAndStoreTokensAsync(
                     context,
                     refreshToken,
                     _oidcOptions.TokenLifetime.ClockSkewBuffer
                 )
                 .ConfigureAwait(false);
-            if (succeeded)
+            switch (outcome)
             {
-                semaphores.LastRefreshedAt[sessionKey] = DateTimeOffset.UtcNow;
-                logger.LogInformation("Token refresh succeeded for session={SessionKey}", sessionKey);
+                case RefreshOutcome.Success:
+                    semaphores.LastRefreshedAt[sessionKey] = DateTimeOffset.UtcNow;
+                    semaphores.RetryNotBefore.TryRemove(sessionKey, out _);
+                    logger.LogInformation(
+                        "Token refresh succeeded for session={SessionKey}",
+                        sessionKey
+                    );
 
-                // Ленивый guard: страховка от всплеска логинов между проходами уборщика.
-                if (semaphores.Semaphores.Count > SessionLockSoftCap)
-                    semaphores.TrimOldest(LazyTrimBatch);
+                    // Ленивый guard: страховка от всплеска логинов между проходами уборщика.
+                    if (semaphores.Semaphores.Count > SessionLockSoftCap)
+                        semaphores.TrimOldest(LazyTrimBatch);
+                    break;
+
+                case RefreshOutcome.Unavailable:
+                    // Сессию не трогаем и LastRefreshedAt не ставим: после паузы попытка повторится.
+                    var retryAt =
+                        DateTimeOffset.UtcNow + _oidcOptions.TokenLifetime.RefreshRetryBackoff;
+                    semaphores.RetryNotBefore[sessionKey] = retryAt;
+                    logger.LogWarning(
+                        "Token refresh deferred: IdP unavailable, session kept, retry after {RetryAt:o} for session={SessionKey}",
+                        retryAt,
+                        sessionKey
+                    );
+                    break;
+
+                case RefreshOutcome.Rejected:
+                    // Sign-out уже выполнен в RefreshAndStoreTokensAsync.
+                    break;
             }
         }
         finally
@@ -167,31 +201,57 @@ public sealed class TokenRefreshService(
         }
     }
 
-    private async Task<bool> RefreshAndStoreTokensAsync(
+    private bool IsInRetryBackoff(string sessionKey)
+    {
+        if (
+            !semaphores.RetryNotBefore.TryGetValue(sessionKey, out var retryNotBefore)
+            || DateTimeOffset.UtcNow >= retryNotBefore
+        )
+            return false;
+
+        logger.LogDebug(
+            "Token refresh skipped (retry backoff until {RetryNotBefore:o}): session={SessionKey}",
+            retryNotBefore,
+            sessionKey
+        );
+        return true;
+    }
+
+    private async Task<RefreshOutcome> RefreshAndStoreTokensAsync(
         HttpContext context,
         string refreshToken,
         TimeSpan clockSkewBuffer
     )
     {
-        var tokenResponse = await RequestNewTokensAsync(refreshToken).ConfigureAwait(false);
-        if (tokenResponse == null)
+        var (outcome, tokenResponse) = await RequestNewTokensAsync(refreshToken)
+            .ConfigureAwait(false);
+        switch (outcome)
         {
-            await SignOutAsync(context).ConfigureAwait(false);
-            return false;
+            case RefreshOutcome.Rejected:
+                await SignOutAsync(context).ConfigureAwait(false);
+                return outcome;
+            case RefreshOutcome.Unavailable:
+                return outcome;
         }
 
         await StoreNewTokensAsync(
                 context,
-                tokenResponse,
+                tokenResponse!,
                 refreshToken,
                 clockSkewBuffer,
                 _oidcOptions.SsoSession
             )
             .ConfigureAwait(false);
-        return true;
+        return RefreshOutcome.Success;
     }
 
-    private async Task<JsonDocument?> RequestNewTokensAsync(string refreshToken)
+    /// <summary>
+    /// Запрос к token-endpoint. При <see cref="RefreshOutcome.Success"/> документ ответа не null
+    /// и содержит access_token и expires_in; владение документом переходит вызывающему.
+    /// </summary>
+    private async Task<(RefreshOutcome Outcome, JsonDocument? Tokens)> RequestNewTokensAsync(
+        string refreshToken
+    )
     {
         var tokenEndpoint = $"{_oidcOptions.Authority}/protocol/openid-connect/token";
 
@@ -207,23 +267,61 @@ public sealed class TokenRefreshService(
 
         try
         {
-            var response = await http.PostAsync(tokenEndpoint, new FormUrlEncodedContent(data))
+            using var response = await http.PostAsync(
+                    tokenEndpoint,
+                    new FormUrlEncodedContent(data)
+                )
                 .ConfigureAwait(false);
+
+            // 400 (invalid_grant: refresh отозван или истёк) и 401 (неверный клиент или секрет)
+            // это окончательный отказ: повтор того же запроса не поможет.
+            if (response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Unauthorized)
+            {
+                logger.LogWarning(
+                    "Token refresh rejected by IdP with status {Status}",
+                    response.StatusCode
+                );
+                return (RefreshOutcome.Rejected, null);
+            }
+
             if (!response.IsSuccessStatusCode)
             {
-                logger.LogWarning("Token refresh failed with status {Status}", response.StatusCode);
-                return null;
+                logger.LogWarning(
+                    "Token refresh failed with transient status {Status}",
+                    response.StatusCode
+                );
+                return (RefreshOutcome.Unavailable, null);
             }
 
             var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-            return JsonDocument.Parse(json);
+            var document = JsonDocument.Parse(json);
+            if (!HasRequiredTokenFields(document.RootElement))
+            {
+                document.Dispose();
+                logger.LogWarning(
+                    "Token refresh response lacks access_token or expires_in"
+                );
+                return (RefreshOutcome.Unavailable, null);
+            }
+
+            return (RefreshOutcome.Success, document);
         }
         catch (Exception ex)
+            when (ex is HttpRequestException or TaskCanceledException or JsonException)
         {
+            // Сеть, таймаут HttpClient (TaskCanceledException) или битый JSON.
             logger.LogWarning(ex, "Token refresh request failed");
-            return null;
+            return (RefreshOutcome.Unavailable, null);
         }
     }
+
+    private static bool HasRequiredTokenFields(JsonElement root) =>
+        root.ValueKind == JsonValueKind.Object
+        && root.TryGetProperty("access_token", out var accessToken)
+        && accessToken.ValueKind == JsonValueKind.String
+        && root.TryGetProperty("expires_in", out var expiresIn)
+        && expiresIn.ValueKind == JsonValueKind.Number
+        && expiresIn.TryGetInt32(out _);
 
     private static async Task StoreNewTokensAsync(
         HttpContext context,
@@ -288,4 +386,17 @@ public sealed class TokenRefreshService(
 
     private static Task SignOutAsync(HttpContext context) =>
         context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+
+    /// <summary>Исход попытки refresh.</summary>
+    private enum RefreshOutcome
+    {
+        /// <summary>Токены получены и сохранены.</summary>
+        Success,
+
+        /// <summary>Keycloak отказал окончательно (400/401): сессия завершается.</summary>
+        Rejected,
+
+        /// <summary>Временный сбой (5xx, таймаут, сеть, битый ответ): сессия сохраняется, повтор после паузы.</summary>
+        Unavailable,
+    }
 }

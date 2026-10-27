@@ -53,6 +53,11 @@ public sealed class TokenLifetimeOptions
     public TimeSpan SessionLockIdle { get; set; } = TimeSpan.FromMinutes(30);
 
     /// <summary>
+    /// Пауза перед повторной попыткой refresh после временного сбоя Keycloak (5xx, таймаут, сеть).
+    /// </summary>
+    public TimeSpan RefreshRetryBackoff { get; set; } = TimeSpan.FromSeconds(15);
+
+    /// <summary>
     /// Граница времени жизни refresh-токена, после которого он считается принадлежащим к "Remember Me" сессии.
     /// Смотрим оставшееся время жизни refresh-токена и округляем вверх до целого дня.
     /// Оставшееся время жизни refresh-токена считается, как округлённый вверх минимум из следующих опций:

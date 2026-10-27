@@ -3,8 +3,9 @@ using System.Collections.Concurrent;
 namespace Host.Services;
 
 /// <summary>
-/// Разделяемое состояние сериализации обновления токенов: по одному семафору на BFF-сессию
-/// и время последнего успешного обновления (для двойной проверки под семафором).
+/// Разделяемое состояние сериализации обновления токенов: по одному семафору на BFF-сессию.
+/// Время последнего успешного обновления (для двойной проверки под семафором)
+/// и момент, раньше которого не повторять refresh после временного сбоя Keycloak.
 /// Ключ - идентификатор BFF-сессии (<see cref="BffSessionKeys.SessionId"/>), не sub:
 /// цепочка refresh живёт на сессию, не на пользователя.
 /// Записи мёртвых сессий чистит <see cref="TokenRefreshSessionJanitor"/> плюс ленивый trim.
@@ -13,6 +14,7 @@ public sealed class TokenRefreshSemaphores
 {
     public ConcurrentDictionary<string, SemaphoreSlim> Semaphores { get; } = new();
     public ConcurrentDictionary<string, DateTimeOffset> LastRefreshedAt { get; } = new();
+    public ConcurrentDictionary<string, DateTimeOffset> RetryNotBefore { get; } = new();
 
     /// <summary>
     /// Удаляет запись замка сессии, если он прямо сейчас не занят. Семафор не Dispose-им:
@@ -26,6 +28,7 @@ public sealed class TokenRefreshSemaphores
             return false; // занят - кто-то обновляет прямо сейчас
 
         LastRefreshedAt.TryRemove(key, out _);
+        RetryNotBefore.TryRemove(key, out _);
         Semaphores.TryRemove(key, out _);
         return true;
     }
