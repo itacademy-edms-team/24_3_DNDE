@@ -78,7 +78,7 @@ public sealed class ConfigureOidcOptions(IOptions<OidcOptions> oidc)
 
             // Персистентность и окно cookie по режиму (ADR 0027).
             // Дальше окно держит встроенное скольжение cookie и token-refresh (ResetWindow).
-            SessionCookiePolicy.Apply(properties, isRememberMe, _oidc.SsoSession, DateTimeOffset.UtcNow);
+            SessionCookieLifetime.Apply(properties, isRememberMe, _oidc.SsoSession, DateTimeOffset.UtcNow);
 
             return Task.CompletedTask;
         };

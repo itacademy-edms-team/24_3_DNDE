@@ -368,7 +368,7 @@ public sealed class TokenRefreshService(
             // и в cookie уйдут даты из authResult.Properties.
             // Поэтому окно начинаем заново сами:
             // IssuedUtc = now, ExpiresUtc = now + SSO Idle режима (режим по маркеру bff_remember_me).
-            SessionCookiePolicy.ResetWindow(authResult.Properties!, sso, DateTimeOffset.UtcNow);
+            SessionCookieLifetime.ResetWindow(authResult.Properties!, sso, DateTimeOffset.UtcNow);
 
             await context
                 .SignInAsync(

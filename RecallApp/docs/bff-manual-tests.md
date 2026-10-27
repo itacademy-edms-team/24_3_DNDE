@@ -177,7 +177,7 @@ Oidc__TokenLifetime__RefreshThreshold: "00:10:00"
 
 ## Сценарий 7. Cookie следует режиму «запомнить меня»
 
-> Статус: **не прогнан**. Код входа менялся 2026-10-27 (события OIDC объединены в `OnTokenValidated`, окно cookie через `SessionCookiePolicy.ResetWindow`).
+> Статус: **не прогнан**. Код входа менялся 2026-10-27 (события OIDC объединены в `OnTokenValidated`, окно cookie через `SessionCookieLifetime.ResetWindow`).
 
 **Цель.** Срок и персистентность cookie `recall_bff` совпадают с режимом входа (ADR 0027): без галочки cookie сессионная с окном SSO Idle (30 минут), с галочкой persistent с окном SSO Idle Remember Me (30 дней).
 

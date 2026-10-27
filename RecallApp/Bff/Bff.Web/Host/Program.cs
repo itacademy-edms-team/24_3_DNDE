@@ -59,7 +59,7 @@ try
             options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
             options.Cookie.SameSite = SameSiteMode.Lax;
 
-            // Окно сессии задаётся на входе per-mode (SessionCookiePolicy.Apply: IssuedUtc + ExpiresUtc
+            // Окно сессии задаётся на входе per-mode (SessionCookieLifetime.Apply: IssuedUtc + ExpiresUtc
             // = SSO Idle режима, ADR 0027). Встроенное скольжение продлевает с сохранением длины окна
             // (ExpiresUtc - IssuedUtc), поэтому 30 минут / 30 дней держатся сами.
             options.SlidingExpiration = true;

@@ -9,7 +9,7 @@ namespace Host.Infrastructure;
 /// Режим ("запомнить меня") определяется на входе по длине жизни refresh-токена
 /// и хранится маркером в <see cref="AuthenticationProperties"/>, переживая refresh.
 /// </summary>
-public static class SessionCookiePolicy
+public static class SessionCookieLifetime
 {
     /// <summary>Ключ маркера режима «запомнить меня» в properties.</summary>
     public const string RememberMeKey = "bff_remember_me";
