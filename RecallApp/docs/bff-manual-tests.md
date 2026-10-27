@@ -6,7 +6,7 @@
 
 ## Что покрываем и что нет
 
-Проверяем сейчас: базовый вход/выход, упреждающий refresh, дедупликацию параллельных обновлений, стабильность ключа сессии, независимость нескольких сессий одного пользователя, поведение при провале refresh, когерентность cookie с режимом «запомнить меня».
+Проверяем сейчас: базовый вход/выход, упреждающий refresh, дедупликацию параллельных обновлений, стабильность ключа сессии, независимость нескольких сессий одного пользователя, поведение при провале refresh, переживание временного сбоя Keycloak, когерентность cookie с режимом «запомнить меня».
 
 Пока не проверяем:
 
@@ -41,7 +41,11 @@
 | `Token refresh succeeded for session={key}` | Info | обновление прошло, тикет переписан |
 | `Token refresh skipped (double-check): session={key}` | Debug | параллельный запрос не стал обновлять повторно |
 | `Token refresh check: timeUntilExpiry=…, threshold=…, session={key}` | Debug | решение «рано / пора» на каждом запросе |
-| `Token refresh failed with status {code}` | Warning | Keycloak отклонил обновление |
+| `Token refresh rejected by IdP with status {code}` | Warning | Keycloak окончательно отказал (400/401), дальше sign-out |
+| `Token refresh failed with transient status {code}` | Warning | временный сбой: Keycloak или прокси ответили 5xx и т.п. |
+| `Token refresh request failed` | Warning | временный сбой: сеть, таймаут HttpClient (5 с) или битый JSON |
+| `Token refresh deferred: IdP unavailable, session kept, retry after {time}` | Warning | сессия сохранена, повтор не раньше `{time}` |
+| `Token refresh skipped (retry backoff until {time}): session={key}` | Debug | идёт пауза после сбоя, запрос не пытается обновлять |
 | `BFF session id missing, falling back to sub` | Warning | cookie без идентификатора сессии (деградация на sub) |
 
 ### Ускорение timing-сценариев
@@ -165,7 +169,7 @@ Oidc__TokenLifetime__RefreshThreshold: "00:10:00"
 3. Дёргать `/session` раз в ~15 секунд.
 
 **Ожидаем.**
-- Через ≈30–60 секунд в консоли: `Token refresh failed with status BadRequest`, затем BFF делает sign-out.
+- Через ≈30–60 секунд в консоли: `Token refresh rejected by IdP with status BadRequest`, затем BFF делает sign-out. Строки `deferred` здесь быть не должно: отказ 400 не временный сбой.
 - Cookie `recall_bff` сброшена, `/session` -> `isAuthenticated: false`.
 - Переход на `/login`: если SSO-сессия Keycloak ещё жива - вход без ввода пароля (silent re-auth), иначе полный вход.
 
@@ -203,6 +207,44 @@ Oidc__TokenLifetime__RefreshThreshold: "00:10:00"
 - C: `expires=` сдвинулся вперёд на время, прошедшее с прошлой выдачи cookie.
 
 **Если в B получилось `Session`.** Не сработала эвристика: проверить, что в realm SSO Session Idle Remember Me действительно 30 дней, и что `refresh_expires_in` при входе с галочкой больше `Oidc:TokenLifetime:RememberMeThreshold` (по умолчанию 1 день).
+
+---
+
+## Сценарий 8. Keycloak временно недоступен: сессия выживает
+
+> Статус: **не прогнан**. Код добавлен 2026-10-27: исходы refresh `Success` / `Rejected` / `Unavailable`, пауза `Oidc:TokenLifetime:RefreshRetryBackoff`.
+
+**Цель.** Временный сбой Keycloak (завис, остановлен, отвечает 5xx) не разлогинивает пользователя. BFF сохраняет сессию и повторяет refresh не чаще раза в `RefreshRetryBackoff` (15 секунд). Когда Keycloak вернётся, токены обновятся как обычно.
+
+**Предусловия.** Режим B (порог `00:00:30` + Access Token Lifespan 1 минута), вход выполнен заново. Попытки refresh тогда идут примерно раз в 30 секунд, и сбой проявляется быстро.
+
+**Как BFF ходит в Keycloak.** `Authority` указывает на `https://ah.localhost`, запрос проходит через `edge-proxy` (nginx) в контейнер `iam`. Два способа уронить Keycloak ведут в разные ветки кода:
+
+| Вариант | Команда | Что видит BFF | Строка лога |
+|---|---|---|---|
+| A: заморозить | `docker compose pause iam` | соединение есть, ответа нет, срабатывает таймаут HttpClient 5 с | `Token refresh request failed` (`TaskCanceledException`) |
+| B: остановить | `docker compose stop iam` | nginx отвечает 502 или соединение не устанавливается | `Token refresh failed with transient status BadGateway` либо `Token refresh request failed` |
+
+Основной вариант A. В B есть ловушка инфраструктуры: nginx сейчас резолвит `iam` один раз при старте, и после `start iam` контейнер может получить другой IP. Если после возврата Keycloak BFF всё ещё видит 502, перезапустить прокси: `docker compose restart edge-proxy`.
+
+**Шаги A: заморозка.**
+1. Войти, `/session` → `isAuthenticated: true`.
+2. `docker compose pause iam`.
+3. Минуту запрашивать `/session` раз в ~5 секунд.
+4. `docker compose unpause iam` (Keycloak оживает сразу), ещё минуту запрашивать `/session` раз в ~5 секунд.
+
+**Шаги B: остановка.** Как в A, только на шаге 2 `docker compose stop iam`, а на шаге 4 `docker compose start iam` и ожидание готовности Keycloak (в `docker compose logs iam` строка `Listening on`).
+
+**Ожидаем (оба варианта).**
+- Во время сбоя `/session` всё время отвечает `isAuthenticated: true`, cookie `recall_bff` не сброшена.
+- На каждую попытку в консоли два Warning: причина (см. таблицу выше) и `Token refresh deferred: IdP unavailable, session kept, retry after …`.
+- Попытки идут не чаще раза в 15 секунд. Между ними в файл-логе Debug `Token refresh skipped (retry backoff until …)`.
+- В варианте A запрос с попыткой отвечает примерно через 5 секунд, остальные запросы во время паузы отвечают сразу.
+- После возврата Keycloak ближайшая попытка даёт `Performing token refresh…`, затем `Token refresh succeeded…`.
+
+**Известное ограничение.** Если сбой длится дольше остатка жизни access-токена, access протухает, а BFF-сессия остаётся живой. `/session` этого не покажет, он отвечает из cookie. Вызовы API с таким токеном получали бы 401 до возврата Keycloak, но потребителя access пока нет (до Этапа C).
+
+**Пограничный случай варианта A.** Замороженный Keycloak мог успеть принять запрос в буфер сокета. После `unpause` он его обработает и выпустит новый refresh-токен, хотя BFF уже отбросил ответ по таймауту и держит старый. При включённом Revoke Refresh Token повтор со старым токеном получит 400: `Token refresh rejected by IdP with status BadRequest`, затем sign-out. Такой исход подтверждает известный риск короткого таймаута и регрессом сценария не считается. Записать в итог прогона, решать отдельно.
 
 ---
 
