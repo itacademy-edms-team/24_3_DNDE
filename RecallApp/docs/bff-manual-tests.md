@@ -181,11 +181,11 @@ Oidc__TokenLifetime__RefreshThreshold: "00:10:00"
 
 ## Сценарий 7. Cookie следует режиму «запомнить меня»
 
-> Статус: **не прогнан**. Код входа менялся 2026-10-27 (события OIDC объединены в `OnTokenValidated`, окно cookie через `SessionCookieLifetime.ResetWindow`).
+> Статус: **прошёл 2026-10-27** (A и B в Edge, C в patchright в режиме B ускорения). Код входа менялся 2026-10-27 (события OIDC объединены в `OnTokenValidated`, окно cookie через `SessionCookieLifetime.ResetWindow`).
 
 **Цель.** Срок и персистентность cookie `recall_bff` совпадают с режимом входа (ADR 0027): без галочки cookie сессионная с окном SSO Idle (30 минут), с галочкой persistent с окном SSO Idle Remember Me (30 дней).
 
-**Предусловия.** В realm включён Remember Me, SSO Session Idle = 30 минут, SSO Session Idle Remember Me = 30 дней. Порог `RefreshThreshold` по умолчанию, Access Token Lifespan боевой (5 минут).
+**Предусловия.** В realm включён Remember Me, SSO Session Idle = 30 минут, SSO Session Idle Remember Me = 30 дней. Порог `RefreshThreshold` по умолчанию, Access Token Lifespan боевой (5 минут). В браузере выключено восстановление сессии («Продолжить с того же места» или «Работать в фоне после закрытия окон»)
 
 **Где смотреть.** DevTools → Application → Cookies → `https://bff.localhost` → `recall_bff`, столбец Expires / Max-Age: `Session` или дата. Либо Network → ответ на `/signin-oidc` → заголовок `Set-Cookie`, есть ли в нём `expires=`.
 
@@ -204,15 +204,17 @@ Oidc__TokenLifetime__RefreshThreshold: "00:10:00"
 **Ожидаем.**
 - A: Expires = `Session`; после перезапуска браузера `/session` → `isAuthenticated: false`.
 - B: Expires ≈ сейчас + 30 дней; после перезапуска браузера `/session` → `isAuthenticated: true` (протухший access обновится refresh-ем).
-- C: `expires=` сдвинулся вперёд на время, прошедшее с прошлой выдачи cookie.
+- C: `expires=` сдвинулся вперёд на время, прошедшее с прошлой выдачи cookie. `Set-Cookie` есть только в ответах, на которых прошёл refresh.
 
-**Если в B получилось `Session`.** Не сработала эвристика: проверить, что в realm SSO Session Idle Remember Me действительно 30 дней, и что `refresh_expires_in` при входе с галочкой больше `Oidc:TokenLifetime:RememberMeThreshold` (по умолчанию 1 день).
+**Нюанс по cookie.** Панель Application → Cookies показывает cookie только для origin, у которого сейчас открыта страница. Пока `bff.localhost` не загружен, список пуст, хотя cookie на месте.
+
+**Если в варианте B получилось `Session`.** Не сработала эвристика: проверить, что в realm SSO Session Idle Remember Me действительно 30 дней, и что `refresh_expires_in` при входе с галочкой больше `Oidc:TokenLifetime:RememberMeThreshold`.
 
 ---
 
 ## Сценарий 8. Keycloak временно недоступен: сессия выживает
 
-> Статус: **не прогнан**. Код добавлен 2026-10-27: исходы refresh `Success` / `Rejected` / `Unavailable`, пауза `Oidc:TokenLifetime:RefreshRetryBackoff`.
+> Статус: **прошёл 2026-10-27** (оба варианта, patchright). Код добавлен 2026-10-27: исходы refresh `Success` / `Rejected` / `Unavailable`, пауза `Oidc:TokenLifetime:RefreshRetryBackoff`.
 
 **Цель.** Временный сбой Keycloak (завис, остановлен, отвечает 5xx) не разлогинивает пользователя. BFF сохраняет сессию и повторяет refresh не чаще раза в `RefreshRetryBackoff` (15 секунд). Когда Keycloak вернётся, токены обновятся как обычно.
 
@@ -230,21 +232,39 @@ Oidc__TokenLifetime__RefreshThreshold: "00:10:00"
 **Шаги A: заморозка.**
 1. Войти, `/session` → `isAuthenticated: true`.
 2. `docker compose pause iam`.
-3. Минуту запрашивать `/session` раз в ~5 секунд.
-4. `docker compose unpause iam` (Keycloak оживает сразу), ещё минуту запрашивать `/session` раз в ~5 секунд.
+3. Когда refresh уже пора делать, выпустить пачку из DevTools-консоли: `Promise.all([...Array(5)].map(() => fetch('/session')))`.
+4. Минуту запрашивать `/session` раз в ~5 секунд.
+5. `docker compose unpause iam`, ещё минуту запрашивать `/session` раз в ~5 секунд.
 
-**Шаги B: остановка.** Как в A, только на шаге 2 `docker compose stop iam`, а на шаге 4 `docker compose start iam` и ожидание готовности Keycloak (в `docker compose logs iam` строка `Listening on`).
+**Шаги B: остановка.** Как в A, только без выпуска пачки и на шаге 2 `docker compose stop iam`, а на шаге 5 `docker compose start iam` и ожидание готовности Keycloak (в `docker compose logs iam` строка `Listening on`).
 
 **Ожидаем (оба варианта).**
 - Во время сбоя `/session` всё время отвечает `isAuthenticated: true`, cookie `recall_bff` не сброшена.
 - На каждую попытку в консоли два Warning: причина (см. таблицу выше) и `Token refresh deferred: IdP unavailable, session kept, retry after …`.
 - Попытки идут не чаще раза в 15 секунд. Между ними в файл-логе Debug `Token refresh skipped (retry backoff until …)`.
 - В варианте A запрос с попыткой отвечает примерно через 5 секунд, остальные запросы во время паузы отвечают сразу.
+- Пачка в A: все пять ответов примерно через 5 секунд (четыре ждали замок). В логе одна пара `request failed` + `deferred`, затем четыре `skipped (retry backoff …)`. Это проверка повторной проверки паузы под замком: без неё было бы пять попыток подряд, около 25 секунд.
 - После возврата Keycloak ближайшая попытка даёт `Performing token refresh…`, затем `Token refresh succeeded…`.
 
 **Известное ограничение.** Если сбой длится дольше остатка жизни access-токена, access протухает, а BFF-сессия остаётся живой. `/session` этого не покажет, он отвечает из cookie. Вызовы API с таким токеном получали бы 401 до возврата Keycloak, но потребителя access пока нет (до Этапа C).
 
-**Пограничный случай варианта A.** Замороженный Keycloak мог успеть принять запрос в буфер сокета. После `unpause` он его обработает и выпустит новый refresh-токен, хотя BFF уже отбросил ответ по таймауту и держит старый. При включённом Revoke Refresh Token повтор со старым токеном получит 400: `Token refresh rejected by IdP with status BadRequest`, затем sign-out. Такой исход подтверждает известный риск короткого таймаута и регрессом сценария не считается. Записать в итог прогона, решать отдельно.
+**Пограничный случай варианта A.** Замороженный Keycloak мог успеть принять запрос в буфер сокета. После `unpause` он его обработает и выпустит новый refresh-токен, хотя BFF уже отбросил ответ по таймауту и держит старый. При включённом Revoke Refresh Token повтор со старым токеном получит 400: `Token refresh rejected by IdP with status BadRequest`, затем sign-out. Такой исход подтверждает известный риск короткого таймаута и регрессом сценария не считается. Записать в итоги, решать отдельно.
+
+---
+
+## Журнал прогонов
+
+| Дата | Сценарии | Итог | Заметки |
+|---|---|---|---|
+| 2026-10-24 | 1–6 | прошли | до когерентности cookie и исходов refresh |
+| 2026-10-27 | 1–8 | прошли | 7A/7B запускали Edge, остальное в patchright |
+
+Наблюдения за 2026-10-27:
+- 8A: пограничный случай не воспроизвёлся. Четыре POST, оборванных таймаутом, Keycloak не обработал: после `unpause` refresh со старым токеном прошёл при Revoke Refresh Token = On и Max Reuse = 0.
+- 8B: первая попытка ушла в таймаут, следующие получили 502 от nginx примерно за 3 секунды. Перезапуск `edge-proxy` после `start iam` не понадобился. Сессии пережили рестарт Keycloak (хранятся в БД).
+- Сценарий 6 на второй сессии показал отставание на один запрос: ответ `true` вместе с удаляющим `Set-Cookie`.
+- `expires_at` на входе = вход + полный срок access (ставит встроенный `SaveTokens`), после refresh = получение + срок − `ClockSkewBuffer`. На поведение не влияет, пока `RefreshThreshold` больше буфера.
+- Не проверено вручную, ушло в задачу harness: срок записи в сторе, очистка `RetryNotBefore` уборщиком, ответ без `refresh_token` или с битым JSON, 401 от неверного секрета.
 
 ---
 
