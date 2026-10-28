@@ -30,7 +30,6 @@ package "Bff.Web (процесс)" {
 
   database "ITicketStore\nDistributedCacheTicketStore\n→ IDistributedCache (in-memory)" as store
   database "TokenRefreshSemaphores\nSemaphores / LastRefreshedAt /\nRetryNotBefore" as sems
-  database "HttpContext.Items\nbff_access_token" as items
 }
 
 database "Cookie recall_bff\n(в браузере)" as cookie
@@ -58,7 +57,6 @@ trs --> sems : замок, метки времени
 trs --> kc : grant_type=refresh_token
 trs --> scl : ResetWindow
 trs --> cookieh : SignInAsync / SignOutAsync
-trs --> items : свежий access
 janitor --> sems : TryEvict
 
 @enduml

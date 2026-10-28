@@ -12,7 +12,6 @@ participant "Keycloak" as K
 participant "SessionCookieLifetime" as L
 participant "CookieAuthenticationHandler" as CH
 database "ITicketStore" as S
-database "HttpContext.Items" as I
 
 TR -> T : TryRefreshTokenAsync(context)
 note over T : проверки до замка: см. диаграмму 05
@@ -28,7 +27,6 @@ alt 2xx и в JSON есть access_token, expires_in
   T -> CH : SignInAsync(Cookies, principal, properties)
   CH -> S : RenewAsync(тот же ключ, тикет)
   CH -> CH : Set-Cookie recall_bff (тот же ключ)
-  T -> I : Items[bff_access_token] = новый access
   T -> SM : LastRefreshedAt = now, RetryNotBefore удалить
 else 400 / 401
   K --> H : invalid_grant / invalid_client

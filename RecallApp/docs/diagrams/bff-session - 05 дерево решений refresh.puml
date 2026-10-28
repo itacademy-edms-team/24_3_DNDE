@@ -57,7 +57,7 @@ endif
 :POST /token grant_type=refresh_token\n(HttpClient, таймаут 5 с);
 switch (исход)
 case (Success)
-  :StoreTokens, ResetWindow, SignInAsync,\nItems[bff_access_token];
+  :StoreTokens, ResetWindow, SignInAsync;
   :LastRefreshedAt = now\nRetryNotBefore удалить\nленивый trim при > 10 000;
 case (Rejected 400/401)
   :SignOutAsync(Cookies); <<signout>>
