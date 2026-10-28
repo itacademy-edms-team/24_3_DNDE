@@ -100,11 +100,14 @@
 | Объект | Время жизни | Роль | Пишет в | Читает из |
 |---|---|---|---|---|
 | `AuthController` | на запрос | точки входа: `/login` (Challenge OIDC), `/logout` (SignOut обеих схем), `/session` (состояние) | (через фреймворк) | `HttpContext.User`, `GetTokenAsync("access_token")` |
-| `ConfigureOidcOptions` | singleton (опции) | настройка OIDC-клиента и событие `OnTokenValidated`: стабильный `bff_session_id`, определение режима Remember Me по `refresh_expires_in` | объект properties входа | ответ token-endpoint |
+| `ConfigureOidcOptions` | singleton (опции) | настройка OIDC-клиента и события входа. `OnTokenValidated`: стабильный `bff_session_id`, определение режима Remember Me по `refresh_expires_in`. `OnTicketReceived`: `expires_at` по правилу `AccessTokenExpiryHelper` | объект properties входа | ответ token-endpoint, токены от `SaveTokens` |
 | `SessionCookieLifetime` | static | политика окна cookie: `Apply` на входе (режим + окно), `ResetWindow` на token refresh | объект properties | `bff_remember_me`, `SsoSessionOptions` |
 | `DistributedCacheTicketStore` | singleton | реализация `ITicketStore`: сериализация тикета в `IDistributedCache` со сроком = `ExpiresUtc` | `IDistributedCache` | `IDistributedCache` |
 | `TokenRefreshMiddleware` | scoped | тонкая обёртка: вызывает сервис refresh для не-WebSocket запросов, потом `next` | | |
-| `TokenRefreshService` | scoped | упреждающий refresh access-токена (подробно в [разделе 5](#5-tokenrefreshmiddleware-от-входа-до-выхода)) | меняет копию тикета напрямую (`StoreTokens`, `ResetWindow`) и сохраняет её через `SignInAsync`; `TokenRefreshSemaphores` | копия тикета запроса, `TokenRefreshSemaphores` |
+| `TokenRefreshService` | scoped | координатор упреждающего refresh: порог, замок, double-check, backoff, SignOut при отказе (подробно в [разделе 5](#5-tokenrefreshmiddleware-от-входа-до-выхода)) | `TokenRefreshSemaphores`; через `SignOutAsync` стор и cookie | копия тикета запроса, `TokenRefreshSemaphores` |
+| `KeycloakTokenClient` | typed `HttpClient` (transient) | запрос `grant_type=refresh_token` к token-endpoint и классификация ответа в Success / Rejected / Unavailable. Сессию не трогает | | ответ Keycloak |
+| `SessionTokenWriter` | singleton | запись токенов после refresh в копию тикета и сохранение сессии. Единственное место ручного SignIn после входа: сохранение всегда сдвигает окно (`ResetWindow`) | копия тикета (`StoreTokens`, `ResetWindow`), через `SignInAsync` стор и cookie | копия тикета запроса |
+| `AccessTokenExpiryHelper` | static | единое правило `expires_at` = срок access − `ClockSkewBuffer`, формат и разбор | | |
 | `TokenRefreshSemaphores` | singleton | общее для всех запросов состояние сериализации refresh по `bff_session_id` | | |
 | `TokenRefreshSessionJanitor` | hosted (singleton) | раз в 5 минут вытесняет записи замков простаивающих сессий | `TokenRefreshSemaphores` | `TokenRefreshSemaphores` |
 
@@ -115,10 +118,13 @@
 | `AuthController.Login` | `OpenIdConnectHandler` | `Challenge` | 302 на Keycloak, `RedirectUri` в `state` | страницы входа живут в Keycloak (ADR 0023) |
 | `OpenIdConnectHandler` | `OnTokenValidated` | событие | `bff_session_id` и режим кладутся в properties | к этому моменту id_token проверен, то есть вход точно состоится, и ещё доступен сырой ответ token-endpoint с `refresh_expires_in` (`SaveTokens` это поле не сохраняет) |
 | `OnTokenValidated` | `SessionCookieLifetime.Apply` | вызов | `IsPersistent`, `bff_remember_me`, окно | cookie и стор должны жить столько же, сколько SSO-сессия режима (ADR 0027) |
+| `OpenIdConnectHandler` | `OnTicketReceived` | событие | из `expires_at` вычтен `ClockSkewBuffer` | `SaveTokens` уже записал токены, а тикет ещё не сохранён. Правило срока то же, что на refresh |
 | `OpenIdConnectHandler` | `CookieAuthenticationHandler` | `SignInAsync(Cookies)` | тикет в стор (`StoreAsync`), ключ в cookie | OIDC-схема сама сессию не хранит, она передаёт её схеме `Cookies` |
 | `AuthenticationMiddleware` | `CookieAuthenticationHandler` | `AuthenticateAsync` | копия тикета из стора, `HttpContext.User` | каждому запросу нужен пользователь. Стор читается здесь, один раз за запрос; handler запоминает результат для всех последующих вызовов в этом запросе |
-| `TokenRefreshService` | `CookieAuthenticationHandler` | `SignInAsync(Cookies)` с изменённой копией properties | `RenewAsync` по тому же ключу, новая cookie | без этого вызова новые токены остались бы только в копии запроса. Ключ прежний, поэтому cookie параллельных запросов остаётся валидной |
-| `TokenRefreshService` | `SessionCookieLifetime.ResetWindow` | вызов перед SignIn | новое окно в копии | встроенного продления нет, это единственное место, где окно сдвигается после входа. Без `ResetWindow` SignIn запишет старые даты |
+| `TokenRefreshService` | `KeycloakTokenClient` | `RefreshAsync(refresh_token)` | исход и новые токены | HTTP и разбор ответа отделены от координации: тестируются и меняются отдельно |
+| `TokenRefreshService` | `SessionTokenWriter` | `StoreRefreshedTokensAsync` при Success | новые токены в копии и в сторе | запись сессии собрана в одном месте вместе со сдвигом окна |
+| `SessionTokenWriter` | `SessionCookieLifetime.ResetWindow` | вызов перед SignIn | новое окно в копии | встроенного продления нет, это единственное место, где окно сдвигается после входа. Без `ResetWindow` SignIn запишет старые даты |
+| `SessionTokenWriter` | `CookieAuthenticationHandler` | `SignInAsync(Cookies)` с изменённой копией properties | `RenewAsync` по тому же ключу, новая cookie | без этого вызова новые токены остались бы только в копии запроса. Ключ прежний, поэтому cookie параллельных запросов остаётся валидной |
 | `TokenRefreshService` | `CookieAuthenticationHandler` | `SignOutAsync(Cookies)` | запись стора и cookie удалены | Keycloak отказал окончательно, сессии больше нет |
 
 ## 3. Вход: три HTTP-запроса
@@ -196,13 +202,15 @@
 
 Между запросами ничего из этого не переносится. Следующий HTTP-запрос получает новый provider, новый handler и снова вызывает `RetrieveAsync`.
 
-Третья строка важна для раздела 5: `TokenRefreshService` меняет этот же объект properties, поэтому всё, что ниже по конвейеру читает properties через `AuthenticateAsync` / `GetTokenAsync`, видит уже новые токены. См. [п. 8.2](#82-мостик-httpcontextitems-не-нужен-удалён).
+Третья строка важна для раздела 5: `SessionTokenWriter` меняет этот же объект properties, поэтому всё, что ниже по конвейеру читает properties через `AuthenticateAsync` / `GetTokenAsync`, видит уже новые токены. См. [п. 8.2](#82-мостик-httpcontextitems-не-нужен-удалён).
 
 ## 5. TokenRefreshMiddleware: от входа до выхода
 
 **Начальное состояние.** `HttpContext.User` заполнен (или аноним). Экземпляр `CookieAuthenticationHandler` этого запроса держит копию тикета и запомненный результат аутентификации.
 
 **Назначение.** Обновить access-токен до того, как он истечёт, чтобы следующий код (сейчас `/session`, в C1 прокси к API) работал со свежим токеном. Refresh упреждающий: срабатывает, когда до `expires_at` осталось не больше `RefreshThreshold` (1 мин).
+
+Роли: `TokenRefreshService` решает и координирует, `KeycloakTokenClient` ходит в Keycloak, `SessionTokenWriter` сохраняет результат в сессию.
 
 ### 5.1. Дерево решений
 
@@ -223,7 +231,7 @@
 | 9 | `now − LastRefreshedAt < RefreshThreshold` | пропуск (double-check) | пока ждали замок, другой запрос уже обновил |
 | 10 | снова `RetryNotBefore` | пропуск | пока ждали замок, другой запрос получил сбой |
 | 11 | нет `refresh_token` | `SignOutAsync` | обновить нечем |
-| 12 | запрос к Keycloak | Success / Rejected / Unavailable | |
+| 12 | `KeycloakTokenClient.RefreshAsync` | Success / Rejected / Unavailable | |
 
 Строки 8–10 читают `TokenRefreshSemaphores`, то есть общее состояние процесса. Только так запрос узнаёт, что параллельный запрос уже обновил токены: в его собственной копии тикета новых токенов нет.
 
@@ -233,7 +241,7 @@
 
 | Исход | Когда | Что меняется | Сессия |
 |---|---|---|---|
-| **Success** | 2xx и в JSON есть `access_token`, `expires_in` | копия properties: новые токены, `expires_at = now + expires_in − ClockSkewBuffer (30 с)`, `ResetWindow`; затем `SignInAsync` (`RenewAsync` по тому же ключу + `Set-Cookie`); `LastRefreshedAt = now`; `RetryNotBefore` удалён | продлена |
+| **Success** | 2xx и в JSON есть `access_token`, `expires_in` | `SessionTokenWriter`: в копии properties новые токены поверх сохранённых, `expires_at = now + expires_in − ClockSkewBuffer (30 с)`, `ResetWindow`; затем `SignInAsync` (`RenewAsync` по тому же ключу + `Set-Cookie`); `LastRefreshedAt = now`; `RetryNotBefore` удалён | продлена |
 | **Rejected** | 400 (`invalid_grant`: refresh отозван, истёк, сессия Keycloak убита), 401 (неверный клиент или секрет) | `SignOutAsync`: запись стора удалена, cookie удаляется в ответе | завершена |
 | **Unavailable** | 5xx, 429 и прочие не-2xx, таймаут HttpClient 5 с, сетевая ошибка, битый JSON, нет обязательных полей | `RetryNotBefore = now + 15 с`, warning | не тронута, повтор после паузы |
 
@@ -328,8 +336,8 @@
 | Запросы, где refresh пропущен (WebSocket, double-check) | могли продлевать окно | не продлевают. Для WebSocket это значит: долгая сессия только на WebSocket без HTTP-запросов истечёт по окну |
 | Remember Me | то же, окно 30 дней | то же |
 | Гонка из сценария выше | есть | нет: B и C ничего не пишут в стор |
-| Код | | сделано: `SlidingExpiration = false` в `Program.cs`, комментарии там, в `SessionCookieLifetime`, `ConfigureOidcOptions` и `TokenRefreshService`. `IssuedUtc` для продления больше не используется, но `ResetWindow` по-прежнему ставит оба поля, вреда от этого нет |
-| Тесты | сценарий 7C (сдвиг `expires=` на refresh) | 7C без изменений; сценарий 9 прошёл. **Не проверено** после исправления: что без refresh `Set-Cookie` не появляется вовсе. Это ожидание шага 7C, проверяется панелью Network |
+| Код | | сделано: `SlidingExpiration = false` в `Program.cs`, комментарии там, в `SessionCookieLifetime`, `ConfigureOidcOptions` и `SessionTokenWriter`. `IssuedUtc` для продления больше не используется, но `ResetWindow` по-прежнему ставит оба поля, вреда от этого нет |
+| Тесты | сценарий 7C (сдвиг `expires=` на refresh) | сценарий 9 прошёл вручную. Автотесты `Tests.Integration` (InProcess): без refresh `Set-Cookie` нет вовсе, при refresh он один; параллельные запросы при окне 6 мин дают один `Set-Cookie`, в сторе токены из refresh. Тест падает, если включить `SlidingExpiration` |
 
 Отвергнутая альтернатива: оставить продление, но в событии `OnCheckSlidingExpiration` сравнивать копию с записью стора и отменять продление, если запись новее. Сложнее, лишнее чтение стора, а выгода только в «хвосте» до ~3,5 мин.
 
@@ -348,9 +356,11 @@
 
 Проверка: временный лог в `/session` сравнил `GetTokenAsync("access_token")` с `Items` в запросе, где прошёл refresh. Значения совпали, то есть контроллер получил новый токен. Второй `AuthenticateAsync` в записи токенов тоже убран: `authResult` передаётся параметром.
 
-### 8.3. `TokenRefreshService` совмещает много ролей
+### 8.3. `TokenRefreshService` совмещал много ролей
 
-В одном классе:
+**Статус:** разделено 2026-10-28 по кандидатному разбиению ниже, плюс `TimeProvider`. Роли описаны в п. 2.2.
+
+Было в одном классе:
 1. фильтр «нужно ли обновлять» (порог, парсинг `expires_at`);
 2. координация по сессии (замок, double-check, backoff, ленивый trim);
 3. HTTP-клиент Keycloak и классификация ответа в Success/Rejected/Unavailable;
@@ -372,6 +382,8 @@
 
 ### 8.5. Окно держится на правиле, которое не проверяет код
 
+**Статус:** закрыто разбиением п. 8.3. SignIn после входа делает только `SessionTokenWriter`, и его приватный `SaveSessionAsync` всегда вызывает `ResetWindow` перед SignIn. Компилятор по-прежнему не запрещает ручной `SignInAsync` в другом месте, но правило теперь записано в одном классе.
+
 После исправления п. 8.1 окно двигает один механизм, `ResetWindow`. Он держится на правиле «любой ручной SignIn обязан звать `ResetWindow`», и это правило нигде не проверяется кодом. Кандидат на рефакторинг: один метод «сохранить сессию», который сам сдвигает окно и вызывает SignIn.
 
 ### 8.6. `expires_at` считался двумя способами
@@ -386,6 +398,7 @@
 
 - ~~`StoreTokens` на refresh перезаписывает весь список токенов и теряет `token_type`, который сохранил вход.~~ Исправлено 2026-10-28: запись начинается с сохранённых токенов, `token_type` переживает refresh (проверено вживую).
 - ~~`sub` ищется сначала по `ClaimTypes.NameIdentifier`. При `MapInboundClaims = false` такого claim нет, работает только вторая ветка.~~ Мёртвая ветка удалена при разбиении по ролям.
+- ~~Необязательное поле ответа Keycloak (`refresh_token`, `id_token`, `token_type`) не строкового типа роняло `GetString()` мимо классификации исходов, запрос получал 500.~~ Исправлено 2026-10-28: такое поле считается отсутствующим (найдено при написании unit-тестов).
 - Отсутствие записи в сторе (рестарт BFF) даёт анонимного пользователя, но мёртвая cookie остаётся в браузере до своего срока.
 - Ключи Data Protection не персистятся: пересоздание контейнера делает все cookie нерасшифровываемыми.
 - `TokenRefreshSemaphores` живёт в памяти процесса. При нескольких экземплярах BFF нужен распределённый замок.

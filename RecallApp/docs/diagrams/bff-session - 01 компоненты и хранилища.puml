@@ -22,9 +22,11 @@ package "Bff.Web (процесс)" {
   }
 
   package "Наше" {
-    component "ConfigureOidcOptions\nOnTokenValidated" as cfg
+    component "ConfigureOidcOptions\nOnTokenValidated, OnTicketReceived" as cfg
     component "SessionCookieLifetime\nApply / ResetWindow" as scl
-    component "TokenRefreshService" as trs
+    component "TokenRefreshService\nкоординатор" as trs
+    component "KeycloakTokenClient\ntyped HttpClient" as ktc
+    component "SessionTokenWriter" as stw
     component "TokenRefreshSessionJanitor\nBackgroundService, 5 мин" as janitor
   }
 
@@ -54,9 +56,12 @@ cfg --> scl : Apply
 oidch --> cookieh : SignInAsync(Cookies)
 
 trs --> sems : замок, метки времени
-trs --> kc : grant_type=refresh_token
-trs --> scl : ResetWindow
-trs --> cookieh : SignInAsync / SignOutAsync
+trs --> ktc : RefreshAsync
+ktc --> kc : grant_type=refresh_token
+trs --> stw : StoreRefreshedTokensAsync
+stw --> scl : ResetWindow
+stw --> cookieh : SignInAsync
+trs --> cookieh : SignOutAsync
 janitor --> sems : TryEvict
 
 @enduml

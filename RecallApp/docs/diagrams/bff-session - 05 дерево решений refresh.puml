@@ -54,10 +54,10 @@ if (refresh_token в properties?) then (нет)
   :next(); <<pass>>
   stop
 endif
-:POST /token grant_type=refresh_token\n(HttpClient, таймаут 5 с);
+:KeycloakTokenClient.RefreshAsync:\nPOST /token grant_type=refresh_token\n(таймаут 5 с);
 switch (исход)
 case (Success)
-  :StoreTokens, ResetWindow, SignInAsync;
+  :SessionTokenWriter:\nStoreTokens, ResetWindow, SignInAsync;
   :LastRefreshedAt = now\nRetryNotBefore удалить\nленивый trim при > 10 000;
 case (Rejected 400/401)
   :SignOutAsync(Cookies); <<signout>>
