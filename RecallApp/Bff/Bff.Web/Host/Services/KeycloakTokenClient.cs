@@ -19,12 +19,13 @@ public enum TokenRefreshOutcome
 }
 
 /// <summary>
-/// Токены из ответа token-endpoint. Если в ответе refresh_token и id_token равны null, тогда остаются прежние значения сессии.
+/// Токены из ответа token-endpoint. Если в ответе refresh_token, id_token или token_type равны null, тогда остаются прежние значения сессии.
 /// </summary>
 public sealed record RefreshedTokens(
     string AccessToken,
     string? RefreshToken,
     string? IdToken,
+    string? TokenType,
     TimeSpan ExpiresIn
 );
 
@@ -121,6 +122,7 @@ public sealed class KeycloakTokenClient(
             accessToken.GetString()!,
             root.TryGetProperty("refresh_token", out var refresh) ? refresh.GetString() : null,
             root.TryGetProperty("id_token", out var id) ? id.GetString() : null,
+            root.TryGetProperty("token_type", out var type) ? type.GetString() : null,
             TimeSpan.FromSeconds(expiresInSec)
         );
     }

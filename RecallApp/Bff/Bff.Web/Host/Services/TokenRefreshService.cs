@@ -1,4 +1,3 @@
-using System.Globalization;
 using Host.Configuration;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -62,7 +61,7 @@ public sealed class TokenRefreshService(
             sessionKey = sub;
         }
 
-        var expiresAtRaw = authResult.Properties.GetTokenValue("expires_at");
+        var expiresAtRaw = authResult.Properties.GetTokenValue(AccessTokenExpiryHelper.TokenName);
         if (string.IsNullOrEmpty(expiresAtRaw))
         {
             logger.LogWarning(
@@ -73,14 +72,7 @@ public sealed class TokenRefreshService(
             return;
         }
 
-        if (
-            !DateTimeOffset.TryParse(
-                expiresAtRaw,
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.None,
-                out var expiresAt
-            )
-        )
+        if (!AccessTokenExpiryHelper.TryParse(expiresAtRaw, out var expiresAt))
         {
             logger.LogWarning(
                 "Token refresh skipped: failed to parse expires_at='{ExpiresAt}' (sub={Sub})",

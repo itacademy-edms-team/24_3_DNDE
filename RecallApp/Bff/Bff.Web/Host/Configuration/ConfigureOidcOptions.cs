@@ -82,5 +82,25 @@ public sealed class ConfigureOidcOptions(IOptions<OidcOptions> oidc, TimeProvide
 
             return Task.CompletedTask;
         };
+
+        // Срабатывает после SaveTokens (в OnTokenValidated токенов в properties ещё нет)
+        // и до SignIn тикета в cookie и стор.
+        options.Events.OnTicketReceived = ctx =>
+        {
+            // SaveTokens пишет expires_at = now + expires_in. Приводим к правилу refresh
+            // (минус ClockSkewBuffer), иначе первый refresh после входа наступает позже последующих.
+            var properties = ctx.Properties!;
+            if (AccessTokenExpiryHelper.TryParse(properties.GetTokenValue(AccessTokenExpiryHelper.TokenName), out var expiresAt))
+            {
+                properties.UpdateTokenValue(
+                    AccessTokenExpiryHelper.TokenName,
+                    AccessTokenExpiryHelper.Format(
+                        AccessTokenExpiryHelper.Effective(expiresAt, _oidc.TokenLifetime.ClockSkewBuffer)
+                    )
+                );
+            }
+
+            return Task.CompletedTask;
+        };
     }
 }

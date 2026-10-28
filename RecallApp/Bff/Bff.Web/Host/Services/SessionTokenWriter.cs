@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Security.Claims;
 using Host.Configuration;
 using Host.Infrastructure;
@@ -32,24 +31,22 @@ public sealed class SessionTokenWriter(IOptions<OidcOptions> oidcOptions, TimePr
         var properties = session.Properties!;
         var now = timeProvider.GetUtcNow();
 
-        var expiresAt = now.Add(tokens.ExpiresIn - _oidcOptions.TokenLifetime.ClockSkewBuffer)
-            .ToString("o", CultureInfo.InvariantCulture);
+        // StoreTokens заменяет весь список, поэтому начинаем с сохранённых токенов:
+        // так переживают refresh те, что пришли на входе (token_type) и отсутствуют в ответе.
+        var stored = properties.GetTokens().ToDictionary(t => t.Name, t => t.Value);
+        stored["access_token"] = tokens.AccessToken;
+        if (tokens.RefreshToken is not null)
+            stored["refresh_token"] = tokens.RefreshToken;
+        if (tokens.IdToken is not null)
+            stored["id_token"] = tokens.IdToken;
+        if (tokens.TokenType is not null)
+            stored["token_type"] = tokens.TokenType;
+        stored[AccessTokenExpiryHelper.TokenName] = AccessTokenExpiryHelper.Format(
+            AccessTokenExpiryHelper.Effective(now + tokens.ExpiresIn, _oidcOptions.TokenLifetime.ClockSkewBuffer)
+        );
 
         properties.StoreTokens(
-            [
-                new() { Name = "access_token", Value = tokens.AccessToken },
-                new()
-                {
-                    Name = "refresh_token",
-                    Value = tokens.RefreshToken ?? properties.GetTokenValue("refresh_token")!,
-                },
-                new()
-                {
-                    Name = "id_token",
-                    Value = tokens.IdToken ?? properties.GetTokenValue("id_token")!,
-                },
-                new() { Name = "expires_at", Value = expiresAt },
-            ]
+            stored.Select(t => new AuthenticationToken { Name = t.Key, Value = t.Value })
         );
 
         await SaveSessionAsync(context, session.Principal!, properties, now).ConfigureAwait(false);
