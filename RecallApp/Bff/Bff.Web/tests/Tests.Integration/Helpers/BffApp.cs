@@ -28,18 +28,25 @@ public sealed class BffApp : WebApplicationFactory<Program>
     /// <summary>Окно обычной сессии (SSO Idle). По умолчанию как в ADR 0027.</summary>
     public TimeSpan SessionIdle { get; init; } = TimeSpan.FromMinutes(30);
 
+    /// <summary>
+    /// Настоящий Keycloak вместо <see cref="FakeKeycloak"/>: BFF ходит в тестовый realm
+    /// как клиент из настроек. Часы BFF при этом остаются поддельными.
+    /// </summary>
+    public KeycloakTestSettings? RealKeycloak { get; init; }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
-        builder.UseSetting("Oidc:Authority", "https://auth.test/realms/recallapp");
-        builder.UseSetting("Oidc:ClientId", "Bff.Web");
-        builder.UseSetting("Oidc:ClientSecret", "test-secret");
+        builder.UseSetting("Oidc:Authority", RealKeycloak?.Authority ?? "https://auth.test/realms/recallapp");
+        builder.UseSetting("Oidc:ClientId", RealKeycloak?.ClientId ?? "Bff.Web");
+        builder.UseSetting("Oidc:ClientSecret", RealKeycloak?.ClientSecret ?? "test-secret");
         builder.UseSetting("Oidc:SsoSession:SessionIdle", SessionIdle.ToString("c", CultureInfo.InvariantCulture));
 
         builder.ConfigureServices(services =>
         {
             services.AddSingleton<TimeProvider>(Time);
-            services.AddHttpClient<KeycloakTokenClient>().ConfigurePrimaryHttpMessageHandler(() => Keycloak);
+            if (RealKeycloak is null)
+                services.AddHttpClient<KeycloakTokenClient>().ConfigurePrimaryHttpMessageHandler(() => Keycloak);
             services.AddSingleton<IStartupFilter, TestSessionEndpoints>();
         });
     }

@@ -31,3 +31,15 @@ services:
       DOTNET_USE_POLLING_FILE_WATCHER: "true"
       # секрет клиента Bff.Web из .env
       Oidc__ClientSecret: ${BFF_WEB_OIDC_CLIENT_SECRET}
+
+  bff-tests:
+    environment:
+      # Keycloak-тесты: тестовый realm recallapp-test (Iam/README.md).
+      # Секреты берём из .env
+      KeycloakTests__Authority: https://auth.localhost/realms/recallapp-test
+      KeycloakTests__ClientId: Bff.Web.Test
+      KeycloakTests__ClientSecret: ${BFF_TEST_OIDC_CLIENT_SECRET}
+      KeycloakTests__Username: testuser
+      KeycloakTests__Password: ${BFF_TEST_USER_PASSWORD}
+      # Пусто - все тесты; "Category!=Keycloak" - без Keycloak.
+      TEST_FILTER: ${BFF_TEST_FILTER:-}

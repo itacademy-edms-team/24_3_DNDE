@@ -80,3 +80,16 @@ services:
       - shared_certs:/certs:ro
     networks:
       - dev_net
+
+  # Прогон тестов BFF (Bff/Bff.Web/tests/README.md). Только по профилю test:
+  #   docker compose --profile test run --rm bff-tests
+  bff-tests:
+    build:
+      context: ./Bff/Bff.Web
+      dockerfile: tests/Dockerfile.Testing
+    profiles: [test]
+    volumes:
+      - shared_certs:/certs:ro
+      - ./Bff/Bff.Web/tests/TestResults:/results
+    networks:
+      - dev_net

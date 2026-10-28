@@ -1,0 +1,31 @@
+# Образ тестов BFF (Tests.Unit + Tests.Integration).
+# Сборка из контекста Bff/Bff.Web, запуск через compose-сервис bff-tests (профиль test):
+#   docker compose --profile test run --rm bff-tests
+# Без Keycloak: TEST_FILTER="Category!=Keycloak".
+FROM mcr.microsoft.com/dotnet/sdk:8.0
+
+WORKDIR /src
+
+# Сначала проекты: restore кэшируется, пока не меняются зависимости.
+COPY Bff.Web.sln global.json .editorconfig ./
+COPY Host/Host.csproj Host/
+COPY tests/Tests.Unit/Tests.Unit.csproj tests/Tests.Unit/
+COPY tests/Tests.Integration/Tests.Integration.csproj tests/Tests.Integration/
+RUN dotnet restore Bff.Web.sln
+
+COPY . .
+RUN dotnet build Bff.Web.sln -c Release --no-restore
+
+ENV TEST_FILTER=""
+
+# entrypoint:
+# доверяем Root CA из тома shared_certs (Keycloak-тесты ходят на https://auth.localhost),
+# update-ca-certificates требует root.
+# dotnet test; trx-отчёты в /results.
+ENTRYPOINT ["/bin/sh", "-c", "\
+  if [ -f /certs/rootCA.pem ]; then \
+  cp /certs/rootCA.pem /usr/local/share/ca-certificates/recallapp-dev-ca.crt && update-ca-certificates >/dev/null 2>&1; \
+  fi; \
+  exec dotnet test Bff.Web.sln -c Release --no-build \
+  --logger 'console;verbosity=normal' --logger trx --results-directory /results \
+  ${TEST_FILTER:+--filter \"$TEST_FILTER\"}"]
