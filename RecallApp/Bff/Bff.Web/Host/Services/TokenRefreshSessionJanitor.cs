@@ -9,6 +9,7 @@ namespace Host.Services;
 public sealed class TokenRefreshSessionJanitor(
     TokenRefreshSemaphores semaphores,
     IOptions<OidcOptions> oidcOptions,
+    TimeProvider timeProvider,
     ILogger<TokenRefreshSessionJanitor> logger
 ) : BackgroundService
 {
@@ -17,7 +18,7 @@ public sealed class TokenRefreshSessionJanitor(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        using var timer = new PeriodicTimer(SweepInterval);
+        using var timer = new PeriodicTimer(SweepInterval, timeProvider);
         try
         {
             while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false))
@@ -40,7 +41,7 @@ public sealed class TokenRefreshSessionJanitor(
 
     private void Sweep()
     {
-        var now = DateTimeOffset.UtcNow;
+        var now = timeProvider.GetUtcNow();
         var removed = 0;
 
         // Идём по семафорам: ловим записи без метки времени

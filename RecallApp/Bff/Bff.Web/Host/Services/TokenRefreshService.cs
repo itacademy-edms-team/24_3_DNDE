@@ -1,9 +1,5 @@
 using System.Globalization;
-using System.Net;
-using System.Security.Claims;
-using System.Text.Json;
 using Host.Configuration;
-using Host.Infrastructure;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.Extensions.Options;
@@ -16,27 +12,20 @@ public interface ITokenRefreshService
 }
 
 /// <summary>
-/// Сервис обновления access-токена.
-/// Обновление сериализуется на BFF-сессию.
+/// Координатор обновления access-токена: решает, нужно ли обновлять, и сериализует обновление на BFF-сессию.
+/// Запрос к Keycloak делает <see cref="KeycloakTokenClient"/>, запись в сессию - <see cref="SessionTokenWriter"/>.
 /// Отказ Keycloak (400/401) делает sign-out серверной сессии;
 /// временный сбой (5xx, таймаут, сеть, битый ответ) сессию сохраняет и откладывает повтор на <see cref="TokenLifetimeOptions.RefreshRetryBackoff"/>.
 /// </summary>
 public sealed class TokenRefreshService(
-    IHttpClientFactory httpClientFactory,
+    KeycloakTokenClient tokenClient,
+    SessionTokenWriter sessionWriter,
     IOptions<OidcOptions> oidcOptions,
+    TimeProvider timeProvider,
     ILogger<TokenRefreshService> logger,
     TokenRefreshSemaphores semaphores
 ) : ITokenRefreshService
 {
-    public const string HttpClientName = "keycloak-refresh";
-
-    /// <summary>
-    /// Ключ в <see cref="HttpContext.Items"/>, куда кладётся новейший access-токен после обновления в этом же запросе.
-    /// GetTokenAsync после SignInAsync отдаёт старый снимок (кэш аутентификации на запрос),
-    /// поэтому downstream (будущий token exchange) должен читать свежий токен отсюда.
-    /// </summary>
-    public const string AccessTokenItemKey = "bff_access_token";
-
     /// <summary>Мягкий потолок числа записей замков, за которым включается ленивый trim.</summary>
     private const int SessionLockSoftCap = 10_000;
 
@@ -58,10 +47,8 @@ public sealed class TokenRefreshService(
         if (!authResult.Succeeded || authResult.Properties is null)
             return;
 
-        var sub =
-            context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? context.User.FindFirst("sub")?.Value
-            ?? "unknown";
+        // MapInboundClaims = false: claim sub приходит как есть, без переименования в NameIdentifier.
+        var sub = context.User.FindFirst("sub")?.Value ?? "unknown";
 
         var sessionKey = authResult.Properties.GetString(BffSessionKeys.SessionId);
         if (string.IsNullOrEmpty(sessionKey))
@@ -104,7 +91,7 @@ public sealed class TokenRefreshService(
         }
 
         var refreshThreshold = _oidcOptions.TokenLifetime.RefreshThreshold;
-        var timeUntilExpiry = expiresAt - DateTimeOffset.UtcNow;
+        var timeUntilExpiry = expiresAt - timeProvider.GetUtcNow();
         logger.LogDebug(
             "Token refresh check: timeUntilExpiry={TimeUntilExpiry:g}, threshold={Threshold:g}, session={SessionKey}",
             timeUntilExpiry,
@@ -125,7 +112,7 @@ public sealed class TokenRefreshService(
         {
             if (
                 semaphores.LastRefreshedAt.TryGetValue(sessionKey, out var lastRefreshed)
-                && DateTimeOffset.UtcNow - lastRefreshed < refreshThreshold
+                && timeProvider.GetUtcNow() - lastRefreshed < refreshThreshold
             )
             {
                 logger.LogDebug(
@@ -157,16 +144,15 @@ public sealed class TokenRefreshService(
                 return;
             }
 
-            var outcome = await RefreshAndStoreTokensAsync(
-                    context,
-                    refreshToken,
-                    _oidcOptions.TokenLifetime.ClockSkewBuffer
-                )
-                .ConfigureAwait(false);
-            switch (outcome)
+            var result = await tokenClient.RefreshAsync(refreshToken).ConfigureAwait(false);
+            switch (result.Outcome)
             {
-                case RefreshOutcome.Success:
-                    semaphores.LastRefreshedAt[sessionKey] = DateTimeOffset.UtcNow;
+                case TokenRefreshOutcome.Success:
+                    await sessionWriter
+                        .StoreRefreshedTokensAsync(context, authResult, result.Tokens!)
+                        .ConfigureAwait(false);
+
+                    semaphores.LastRefreshedAt[sessionKey] = timeProvider.GetUtcNow();
                     semaphores.RetryNotBefore.TryRemove(sessionKey, out _);
                     logger.LogInformation(
                         "Token refresh succeeded for session={SessionKey}",
@@ -178,10 +164,10 @@ public sealed class TokenRefreshService(
                         semaphores.TrimOldest(LazyTrimBatch);
                     break;
 
-                case RefreshOutcome.Unavailable:
+                case TokenRefreshOutcome.Unavailable:
                     // Сессию не трогаем и LastRefreshedAt не ставим: после паузы попытка повторится.
                     var retryAt =
-                        DateTimeOffset.UtcNow + _oidcOptions.TokenLifetime.RefreshRetryBackoff;
+                        timeProvider.GetUtcNow() + _oidcOptions.TokenLifetime.RefreshRetryBackoff;
                     semaphores.RetryNotBefore[sessionKey] = retryAt;
                     logger.LogWarning(
                         "Token refresh deferred: IdP unavailable, session kept, retry after {RetryAt:o} for session={SessionKey}",
@@ -190,8 +176,8 @@ public sealed class TokenRefreshService(
                     );
                     break;
 
-                case RefreshOutcome.Rejected:
-                    // Sign-out уже выполнен в RefreshAndStoreTokensAsync.
+                case TokenRefreshOutcome.Rejected:
+                    await SignOutAsync(context).ConfigureAwait(false);
                     break;
             }
         }
@@ -205,7 +191,7 @@ public sealed class TokenRefreshService(
     {
         if (
             !semaphores.RetryNotBefore.TryGetValue(sessionKey, out var retryNotBefore)
-            || DateTimeOffset.UtcNow >= retryNotBefore
+            || timeProvider.GetUtcNow() >= retryNotBefore
         )
             return false;
 
@@ -217,186 +203,6 @@ public sealed class TokenRefreshService(
         return true;
     }
 
-    private async Task<RefreshOutcome> RefreshAndStoreTokensAsync(
-        HttpContext context,
-        string refreshToken,
-        TimeSpan clockSkewBuffer
-    )
-    {
-        var (outcome, tokenResponse) = await RequestNewTokensAsync(refreshToken)
-            .ConfigureAwait(false);
-        switch (outcome)
-        {
-            case RefreshOutcome.Rejected:
-                await SignOutAsync(context).ConfigureAwait(false);
-                return outcome;
-            case RefreshOutcome.Unavailable:
-                return outcome;
-        }
-
-        await StoreNewTokensAsync(
-                context,
-                tokenResponse!,
-                refreshToken,
-                clockSkewBuffer,
-                _oidcOptions.SsoSession
-            )
-            .ConfigureAwait(false);
-        return RefreshOutcome.Success;
-    }
-
-    /// <summary>
-    /// Запрос к token-endpoint. При <see cref="RefreshOutcome.Success"/> документ ответа не null
-    /// и содержит access_token и expires_in; владение документом переходит вызывающему.
-    /// </summary>
-    private async Task<(RefreshOutcome Outcome, JsonDocument? Tokens)> RequestNewTokensAsync(
-        string refreshToken
-    )
-    {
-        var tokenEndpoint = $"{_oidcOptions.Authority}/protocol/openid-connect/token";
-
-        var data = new Dictionary<string, string>
-        {
-            ["grant_type"] = "refresh_token",
-            ["client_id"] = _oidcOptions.ClientId,
-            ["client_secret"] = _oidcOptions.ClientSecret,
-            ["refresh_token"] = refreshToken,
-        };
-
-        var http = httpClientFactory.CreateClient(HttpClientName);
-
-        try
-        {
-            using var response = await http.PostAsync(
-                    tokenEndpoint,
-                    new FormUrlEncodedContent(data)
-                )
-                .ConfigureAwait(false);
-
-            // 400 (invalid_grant: refresh отозван или истёк) и 401 (неверный клиент или секрет)
-            // это окончательный отказ: повтор того же запроса не поможет.
-            if (response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Unauthorized)
-            {
-                logger.LogWarning(
-                    "Token refresh rejected by IdP with status {Status}",
-                    response.StatusCode
-                );
-                return (RefreshOutcome.Rejected, null);
-            }
-
-            if (!response.IsSuccessStatusCode)
-            {
-                logger.LogWarning(
-                    "Token refresh failed with transient status {Status}",
-                    response.StatusCode
-                );
-                return (RefreshOutcome.Unavailable, null);
-            }
-
-            var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-            var document = JsonDocument.Parse(json);
-            if (!HasRequiredTokenFields(document.RootElement))
-            {
-                document.Dispose();
-                logger.LogWarning(
-                    "Token refresh response lacks access_token or expires_in"
-                );
-                return (RefreshOutcome.Unavailable, null);
-            }
-
-            return (RefreshOutcome.Success, document);
-        }
-        catch (Exception ex)
-            when (ex is HttpRequestException or TaskCanceledException or JsonException)
-        {
-            // Сеть, таймаут HttpClient (TaskCanceledException) или битый JSON.
-            logger.LogWarning(ex, "Token refresh request failed");
-            return (RefreshOutcome.Unavailable, null);
-        }
-    }
-
-    private static bool HasRequiredTokenFields(JsonElement root) =>
-        root.ValueKind == JsonValueKind.Object
-        && root.TryGetProperty("access_token", out var accessToken)
-        && accessToken.ValueKind == JsonValueKind.String
-        && root.TryGetProperty("expires_in", out var expiresIn)
-        && expiresIn.ValueKind == JsonValueKind.Number
-        && expiresIn.TryGetInt32(out _);
-
-    private static async Task StoreNewTokensAsync(
-        HttpContext context,
-        JsonDocument tokenResponse,
-        string fallbackRefreshToken,
-        TimeSpan clockSkewBuffer,
-        SsoSessionOptions sso
-    )
-    {
-        using (tokenResponse)
-        {
-            var root = tokenResponse.RootElement;
-
-            var authResult = await context
-                .AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme)
-                .ConfigureAwait(false);
-            if (!authResult.Succeeded || authResult.Principal is null)
-                return;
-
-            var newAccessToken = root.GetProperty("access_token").GetString();
-            var newRefreshToken = root.TryGetProperty("refresh_token", out var rProp)
-                ? rProp.GetString()
-                : fallbackRefreshToken;
-            var newIdToken = root.TryGetProperty("id_token", out var idProp)
-                ? idProp.GetString()
-                : await context.GetTokenAsync("id_token").ConfigureAwait(false);
-
-            var expiresInSec = root.GetProperty("expires_in").GetInt32();
-            var newExpiresAt = DateTimeOffset
-                .UtcNow.Add(TimeSpan.FromSeconds(expiresInSec) - clockSkewBuffer)
-                .ToString("o", CultureInfo.InvariantCulture);
-
-            authResult.Properties!.StoreTokens(
-                [
-                    new() { Name = "access_token", Value = newAccessToken! },
-                    new() { Name = "refresh_token", Value = newRefreshToken! },
-                    new() { Name = "id_token", Value = newIdToken! },
-                    new() { Name = "expires_at", Value = newExpiresAt },
-                ]
-            );
-
-            // Когерентность cookie (ADR 0027).
-            // Встроенное скольжение cookie выключено, окно сдвигается только здесь.
-            // SignInAsync ниже запишет в cookie и стор даты из authResult.Properties,
-            // поэтому окно начинаем заново сами:
-            // IssuedUtc = now, ExpiresUtc = now + SSO Idle режима (режим по маркеру bff_remember_me).
-            SessionCookieLifetime.ResetWindow(authResult.Properties!, sso, DateTimeOffset.UtcNow);
-
-            await context
-                .SignInAsync(
-                    CookieAuthenticationDefaults.AuthenticationScheme,
-                    authResult.Principal,
-                    authResult.Properties
-                )
-                .ConfigureAwait(false);
-
-            // Мостик актуальности в пределах этого запроса: GetTokenAsync ниже по конвейеру вернул бы старый снимок из-за кэша аутентификации,
-            // поэтому новейший access кладём в Items для downstream-потребителей.
-            context.Items[AccessTokenItemKey] = newAccessToken;
-        }
-    }
-
     private static Task SignOutAsync(HttpContext context) =>
         context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-
-    /// <summary>Исход попытки refresh.</summary>
-    private enum RefreshOutcome
-    {
-        /// <summary>Токены получены и сохранены.</summary>
-        Success,
-
-        /// <summary>Keycloak отказал окончательно (400/401): сессия завершается.</summary>
-        Rejected,
-
-        /// <summary>Временный сбой (5xx, таймаут, сеть, битый ответ): сессия сохраняется, повтор после паузы.</summary>
-        Unavailable,
-    }
 }

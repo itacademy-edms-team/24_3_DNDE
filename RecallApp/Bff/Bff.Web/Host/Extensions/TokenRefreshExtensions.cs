@@ -14,11 +14,11 @@ public static class TokenRefreshExtensions
     {
         services.AddSingleton<TokenRefreshSemaphores>();
         services.AddHostedService<TokenRefreshSessionJanitor>();
+        services.AddSingleton<SessionTokenWriter>();
         services.AddScoped<ITokenRefreshService, TokenRefreshService>();
         services.AddScoped<TokenRefreshMiddleware>();
         services
-            .AddHttpClient(
-                TokenRefreshService.HttpClientName,
+            .AddHttpClient<KeycloakTokenClient>(
                 client =>
                 {
                     // Запрос ждёт под замком сессии: держим таймаут коротким.

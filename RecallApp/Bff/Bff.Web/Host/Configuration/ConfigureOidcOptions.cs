@@ -11,7 +11,7 @@ namespace Host.Configuration;
 /// <summary>
 /// Настраивает OpenIdConnectOptions из <see cref="OidcOptions"/>:
 /// </summary>
-public sealed class ConfigureOidcOptions(IOptions<OidcOptions> oidc)
+public sealed class ConfigureOidcOptions(IOptions<OidcOptions> oidc, TimeProvider timeProvider)
     : IConfigureNamedOptions<OpenIdConnectOptions>
 {
     private readonly OidcOptions _oidc = oidc.Value;
@@ -78,7 +78,7 @@ public sealed class ConfigureOidcOptions(IOptions<OidcOptions> oidc)
 
             // Персистентность и окно cookie по режиму (ADR 0027).
             // Дальше окно сдвигает только token-refresh (ResetWindow): встроенное скольжение выключено.
-            SessionCookieLifetime.Apply(properties, isRememberMe, _oidc.SsoSession, DateTimeOffset.UtcNow);
+            SessionCookieLifetime.Apply(properties, isRememberMe, _oidc.SsoSession, timeProvider.GetUtcNow());
 
             return Task.CompletedTask;
         };

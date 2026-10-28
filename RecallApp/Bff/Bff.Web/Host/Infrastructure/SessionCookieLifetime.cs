@@ -36,9 +36,9 @@ public static class SessionCookieLifetime
     /// <summary>
     /// Начать окно сессии заново: IssuedUtc = now, ExpiresUtc = now + SSO Idle режима.
     /// <para>
-    /// Встроенное скольжение cookie выключено, поэтому это единственное место,
-    /// где окно сдвигается после входа. Правило для вызывающих: любой ручной SignInAsync
-    /// на cookie-схеме должен перед этим вызвать ResetWindow, иначе в cookie и стор уйдут
+    /// Встроенное скольжение cookie выключено, поэтому после входа окно сдвигается только здесь.
+    /// Ручной SignInAsync на cookie-схеме делается только через <see cref="Host.Services.SessionTokenWriter"/>,
+    /// который вызывает ResetWindow перед SignIn: иначе в cookie и стор уйдут
     /// старые даты из переданных properties и запрос не засчитается как активность.
     /// </para>
     /// </summary>

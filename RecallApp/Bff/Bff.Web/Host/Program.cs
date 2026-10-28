@@ -40,6 +40,8 @@ try
     // Services
     builder.Services.AddHealthChecks();
 
+    builder.Services.AddSingleton(TimeProvider.System);
+
     // Серверное хранилище сессии (ADR 0021): in-memory за IDistributedCache, Redis по триггеру.
     builder.Services.AddDistributedMemoryCache();
     builder.Services.AddSingleton<ITicketStore, DistributedCacheTicketStore>();

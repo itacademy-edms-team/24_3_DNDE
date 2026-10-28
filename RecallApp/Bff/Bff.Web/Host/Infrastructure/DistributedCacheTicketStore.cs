@@ -11,8 +11,11 @@ namespace Host.Infrastructure;
 /// Лежит на сервере, в cookie уходит только ключ сессии.
 /// Текущий вид: in-memory <see cref="IDistributedCache"/>.
 /// </summary>
-public sealed class DistributedCacheTicketStore(IDistributedCache cache, IOptions<OidcOptions> oidc)
-    : ITicketStore
+public sealed class DistributedCacheTicketStore(
+    IDistributedCache cache,
+    IOptions<OidcOptions> oidc,
+    TimeProvider timeProvider
+) : ITicketStore
 {
     private const string KeyPrefix = "bff-session:";
 
@@ -30,7 +33,7 @@ public sealed class DistributedCacheTicketStore(IDistributedCache cache, IOption
         // Запись живёт ровно до конца окна сессии (ExpiresUtc), чтобы стор и cookie истекали
         // одновременно (ADR 0027). Cookie-схема проставляет ExpiresUtc до вызова стора, поэтому
         // ветка без него защитная: берём короткий обычный SSO Idle, как и запасной ExpireTimeSpan.
-        var expiresUtc = ticket.Properties.ExpiresUtc ?? DateTimeOffset.UtcNow + _fallbackLifetime;
+        var expiresUtc = ticket.Properties.ExpiresUtc ?? timeProvider.GetUtcNow() + _fallbackLifetime;
         var options = new DistributedCacheEntryOptions().SetAbsoluteExpiration(expiresUtc);
 
         var bytes = TicketSerializer.Default.Serialize(ticket);
