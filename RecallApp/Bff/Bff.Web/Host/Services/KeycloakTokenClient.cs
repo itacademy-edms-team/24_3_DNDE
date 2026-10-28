@@ -120,10 +120,19 @@ public sealed class KeycloakTokenClient(
 
         return new RefreshedTokens(
             accessToken.GetString()!,
-            root.TryGetProperty("refresh_token", out var refresh) ? refresh.GetString() : null,
-            root.TryGetProperty("id_token", out var id) ? id.GetString() : null,
-            root.TryGetProperty("token_type", out var type) ? type.GetString() : null,
+            ReadOptionalString(root, "refresh_token"),
+            ReadOptionalString(root, "id_token"),
+            ReadOptionalString(root, "token_type"),
             TimeSpan.FromSeconds(expiresInSec)
         );
     }
+
+    /// <summary>
+    /// Необязательное строковое поле. Значение другого типа считаем отсутствующим:
+    /// GetString() на нём бросил бы InvalidOperationException мимо классификации исходов.
+    /// </summary>
+    private static string? ReadOptionalString(JsonElement root, string name) =>
+        root.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString()
+            : null;
 }

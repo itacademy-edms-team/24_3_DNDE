@@ -69,6 +69,22 @@ public class KeycloakTokenClientTests
     }
 
     [Theory]
+    [InlineData("""{"access_token":"new-access","expires_in":300,"refresh_token":42,"id_token":true,"token_type":{}}""")]
+    [InlineData("""{"access_token":"new-access","expires_in":300,"refresh_token":null,"id_token":null,"token_type":null}""")]
+    public async Task RefreshAsync_OptionalTokensOfNonStringType_ReturnsSuccessWithNullOptionalTokens(string body)
+    {
+        var handler = StubHttpMessageHandler.Json(HttpStatusCode.OK, body);
+
+        var result = await CreateClient(handler).RefreshAsync("old-refresh");
+
+        Assert.Equal(TokenRefreshOutcome.Success, result.Outcome);
+        Assert.Equal("new-access", result.Tokens!.AccessToken);
+        Assert.Null(result.Tokens.RefreshToken);
+        Assert.Null(result.Tokens.IdToken);
+        Assert.Null(result.Tokens.TokenType);
+    }
+
+    [Theory]
     [InlineData(HttpStatusCode.BadRequest)]
     [InlineData(HttpStatusCode.Unauthorized)]
     public async Task RefreshAsync_Status400Or401_ReturnsRejected(HttpStatusCode status)

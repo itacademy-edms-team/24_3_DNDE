@@ -1,0 +1,111 @@
+using System.Security.Claims;
+using Host.Configuration;
+using Host.Infrastructure;
+using Host.Services;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+
+namespace Tests.Integration.Helpers;
+
+/// <summary>Сессия, которую тест засевает в обход OIDC-входа.</summary>
+public sealed record TestSession(
+    string AccessToken,
+    string? RefreshToken = "initial-refresh",
+    TimeSpan? AccessLifetime = null,
+    bool RememberMe = false
+);
+
+/// <summary>Состояние сессии, как его видит cookie-схема (без TokenRefreshMiddleware).</summary>
+public sealed record SessionSnapshot(
+    bool IsAuthenticated,
+    Dictionary<string, string> Tokens,
+    DateTimeOffset? IssuedUtc,
+    DateTimeOffset? ExpiresUtc,
+    bool IsPersistent
+);
+
+/// <summary>
+/// Тестовые endpoint-ы, подключаемые перед конвейером приложения только в интеграционных тестах.
+/// POST /test/signin создаёт сессию так же, как вход (SessionCookieLifetime.Apply, bff_session_id),
+/// GET /test/session отдаёт её содержимое.
+/// </summary>
+public sealed class TestSessionEndpoints : IStartupFilter
+{
+    public const string SignInPath = "/test/signin";
+    public const string SessionPath = "/test/session";
+
+    public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) =>
+        app =>
+        {
+            // MapWhen, а не Map: Map переносит путь в PathBase, и cookie-схема выставила бы cookie
+            // с path=/test/signin, невидимую для остального приложения.
+            app.MapWhen(c => c.Request.Path == SignInPath, branch => branch.Run(SignInAsync));
+            app.MapWhen(c => c.Request.Path == SessionPath, branch => branch.Run(ReadSessionAsync));
+            next(app);
+        };
+
+    private static async Task SignInAsync(HttpContext context)
+    {
+        var session = await context.Request.ReadFromJsonAsync<TestSession>().ConfigureAwait(false);
+        var oidc = context.RequestServices.GetRequiredService<IOptions<OidcOptions>>().Value;
+        var now = context.RequestServices.GetRequiredService<TimeProvider>().GetUtcNow();
+
+        var properties = new AuthenticationProperties();
+        properties.SetString(BffSessionKeys.SessionId, Guid.NewGuid().ToString("N"));
+        SessionCookieLifetime.Apply(properties, session!.RememberMe, oidc.SsoSession, now);
+
+        var tokens = new List<AuthenticationToken>
+        {
+            new() { Name = "access_token", Value = session.AccessToken },
+            new() { Name = "id_token", Value = "initial-id" },
+            new() { Name = "token_type", Value = "Bearer" },
+            new()
+            {
+                Name = AccessTokenExpiryHelper.TokenName,
+                Value = AccessTokenExpiryHelper.Format(
+                    AccessTokenExpiryHelper.Effective(
+                        now + (session.AccessLifetime ?? TimeSpan.FromMinutes(5)),
+                        oidc.TokenLifetime.ClockSkewBuffer
+                    )
+                ),
+            },
+        };
+        if (session.RefreshToken is not null)
+            tokens.Add(new() { Name = "refresh_token", Value = session.RefreshToken });
+        properties.StoreTokens(tokens);
+
+        var identity = new ClaimsIdentity(
+            [new Claim("sub", "user-1"), new Claim("preferred_username", "testuser")],
+            "Test",
+            "preferred_username",
+            "roles"
+        );
+        await context
+            .SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity), properties)
+            .ConfigureAwait(false);
+    }
+
+    private static async Task ReadSessionAsync(HttpContext context)
+    {
+        var result = await context
+            .AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme)
+            .ConfigureAwait(false);
+        var properties = result.Properties;
+        await context
+            .Response.WriteAsJsonAsync(
+                new SessionSnapshot(
+                    result.Succeeded,
+                    properties?.GetTokens().ToDictionary(t => t.Name, t => t.Value) ?? [],
+                    properties?.IssuedUtc,
+                    properties?.ExpiresUtc,
+                    properties?.IsPersistent ?? false
+                )
+            )
+            .ConfigureAwait(false);
+    }
+}
