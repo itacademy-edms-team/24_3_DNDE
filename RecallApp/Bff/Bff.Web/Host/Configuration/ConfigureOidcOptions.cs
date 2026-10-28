@@ -77,7 +77,7 @@ public sealed class ConfigureOidcOptions(IOptions<OidcOptions> oidc)
             var isRememberMe = refreshTokenLifetime > _oidc.TokenLifetime.RememberMeThreshold;
 
             // Персистентность и окно cookie по режиму (ADR 0027).
-            // Дальше окно держит встроенное скольжение cookie и token-refresh (ResetWindow).
+            // Дальше окно сдвигает только token-refresh (ResetWindow): встроенное скольжение выключено.
             SessionCookieLifetime.Apply(properties, isRememberMe, _oidc.SsoSession, DateTimeOffset.UtcNow);
 
             return Task.CompletedTask;

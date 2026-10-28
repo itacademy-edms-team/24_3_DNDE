@@ -59,10 +59,13 @@ try
             options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
             options.Cookie.SameSite = SameSiteMode.Lax;
 
-            // Окно сессии задаётся на входе per-mode (SessionCookieLifetime.Apply: IssuedUtc + ExpiresUtc
-            // = SSO Idle режима, ADR 0027). Встроенное скольжение продлевает с сохранением длины окна
-            // (ExpiresUtc - IssuedUtc), поэтому 30 минут / 30 дней держатся сами.
-            options.SlidingExpiration = true;
+            // Окно сессии задаётся на входе per-mode (SessionCookieLifetime.Apply: ExpiresUtc
+            // = SSO Idle режима, ADR 0027) и сдвигается только на token refresh (ResetWindow).
+            // Встроенное скольжение выключено: оно сохраняет в стор копию тикета, прочитанную
+            // на входе запроса. Параллельные запросы после простоя перезаписывали так новые
+            // токены старыми, отозванными (сценарий 9 ручных тестов). Кроме того, Keycloak
+            // сбрасывает SSO Idle только на refresh, и окно cookie теперь сдвигается тем же событием.
+            options.SlidingExpiration = false;
         })
         .AddOpenIdConnect();
 

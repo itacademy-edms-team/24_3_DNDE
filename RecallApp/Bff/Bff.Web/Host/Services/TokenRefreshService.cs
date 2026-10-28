@@ -364,9 +364,9 @@ public sealed class TokenRefreshService(
             );
 
             // Когерентность cookie (ADR 0027).
-            // SignInAsync ниже отменяет встроенное скольжение cookie в этом запросе (FinishResponseAsync не продлевает, если был SignIn),
-            // и в cookie уйдут даты из authResult.Properties.
-            // Поэтому окно начинаем заново сами:
+            // Встроенное скольжение cookie выключено, окно сдвигается только здесь.
+            // SignInAsync ниже запишет в cookie и стор даты из authResult.Properties,
+            // поэтому окно начинаем заново сами:
             // IssuedUtc = now, ExpiresUtc = now + SSO Idle режима (режим по маркеру bff_remember_me).
             SessionCookieLifetime.ResetWindow(authResult.Properties!, sso, DateTimeOffset.UtcNow);
 

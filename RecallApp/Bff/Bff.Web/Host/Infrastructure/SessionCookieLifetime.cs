@@ -35,14 +35,11 @@ public static class SessionCookieLifetime
 
     /// <summary>
     /// Начать окно сессии заново: IssuedUtc = now, ExpiresUtc = now + SSO Idle режима.
-    /// Ставим оба поля: встроенное скольжение cookie продлевает окно длиной ExpiresUtc - IssuedUtc,
-    /// и если сдвинуть только ExpiresUtc, окно расширится.
     /// <para>
-    /// Правило для вызывающих: любой ручной SignInAsync на cookie-схеме должен перед этим вызвать
-    /// ResetWindow. Если в запросе был SignInAsync, фреймворк отменяет запланированное встроенное
-    /// продление (CookieAuthenticationHandler.FinishResponseAsync: «only renew if neither sign in
-    /// or sign out was called»), и в cookie уходят те даты, что лежат в переданных properties.
-    /// Без ResetWindow запрос не засчитается как активность.
+    /// Встроенное скольжение cookie выключено, поэтому это единственное место,
+    /// где окно сдвигается после входа. Правило для вызывающих: любой ручной SignInAsync
+    /// на cookie-схеме должен перед этим вызвать ResetWindow, иначе в cookie и стор уйдут
+    /// старые даты из переданных properties и запрос не засчитается как активность.
     /// </para>
     /// </summary>
     public static void ResetWindow(
