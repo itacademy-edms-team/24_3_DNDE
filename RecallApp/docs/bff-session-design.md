@@ -141,7 +141,7 @@
 4. **`OnTokenValidated` (наш код).** Записать `bff_session_id = новый GUID`. Сравнить `refresh_expires_in` с `RememberMeThreshold` (1 день): больше значит Remember Me. Вызвать `SessionCookieLifetime.Apply`: `IsPersistent`, маркер `bff_remember_me`, `IssuedUtc = now`, `ExpiresUtc = now + SSO Idle режима` (30 мин или 30 дней).
 5. `SaveTokens`: токены и `expires_at = now + expires_in` в properties.
 6. Userinfo, claims.
-7. `RemoteAuthenticationHandler` вынимает `RedirectUri` из properties (поэтому позже, на refresh, повторный SignIn не делает редирект), затем вызывает событие `TicketReceived`.
+7. `RemoteAuthenticationHandler` вынимает `RedirectUri` из properties (поэтому позже, на refresh, повторный SignIn не делает редирект), затем вызывает событие `TicketReceived`. **`OnTicketReceived` (наш код)** вычитает из `expires_at` `ClockSkewBuffer`, чтобы срок считался по тому же правилу, что и на refresh (`AccessTokenExpiry`).
 8. `SignInAsync(Cookies)`: `StoreAsync` создаёт ключ `bff-session:<guid>`, кладёт тикет в стор со сроком `ExpiresUtc`, ключ шифруется в cookie `recall_bff`. Атрибут `Expires` у cookie ставится только при `IsPersistent`.
 9. 302 на адрес возврата.
 
@@ -287,8 +287,8 @@
 
 | Время | Событие | `expires_at` access | Окно cookie |
 |---|---|---|---|
-| 0:00 | вход | 5:00 (без буфера, `SaveTokens`) | 0:00–30:00 |
-| 4:00 | запрос, до истечения 1:00 → refresh | 4:00 + 5:00 − 0:30 = 8:30 | 4:00–34:00 |
+| 0:00 | вход | 0:00 + 5:00 − 0:30 = 4:30 | 0:00–30:00 |
+| 4:00 | запрос, до истечения меньше 1:00 → refresh | 4:00 + 5:00 − 0:30 = 8:30 | 4:00–34:00 |
 | 6:00 | запрос, токен свежий | 8:30 | без изменений: запрос без refresh окно не двигает |
 | 12:00 | запрос, access уже истёк → refresh | 16:30 | 12:00–42:00 |
 | 42:00 | запросов не было | | окно истекло, запись стора истекла, пользователь анонимный |
@@ -374,14 +374,18 @@
 
 После исправления п. 8.1 окно двигает один механизм, `ResetWindow`. Он держится на правиле «любой ручной SignIn обязан звать `ResetWindow`», и это правило нигде не проверяется кодом. Кандидат на рефакторинг: один метод «сохранить сессию», который сам сдвигает окно и вызывает SignIn.
 
-### 8.6. `expires_at` считается двумя способами
+### 8.6. `expires_at` считался двумя способами
 
-На входе `SaveTokens` пишет `now + expires_in`, на refresh наш код пишет `now + expires_in − ClockSkewBuffer`. Первый refresh после входа поэтому наступает на 30 с позже, чем последующие. Выровнять можно в `OnTokenValidated` или после `SaveTokens` (событие `TicketReceived`).
+**Статус:** исправлено 2026-10-28, проверено вживую.
+
+На входе `SaveTokens` писал `now + expires_in`, на refresh наш код писал `now + expires_in − ClockSkewBuffer`. Первый refresh после входа поэтому наступал на 30 с позже, чем последующие.
+
+Теперь правило одно и живёт в `AccessTokenExpiry`. На refresh его применяет `SessionTokenWriter`. На входе `OnTicketReceived` вычитает буфер из значения, которое записал `SaveTokens`. `OnTokenValidated` для этого не подходит: он срабатывает до `SaveTokens`, и тот перезаписал бы список токенов. Проверка: вход в 13:27:30, `expires_at` 13:32:00 (+4:30); refresh в 13:31:17, новый `expires_at` 13:35:47 (+4:30).
 
 ### 8.7. Мелочи
 
-- `StoreTokens` на refresh перезаписывает весь список токенов и теряет `token_type`, который сохранил вход.
-- `sub` ищется сначала по `ClaimTypes.NameIdentifier`. При `MapInboundClaims = false` такого claim нет, работает только вторая ветка.
+- ~~`StoreTokens` на refresh перезаписывает весь список токенов и теряет `token_type`, который сохранил вход.~~ Исправлено 2026-10-28: запись начинается с сохранённых токенов, `token_type` переживает refresh (проверено вживую).
+- ~~`sub` ищется сначала по `ClaimTypes.NameIdentifier`. При `MapInboundClaims = false` такого claim нет, работает только вторая ветка.~~ Мёртвая ветка удалена при разбиении по ролям.
 - Отсутствие записи в сторе (рестарт BFF) даёт анонимного пользователя, но мёртвая cookie остаётся в браузере до своего срока.
 - Ключи Data Protection не персистятся: пересоздание контейнера делает все cookie нерасшифровываемыми.
 - `TokenRefreshSemaphores` живёт в памяти процесса. При нескольких экземплярах BFF нужен распределённый замок.

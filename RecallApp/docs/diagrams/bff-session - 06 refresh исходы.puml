@@ -22,7 +22,7 @@ H -> K
 alt 2xx и в JSON есть access_token, expires_in
   K --> H : access, refresh (новый, старый отозван),\nid_token, expires_in
   H --> T : Success(JsonDocument)
-  T -> T : properties.StoreTokens(access, refresh, id,\nexpires_at = now + expires_in − 30 с)
+  T -> T : properties.StoreTokens(сохранённые токены\n+ новые access, refresh, id, token_type,\nexpires_at = now + expires_in − 30 с)
   T -> L : ResetWindow(properties)\nIssuedUtc = now, ExpiresUtc = now + SSO Idle режима
   T -> CH : SignInAsync(Cookies, principal, properties)
   CH -> S : RenewAsync(тот же ключ, тикет)

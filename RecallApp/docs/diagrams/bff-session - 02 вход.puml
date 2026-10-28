@@ -9,7 +9,7 @@ participant "AuthenticationMiddleware" as AM
 participant "TokenRefreshMiddleware" as TR
 participant "AuthController" as C
 participant "OpenIdConnectHandler" as O
-participant "ConfigureOidcOptions\nOnTokenValidated" as E
+participant "ConfigureOidcOptions\nOnTokenValidated,\nOnTicketReceived" as E
 participant "SessionCookieLifetime" as L
 participant "CookieAuthenticationHandler" as CH
 database "ITicketStore" as S
@@ -48,7 +48,8 @@ L -> L : IsPersistent, bff_remember_me,\nIssuedUtc = now, ExpiresUtc = now + SSO
 O -> O : SaveTokens: access, id, refresh,\ntoken_type, expires_at = now + expires_in
 O -> K : userinfo → claims
 O -> O : RemoteAuthenticationHandler вынимает\nRedirectUri из properties
-O -> O : событие TicketReceived
+O -> E : событие TicketReceived
+E -> E : expires_at = expires_at − ClockSkewBuffer (30 с)\n(AccessTokenExpiry, как на refresh)
 O -> CH : SignInAsync(Cookies, principal, properties)
 CH -> S : StoreAsync(ticket) → ключ bff-session:<guid>
 CH --> B : Set-Cookie recall_bff = Protect(ключ)\nExpires только при IsPersistent
