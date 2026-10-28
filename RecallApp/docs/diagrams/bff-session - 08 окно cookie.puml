@@ -1,0 +1,45 @@
+@startuml bff-session-08-окно-cookie
+title Окно cookie и access во времени (обычный режим: SSO Idle 30 мин, access 5 мин)
+
+skinparam shadowing false
+
+concise "Запросы" as R
+concise "Access: expires_at" as A
+concise "Окно cookie\n(IssuedUtc–ExpiresUtc)" as W
+
+scale 1 as 18 pixels
+
+@0
+R is "вход"
+A is "до 5:00"
+W is "0:00–30:00"
+
+@4
+R is "refresh"
+A is "до 8:30"
+W is "4:00–34:00"
+
+@6
+R is "запрос"
+
+@12
+R is "refresh"
+A is "до 16:30"
+W is "12:00–42:00"
+
+@13
+R is {-}
+
+@17
+A is "истёк"
+
+@42
+W is "истекло: аноним"
+
+@45
+W is {-}
+
+R@4 <-> @12 : между refresh окно не трогается
+A@12 -> W@12 : ResetWindow на каждом refresh
+
+@enduml

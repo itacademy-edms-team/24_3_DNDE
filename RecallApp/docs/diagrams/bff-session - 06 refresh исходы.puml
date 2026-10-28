@@ -1,0 +1,51 @@
+@startuml bff-session-06-refresh-исходы
+title Refresh под замком сессии: Success / Rejected / Unavailable
+
+skinparam shadowing false
+autonumber
+
+participant "TokenRefreshMiddleware" as TR
+participant "TokenRefreshService" as T
+database "TokenRefreshSemaphores" as SM
+participant "HttpClient\nkeycloak-refresh" as H
+participant "Keycloak" as K
+participant "SessionCookieLifetime" as L
+participant "CookieAuthenticationHandler" as CH
+database "ITicketStore" as S
+database "HttpContext.Items" as I
+
+TR -> T : TryRefreshTokenAsync(context)
+note over T : проверки до замка: см. диаграмму 05
+T -> SM : Semaphores[sessionKey].WaitAsync()
+T -> SM : double-check LastRefreshedAt, RetryNotBefore
+T -> H : POST /token (refresh_token, client_id, секрет)
+H -> K
+alt 2xx и в JSON есть access_token, expires_in
+  K --> H : access, refresh (новый, старый отозван),\nid_token, expires_in
+  H --> T : Success(JsonDocument)
+  T -> T : properties.StoreTokens(access, refresh, id,\nexpires_at = now + expires_in − 30 с)
+  T -> L : ResetWindow(properties)\nIssuedUtc = now, ExpiresUtc = now + SSO Idle режима
+  T -> CH : SignInAsync(Cookies, principal, properties)
+  CH -> CH : _signInCalled = true\n(отменяет продление в FinishResponseAsync)
+  CH -> S : RenewAsync(тот же ключ, тикет)
+  CH -> CH : Set-Cookie recall_bff (тот же ключ)
+  T -> I : Items[bff_access_token] = новый access
+  T -> SM : LastRefreshedAt = now, RetryNotBefore удалить
+else 400 / 401
+  K --> H : invalid_grant / invalid_client
+  H --> T : Rejected
+  T -> CH : SignOutAsync(Cookies)
+  CH -> S : RemoveAsync(ключ)
+  CH -> CH : Set-Cookie recall_bff удалить
+  note right of T : context.User в этом запросе\nостаётся аутентифицированным
+else 5xx, 429, таймаут 5 с, сеть, битый JSON, нет полей
+  K --> H : ошибка / нет ответа
+  H --> T : Unavailable
+  T -> SM : RetryNotBefore = now + 15 с
+  note right of T : сессия, cookie и стор не тронуты;\nLastRefreshedAt не ставится
+end
+T -> SM : Release()
+T --> TR
+TR -> TR : next(context)
+
+@enduml
