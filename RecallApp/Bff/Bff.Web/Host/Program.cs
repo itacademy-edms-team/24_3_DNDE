@@ -114,7 +114,8 @@ try
 
     app.Run();
 }
-catch (Exception ex)
+// HostAbortedException бросает WebApplicationFactory, когда забирает собранный хост в тестах.
+catch (Exception ex) when (ex is not HostAbortedException)
 {
     bootstrapLogger.Error(ex, "Application startup failed");
 }
@@ -122,3 +123,5 @@ finally
 {
     LogManager.Shutdown();
 }
+
+public partial class Program;
