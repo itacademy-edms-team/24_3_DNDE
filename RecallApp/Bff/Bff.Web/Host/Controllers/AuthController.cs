@@ -48,7 +48,7 @@ public class AuthController : ControllerBase
 
         // Роли приложения - client-роли RecallApp в access-токене (resource_access), ADR 0024.
         // В ID-токене/principal их нет, поэтому достаём из сохранённого access-токена.
-        var accessToken = await HttpContext.GetTokenAsync("access_token").ConfigureAwait(false);
+        var accessToken = await HttpContext.GetTokenAsync("access_token");
         var roles = ExtractRecallAppRoles(accessToken);
 
         var claims = User.Claims.Select(c => new { c.Type, c.Value });

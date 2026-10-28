@@ -24,7 +24,7 @@ public class TokenRefreshSessionJanitorTests
         {
             if (DateTime.UtcNow > deadline)
                 throw new TimeoutException("Janitor sweep did not happen");
-            await Task.Delay(10).ConfigureAwait(false);
+            await Task.Delay(10);
         }
     }
 

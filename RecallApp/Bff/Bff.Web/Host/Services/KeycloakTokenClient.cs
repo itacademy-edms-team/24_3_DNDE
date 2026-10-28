@@ -62,8 +62,7 @@ public sealed class KeycloakTokenClient(
             using var response = await http.PostAsync(
                     tokenEndpoint,
                     new FormUrlEncodedContent(data)
-                )
-                .ConfigureAwait(false);
+                );
 
             // 400 (invalid_grant: refresh отозван или истёк) и 401 (неверный клиент или секрет)
             // это окончательный отказ: повтор того же запроса не поможет.
@@ -85,7 +84,7 @@ public sealed class KeycloakTokenClient(
                 return new TokenRefreshResult(TokenRefreshOutcome.Unavailable);
             }
 
-            var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            var json = await response.Content.ReadAsStringAsync();
             using var document = JsonDocument.Parse(json);
             var tokens = ReadTokens(document.RootElement);
             if (tokens is null)

@@ -65,15 +65,13 @@ public sealed class BffApp : WebApplicationFactory<Program>
     /// <summary>Засеять сессию в браузер; возвращает ответ с Set-Cookie входа.</summary>
     public static async Task<HttpResponseMessage> SignInAsync(HttpClient browser, TestSession session)
     {
-        var response = await browser
-            .PostAsJsonAsync(TestSessionEndpoints.SignInPath, session)
-            .ConfigureAwait(false);
+        var response = await browser.PostAsJsonAsync(TestSessionEndpoints.SignInPath, session);
         response.EnsureSuccessStatusCode();
         return response;
     }
 
     public static async Task<SessionSnapshot> ReadSessionAsync(HttpClient browser) =>
-        (await browser.GetFromJsonAsync<SessionSnapshot>(TestSessionEndpoints.SessionPath).ConfigureAwait(false))!;
+        (await browser.GetFromJsonAsync<SessionSnapshot>(TestSessionEndpoints.SessionPath))!;
 
     /// <summary>GET /session приложения; возвращает ответ и разобранное тело.</summary>
     public static async Task<(HttpResponseMessage Response, JsonElement Body)> GetAppSessionAsync(
@@ -81,9 +79,9 @@ public sealed class BffApp : WebApplicationFactory<Program>
         string path = "/session"
     )
     {
-        var response = await browser.GetAsync(path).ConfigureAwait(false);
+        var response = await browser.GetAsync(path);
         response.EnsureSuccessStatusCode();
-        var body = await response.Content.ReadFromJsonAsync<JsonElement>().ConfigureAwait(false);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         return (response, body);
     }
 

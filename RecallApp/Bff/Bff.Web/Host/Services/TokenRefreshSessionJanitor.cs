@@ -14,14 +14,14 @@ public sealed class TokenRefreshSessionJanitor(
 ) : BackgroundService
 {
     private static readonly TimeSpan SweepInterval = TimeSpan.FromMinutes(5);
-    private readonly TimeSpan _idleThreshold = oidcOptions.Value.TokenLifetime.SessionLockIdle;
+    private readonly TimeSpan _idleThreshold = oidcOptions.Value.TokenRefresh.SessionLockIdle;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         using var timer = new PeriodicTimer(SweepInterval, timeProvider);
         try
         {
-            while (await timer.WaitForNextTickAsync(stoppingToken).ConfigureAwait(false))
+            while (await timer.WaitForNextTickAsync(stoppingToken))
             {
                 try
                 {

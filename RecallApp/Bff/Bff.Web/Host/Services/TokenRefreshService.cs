@@ -7,14 +7,14 @@ namespace Host.Services;
 
 public interface ITokenRefreshService
 {
-    Task TryRefreshTokenAsync(HttpContext context);
+    Task RefreshIfNeededAsync(HttpContext context);
 }
 
 /// <summary>
 /// Координатор обновления access-токена: решает, нужно ли обновлять, и сериализует обновление на BFF-сессию.
 /// Запрос к Keycloak делает <see cref="KeycloakTokenClient"/>, запись в сессию - <see cref="SessionTokenWriter"/>.
 /// Отказ Keycloak (400/401) делает sign-out серверной сессии;
-/// временный сбой (5xx, таймаут, сеть, битый ответ) сессию сохраняет и откладывает повтор на <see cref="TokenLifetimeOptions.RefreshRetryBackoff"/>.
+/// временный сбой (5xx, таймаут, сеть, битый ответ) сессию сохраняет и откладывает повтор на <see cref="TokenRefreshOptions.RefreshRetryBackoff"/>.
 /// </summary>
 public sealed class TokenRefreshService(
     KeycloakTokenClient tokenClient,
@@ -33,16 +33,14 @@ public sealed class TokenRefreshService(
 
     private readonly OidcOptions _oidcOptions = oidcOptions.Value;
 
-    public async Task TryRefreshTokenAsync(HttpContext context)
+    public async Task RefreshIfNeededAsync(HttpContext context)
     {
         if (context.User?.Identity?.IsAuthenticated != true)
             return;
 
         // Одна аутентификация на запрос (результат кэшируется): отсюда берём и properties
         // с токенами, и идентификатор BFF-сессии для ключа сериализации.
-        var authResult = await context
-            .AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme)
-            .ConfigureAwait(false);
+        var authResult = await context.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         if (!authResult.Succeeded || authResult.Properties is null)
             return;
 
@@ -82,7 +80,7 @@ public sealed class TokenRefreshService(
             return;
         }
 
-        var refreshThreshold = _oidcOptions.TokenLifetime.RefreshThreshold;
+        var refreshThreshold = _oidcOptions.TokenRefresh.RefreshThreshold;
         var timeUntilExpiry = expiresAt - timeProvider.GetUtcNow();
         logger.LogDebug(
             "Token refresh check: timeUntilExpiry={TimeUntilExpiry:g}, threshold={Threshold:g}, session={SessionKey}",
@@ -98,8 +96,8 @@ public sealed class TokenRefreshService(
         if (IsInRetryBackoff(sessionKey))
             return;
 
-        var sem = semaphores.Semaphores.GetOrAdd(sessionKey, _ => new SemaphoreSlim(1, 1));
-        await sem.WaitAsync().ConfigureAwait(false);
+        var semaphore = semaphores.Semaphores.GetOrAdd(sessionKey, _ => new SemaphoreSlim(1, 1));
+        await semaphore.WaitAsync();
         try
         {
             if (
@@ -132,17 +130,15 @@ public sealed class TokenRefreshService(
                     "Token refresh failed: refresh_token missing for session={SessionKey}",
                     sessionKey
                 );
-                await SignOutAsync(context).ConfigureAwait(false);
+                await SignOutAsync(context);
                 return;
             }
 
-            var result = await tokenClient.RefreshAsync(refreshToken).ConfigureAwait(false);
+            var result = await tokenClient.RefreshAsync(refreshToken);
             switch (result.Outcome)
             {
                 case TokenRefreshOutcome.Success:
-                    await sessionWriter
-                        .StoreRefreshedTokensAsync(context, authResult, result.Tokens!)
-                        .ConfigureAwait(false);
+                    await sessionWriter.StoreRefreshedTokensAsync(context, authResult, result.Tokens!);
 
                     semaphores.LastRefreshedAt[sessionKey] = timeProvider.GetUtcNow();
                     semaphores.RetryNotBefore.TryRemove(sessionKey, out _);
@@ -159,7 +155,7 @@ public sealed class TokenRefreshService(
                 case TokenRefreshOutcome.Unavailable:
                     // Сессию не трогаем и LastRefreshedAt не ставим: после паузы попытка повторится.
                     var retryAt =
-                        timeProvider.GetUtcNow() + _oidcOptions.TokenLifetime.RefreshRetryBackoff;
+                        timeProvider.GetUtcNow() + _oidcOptions.TokenRefresh.RefreshRetryBackoff;
                     semaphores.RetryNotBefore[sessionKey] = retryAt;
                     logger.LogWarning(
                         "Token refresh deferred: IdP unavailable, session kept, retry after {RetryAt:o} for session={SessionKey}",
@@ -169,13 +165,13 @@ public sealed class TokenRefreshService(
                     break;
 
                 case TokenRefreshOutcome.Rejected:
-                    await SignOutAsync(context).ConfigureAwait(false);
+                    await SignOutAsync(context);
                     break;
             }
         }
         finally
         {
-            sem.Release();
+            semaphore.Release();
         }
     }
 

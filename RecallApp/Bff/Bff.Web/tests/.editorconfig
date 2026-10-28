@@ -1,3 +1,0 @@
-# Тестовый код: ConfigureAwait не нужен (xUnit рекомендует не ставить его в тестах).
-[*.cs]
-dotnet_diagnostic.CA2007.severity = none

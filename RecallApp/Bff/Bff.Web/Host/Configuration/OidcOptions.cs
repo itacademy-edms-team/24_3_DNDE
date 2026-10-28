@@ -21,7 +21,7 @@ public sealed class OidcOptions
     /// <summary>
     /// Настройки времени жизни access-токена.
     /// </summary>
-    public TokenLifetimeOptions TokenLifetime { get; set; } = new();
+    public TokenRefreshOptions TokenRefresh { get; set; } = new();
 
     /// <summary>
     /// Настройки времени жизни SSO сессии в Keycloak
@@ -32,7 +32,7 @@ public sealed class OidcOptions
 /// <summary>
 /// Параметры упреждающего обновления токена в BFF.
 /// </summary>
-public sealed class TokenLifetimeOptions
+public sealed class TokenRefreshOptions
 {
     /// <summary>
     /// За сколько до истечения access-токена его обновлять.

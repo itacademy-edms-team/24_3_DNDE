@@ -53,17 +53,15 @@ public static class KeycloakDirectGrant
         Dictionary<string, string> form
     )
     {
-        using var response = await Http
-            .PostAsync(settings.TokenEndpoint, new FormUrlEncodedContent(form))
-            .ConfigureAwait(false);
+        using var response = await Http.PostAsync(settings.TokenEndpoint, new FormUrlEncodedContent(form));
         if (!response.IsSuccessStatusCode)
         {
-            var error = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            var error = await response.Content.ReadAsStringAsync();
             throw new InvalidOperationException(
                 $"Keycloak token endpoint returned {(int)response.StatusCode}: {error}"
             );
         }
 
-        return (await response.Content.ReadFromJsonAsync<KeycloakTokens>().ConfigureAwait(false))!;
+        return (await response.Content.ReadFromJsonAsync<KeycloakTokens>())!;
     }
 }

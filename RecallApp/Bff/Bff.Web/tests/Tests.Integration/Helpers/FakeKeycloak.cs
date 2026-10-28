@@ -49,8 +49,8 @@ public sealed class FakeKeycloak : HttpMessageHandler
     {
         var body = request.Content is null
             ? string.Empty
-            : await request.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            : await request.Content.ReadAsStringAsync(cancellationToken);
         RequestBodies.Enqueue(body);
-        return await Respond(request).ConfigureAwait(false);
+        return await Respond(request);
     }
 }

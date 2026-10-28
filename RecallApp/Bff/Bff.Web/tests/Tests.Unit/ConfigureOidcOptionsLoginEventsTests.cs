@@ -53,7 +53,7 @@ public class ConfigureOidcOptionsLoginEventsTests
             TokenEndpointResponse = tokenEndpointResponse,
         };
 
-        await _options.Events.TokenValidated(context).ConfigureAwait(false);
+        await _options.Events.TokenValidated(context);
         return context.Properties!;
     }
 
@@ -71,7 +71,7 @@ public class ConfigureOidcOptionsLoginEventsTests
         );
         var context = new TicketReceivedContext(new DefaultHttpContext(), Scheme, _options, ticket);
 
-        await _options.Events.TicketReceived(context).ConfigureAwait(false);
+        await _options.Events.TicketReceived(context);
         return context.Properties!;
     }
 
@@ -113,7 +113,7 @@ public class ConfigureOidcOptionsLoginEventsTests
     [Fact]
     public async Task OnTokenValidated_RefreshLifetimeEqualToThreshold_AppliesRegularMode()
     {
-        var threshold = (long)_oidc.TokenLifetime.RememberMeThreshold.TotalSeconds;
+        var threshold = (long)_oidc.TokenRefresh.RememberMeThreshold.TotalSeconds;
 
         var properties = await RunTokenValidatedAsync(ResponseWithRefreshExpiresIn(threshold.ToString(CultureInfo.InvariantCulture)));
 
@@ -164,7 +164,7 @@ public class ConfigureOidcOptionsLoginEventsTests
         var result = await RunTicketReceivedAsync(properties);
 
         Assert.Equal(
-            AccessTokenExpiryHelper.Format(savedExpiry - _oidc.TokenLifetime.ClockSkewBuffer),
+            AccessTokenExpiryHelper.Format(savedExpiry - _oidc.TokenRefresh.ClockSkewBuffer),
             result.GetTokenValue("expires_at")
         );
         Assert.Equal("access", result.GetTokenValue("access_token"));

@@ -51,7 +51,7 @@ public sealed class TestSessionEndpoints : IStartupFilter
 
     private static async Task SignInAsync(HttpContext context)
     {
-        var session = await context.Request.ReadFromJsonAsync<TestSession>().ConfigureAwait(false);
+        var session = await context.Request.ReadFromJsonAsync<TestSession>();
         var oidc = context.RequestServices.GetRequiredService<IOptions<OidcOptions>>().Value;
         var now = context.RequestServices.GetRequiredService<TimeProvider>().GetUtcNow();
 
@@ -70,7 +70,7 @@ public sealed class TestSessionEndpoints : IStartupFilter
                 Value = AccessTokenExpiryHelper.Format(
                     AccessTokenExpiryHelper.Effective(
                         now + (session.AccessLifetime ?? TimeSpan.FromMinutes(5)),
-                        oidc.TokenLifetime.ClockSkewBuffer
+                        oidc.TokenRefresh.ClockSkewBuffer
                     )
                 ),
             },
@@ -86,15 +86,12 @@ public sealed class TestSessionEndpoints : IStartupFilter
             "roles"
         );
         await context
-            .SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity), properties)
-            .ConfigureAwait(false);
+            .SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity), properties);
     }
 
     private static async Task ReadSessionAsync(HttpContext context)
     {
-        var result = await context
-            .AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme)
-            .ConfigureAwait(false);
+        var result = await context.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         var properties = result.Properties;
         await context
             .Response.WriteAsJsonAsync(
@@ -105,7 +102,6 @@ public sealed class TestSessionEndpoints : IStartupFilter
                     properties?.ExpiresUtc,
                     properties?.IsPersistent ?? false
                 )
-            )
-            .ConfigureAwait(false);
+            );
     }
 }

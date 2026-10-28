@@ -42,14 +42,14 @@ public sealed class SessionTokenWriter(IOptions<OidcOptions> oidcOptions, TimePr
         if (tokens.TokenType is not null)
             stored["token_type"] = tokens.TokenType;
         stored[AccessTokenExpiryHelper.TokenName] = AccessTokenExpiryHelper.Format(
-            AccessTokenExpiryHelper.Effective(now + tokens.ExpiresIn, _oidcOptions.TokenLifetime.ClockSkewBuffer)
+            AccessTokenExpiryHelper.Effective(now + tokens.ExpiresIn, _oidcOptions.TokenRefresh.ClockSkewBuffer)
         );
 
         properties.StoreTokens(
             stored.Select(t => new AuthenticationToken { Name = t.Key, Value = t.Value })
         );
 
-        await SaveSessionAsync(context, session.Principal!, properties, now).ConfigureAwait(false);
+        await SaveSessionAsync(context, session.Principal!, properties, now);
     }
 
     /// <summary>

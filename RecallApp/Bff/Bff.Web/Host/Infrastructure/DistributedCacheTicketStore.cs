@@ -24,7 +24,7 @@ public sealed class DistributedCacheTicketStore(
     public async Task<string> StoreAsync(AuthenticationTicket ticket)
     {
         var key = KeyPrefix + Guid.NewGuid().ToString("N");
-        await RenewAsync(key, ticket).ConfigureAwait(false);
+        await RenewAsync(key, ticket);
         return key;
     }
 
@@ -37,12 +37,12 @@ public sealed class DistributedCacheTicketStore(
         var options = new DistributedCacheEntryOptions().SetAbsoluteExpiration(expiresUtc);
 
         var bytes = TicketSerializer.Default.Serialize(ticket);
-        await cache.SetAsync(key, bytes, options).ConfigureAwait(false);
+        await cache.SetAsync(key, bytes, options);
     }
 
     public async Task<AuthenticationTicket?> RetrieveAsync(string key)
     {
-        var bytes = await cache.GetAsync(key).ConfigureAwait(false);
+        var bytes = await cache.GetAsync(key);
         return bytes is null ? null : TicketSerializer.Default.Deserialize(bytes);
     }
 

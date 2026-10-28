@@ -74,7 +74,7 @@ public sealed class ConfigureOidcOptions(IOptions<OidcOptions> oidc, TimeProvide
             var refreshTokenLifetime = long.TryParse(raw, out var seconds)
                 ? TimeSpan.FromSeconds(seconds)
                 : TimeSpan.Zero;
-            var isRememberMe = refreshTokenLifetime > _oidc.TokenLifetime.RememberMeThreshold;
+            var isRememberMe = refreshTokenLifetime > _oidc.TokenRefresh.RememberMeThreshold;
 
             // Персистентность и окно cookie по режиму (ADR 0027).
             // Дальше окно сдвигает только token-refresh (ResetWindow): встроенное скольжение выключено.
@@ -95,7 +95,7 @@ public sealed class ConfigureOidcOptions(IOptions<OidcOptions> oidc, TimeProvide
                 properties.UpdateTokenValue(
                     AccessTokenExpiryHelper.TokenName,
                     AccessTokenExpiryHelper.Format(
-                        AccessTokenExpiryHelper.Effective(expiresAt, _oidc.TokenLifetime.ClockSkewBuffer)
+                        AccessTokenExpiryHelper.Effective(expiresAt, _oidc.TokenRefresh.ClockSkewBuffer)
                     )
                 );
             }

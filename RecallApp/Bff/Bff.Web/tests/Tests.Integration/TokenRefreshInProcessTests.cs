@@ -19,13 +19,13 @@ public sealed class TokenRefreshInProcessTests : IAsyncLifetime
     public async Task InitializeAsync()
     {
         _browser = _app.CreateBrowser();
-        await BffApp.SignInAsync(_browser, new TestSession(TestJwt.Create("initial-role"))).ConfigureAwait(false);
+        await BffApp.SignInAsync(_browser, new TestSession(TestJwt.Create("initial-role")));
     }
 
     public async Task DisposeAsync()
     {
         _browser.Dispose();
-        await _app.DisposeAsync().ConfigureAwait(false);
+        await _app.DisposeAsync();
     }
 
     [Fact]
@@ -110,7 +110,7 @@ public sealed class TokenRefreshInProcessTests : IAsyncLifetime
         var release = new TaskCompletionSource();
         app.Keycloak.Respond = async _ =>
         {
-            await release.Task.ConfigureAwait(false);
+            await release.Task;
             return FakeKeycloak.Success();
         };
         app.Time.Advance(IntoRefreshZone);

@@ -12,7 +12,7 @@ public sealed class TokenRefreshMiddleware(ITokenRefreshService refreshService) 
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
         if (!context.WebSockets.IsWebSocketRequest)
-            await refreshService.TryRefreshTokenAsync(context).ConfigureAwait(false);
-        await next(context).ConfigureAwait(false);
+            await refreshService.RefreshIfNeededAsync(context);
+        await next(context);
     }
 }

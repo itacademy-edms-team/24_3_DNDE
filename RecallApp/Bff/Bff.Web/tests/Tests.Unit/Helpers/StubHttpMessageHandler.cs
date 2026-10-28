@@ -32,8 +32,8 @@ internal sealed class StubHttpMessageHandler(
     {
         var body = request.Content is null
             ? string.Empty
-            : await request.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            : await request.Content.ReadAsStringAsync(cancellationToken);
         Requests.Add((request, body));
-        return await respond(request).ConfigureAwait(false);
+        return await respond(request);
     }
 }

@@ -23,8 +23,7 @@ public sealed class TokenRefreshKeycloakTests
                     tokens.RefreshToken,
                     TimeSpan.FromSeconds(tokens.ExpiresIn)
                 )
-            )
-            .ConfigureAwait(false);
+            );
         return browser;
     }
 
