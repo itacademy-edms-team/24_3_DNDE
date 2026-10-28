@@ -26,7 +26,6 @@ alt 2xx и в JSON есть access_token, expires_in
   T -> T : properties.StoreTokens(access, refresh, id,\nexpires_at = now + expires_in − 30 с)
   T -> L : ResetWindow(properties)\nIssuedUtc = now, ExpiresUtc = now + SSO Idle режима
   T -> CH : SignInAsync(Cookies, principal, properties)
-  CH -> CH : _signInCalled = true\n(отменяет продление в FinishResponseAsync)
   CH -> S : RenewAsync(тот же ключ, тикет)
   CH -> CH : Set-Cookie recall_bff (тот же ключ)
   T -> I : Items[bff_access_token] = новый access

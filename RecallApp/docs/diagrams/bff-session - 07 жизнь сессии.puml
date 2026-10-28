@@ -13,7 +13,6 @@ state Deferred : Keycloak недоступен\nRetryNotBefore в будущем
 state SignedOut : запись стора удалена\ncookie удалена
 
 Anonymous --> Authenticated : /signin-oidc\nStoreAsync + Set-Cookie
-Authenticated --> Authenticated : запрос: sliding\n(если осталось < прошло)
 Authenticated --> NeedsRefresh : время идёт
 NeedsRefresh --> Authenticated : Success\nResetWindow + SignIn
 NeedsRefresh --> Deferred : Unavailable
@@ -21,7 +20,8 @@ Deferred --> NeedsRefresh : прошло 15 с,\nследующий запрос
 NeedsRefresh --> SignedOut : Rejected 400/401\nили нет refresh_token
 Authenticated --> SignedOut : /logout
 Authenticated --> Anonymous : ExpiresUtc прошёл\n(ExpiredTicket, стор чистится)
-Deferred --> Anonymous : ExpiresUtc прошёл
+Deferred --> Anonymous : ExpiresUtc прошёл\n(окно в Deferred не двигается)
+note right of Authenticated : окно cookie сдвигает только\nSuccess refresh (ResetWindow)
 Authenticated --> Anonymous : запись стора пропала\n(рестарт BFF)
 SignedOut --> Anonymous
 

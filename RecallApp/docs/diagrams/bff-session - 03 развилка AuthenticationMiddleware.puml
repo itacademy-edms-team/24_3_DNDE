@@ -40,9 +40,9 @@ partition "Шаг 2: схема по умолчанию, Cookies" {
 
 :await next(context)\n→ TokenRefreshMiddleware; <<pass>>
 note right
-  Уже запланировано на ответ:
-  Response.OnStarting(FinishResponseAsync)
-  у CookieAuthenticationHandler
+  Зарегистрирован Response.OnStarting(FinishResponseAsync)
+  у CookieAuthenticationHandler. При SlidingExpiration = false
+  продление не планируется, и он ничего не делает
 end note
 stop
 
