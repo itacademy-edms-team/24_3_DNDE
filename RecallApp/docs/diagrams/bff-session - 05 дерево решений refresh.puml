@@ -1,5 +1,5 @@
 @startuml bff-session-05-дерево-refresh
-title TokenRefreshMiddleware → TokenRefreshService.TryRefreshTokenAsync: дерево решений
+title TokenRefreshMiddleware → TokenRefreshService.RefreshIfNeededAsync: дерево решений
 
 skinparam shadowing false
 <style>

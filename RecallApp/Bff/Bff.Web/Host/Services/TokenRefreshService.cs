@@ -5,11 +5,6 @@ using Microsoft.Extensions.Options;
 
 namespace Host.Services;
 
-public interface ITokenRefreshService
-{
-    Task RefreshIfNeededAsync(HttpContext context);
-}
-
 /// <summary>
 /// Координатор обновления access-токена: решает, нужно ли обновлять, и сериализует обновление на BFF-сессию.
 /// Запрос к Keycloak делает <see cref="KeycloakTokenClient"/>, запись в сессию - <see cref="SessionTokenWriter"/>.

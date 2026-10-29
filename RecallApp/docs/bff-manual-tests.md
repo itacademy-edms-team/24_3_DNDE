@@ -67,7 +67,7 @@
 Порог `RefreshThreshold` задаётся переменной окружения контейнера `bff` (в `docker-compose.override.yml`, секция `bff.environment`):
 
 ```yaml
-Oidc__TokenLifetime__RefreshThreshold: "00:10:00"
+Oidc__TokenRefresh__RefreshThreshold: "00:10:00"
 ```
 
 Нужны два разных режима, не один. Порог служит сразу и триггером «пора обновлять» (`timeUntilExpiry < threshold`), и окном анти-дубля (`now - lastRefreshed < threshold`, в течение которого запрос обновление пропускает).
@@ -76,7 +76,7 @@ Oidc__TokenLifetime__RefreshThreshold: "00:10:00"
 
 **Режим B — «обновлять часто» (сценарии 3, 6, 8).** Режим A здесь вреден: 10-минутное окно анти-дубля означает, что BFF 10 минут вообще не пытается обновлять токен, а значит не узнает про убитую в Keycloak сессию. Нужно, наоборот: короткий порог И короткий access, чтобы refresh предпринимался часто.
 
-- env: `Oidc__TokenLifetime__RefreshThreshold: "00:00:30"`.
+- env: `Oidc__TokenRefresh__RefreshThreshold: "00:00:30"`.
 - realm: Access Token Lifespan = 1 минута.
 - после смены войти заново (чтобы выдался короткий токен).
 
@@ -232,13 +232,13 @@ Oidc__TokenLifetime__RefreshThreshold: "00:10:00"
 
 **Нюанс по cookie.** Панель Application → Cookies показывает cookie только для origin, у которого сейчас открыта страница. Пока `bff.localhost` не загружен, список пуст, хотя cookie на месте.
 
-**Если в варианте B получилось `Session`.** Не сработала эвристика: проверить, что в realm SSO Session Idle Remember Me действительно 30 дней, и что `refresh_expires_in` при входе с галочкой больше `Oidc:TokenLifetime:RememberMeThreshold`.
+**Если в варианте B получилось `Session`.** Не сработала эвристика: проверить, что в realm SSO Session Idle Remember Me действительно 30 дней, и что `refresh_expires_in` при входе с галочкой больше `Oidc:TokenRefresh:RememberMeThreshold`.
 
 ---
 
 ## Сценарий 8. Keycloak временно недоступен: сессия выживает
 
-> Статус: **прошёл 2026-10-27** (оба варианта, patchright). Код добавлен 2026-10-27: исходы refresh `Success` / `Rejected` / `Unavailable`, пауза `Oidc:TokenLifetime:RefreshRetryBackoff`.
+> Статус: **прошёл 2026-10-27** (оба варианта, patchright). Код добавлен 2026-10-27: исходы refresh `Success` / `Rejected` / `Unavailable`, пауза `Oidc:TokenRefresh:RefreshRetryBackoff`.
 
 **Цель.** Временный сбой Keycloak (завис, остановлен, отвечает 5xx) не разлогинивает пользователя. BFF сохраняет сессию и повторяет refresh не чаще раза в `RefreshRetryBackoff` (15 секунд). Когда Keycloak вернётся, токены обновятся как обычно.
 

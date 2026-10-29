@@ -5,33 +5,6 @@ using Microsoft.Extensions.Options;
 
 namespace Host.Services;
 
-/// <summary>Исход попытки refresh.</summary>
-public enum TokenRefreshOutcome
-{
-    /// <summary>Токены получены.</summary>
-    Success,
-
-    /// <summary>Keycloak отказал окончательно (400/401): сессия завершается.</summary>
-    Rejected,
-
-    /// <summary>Временный сбой (5xx, таймаут, сеть, битый ответ): сессия сохраняется, повтор после паузы.</summary>
-    Unavailable,
-}
-
-/// <summary>
-/// Токены из ответа token-endpoint. Если в ответе refresh_token, id_token или token_type равны null, тогда остаются прежние значения сессии.
-/// </summary>
-public sealed record RefreshedTokens(
-    string AccessToken,
-    string? RefreshToken,
-    string? IdToken,
-    string? TokenType,
-    TimeSpan ExpiresIn
-);
-
-/// <summary>Результат обращения к token-endpoint. <see cref="Tokens"/> не null только при Success.</summary>
-public sealed record TokenRefreshResult(TokenRefreshOutcome Outcome, RefreshedTokens? Tokens = null);
-
 /// <summary>
 /// HTTP-клиент token-endpoint Keycloak для grant_type=refresh_token.
 /// Знает только протокол: отправляет запрос и классифицирует ответ в <see cref="TokenRefreshOutcome"/>.

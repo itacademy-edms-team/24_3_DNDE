@@ -14,7 +14,7 @@ participant "SessionCookieLifetime" as L
 participant "CookieAuthenticationHandler" as CH
 database "ITicketStore" as S
 
-TR -> T : TryRefreshTokenAsync(context)
+TR -> T : RefreshIfNeededAsync(context)
 note over T : проверки до замка: см. диаграмму 05
 T -> SM : Semaphores[sessionKey].WaitAsync()
 T -> SM : double-check LastRefreshedAt, RetryNotBefore

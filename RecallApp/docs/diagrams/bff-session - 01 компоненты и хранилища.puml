@@ -42,7 +42,7 @@ routemw --> authmw : next()
 authmw --> oidch : callback?\n(/signin-oidc)
 authmw --> cookieh : AuthenticateAsync(Cookies)
 authmw --> trmw : next()
-trmw --> trs : TryRefreshTokenAsync
+trmw --> trs : RefreshIfNeededAsync
 trmw --> tbcmw: next()
 tbcmw --> ctrl : endpoint.RequestDelegate(context);
 ctrl ..> oidch : Challenge / SignOut
