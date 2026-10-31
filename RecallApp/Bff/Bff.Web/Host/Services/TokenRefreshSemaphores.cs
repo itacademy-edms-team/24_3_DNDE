@@ -9,6 +9,8 @@ namespace Host.Services;
 /// Ключ - идентификатор BFF-сессии (<see cref="BffSessionKeys.SessionId"/>), не sub:
 /// цепочка refresh живёт на сессию, не на пользователя.
 /// Записи мёртвых сессий чистит <see cref="TokenRefreshSessionJanitor"/> плюс ленивый trim.
+/// <see cref="RejectedSessions"/> - маркер окончательного отказа Keycloak: запросы, дождавшиеся
+/// замок после отказа, выходят из сессии без повторного запроса к Keycloak (один POST-запрос на пачку).
 /// </summary>
 public sealed class TokenRefreshSemaphores
 {
@@ -20,6 +22,11 @@ public sealed class TokenRefreshSemaphores
 
     /// <summary>Момент, раньше которого не повторять refresh после временного сбоя Keycloak.</summary>
     public ConcurrentDictionary<string, DateTimeOffset> RetryNotBefore { get; } = new();
+
+    /// <summary>
+    /// Сессии с окончательным отказом Keycloak (invalid_grant). Значение не читается, важно наличие ключа.
+    /// </summary>
+    public ConcurrentDictionary<string, byte> RejectedSessions { get; } = new();
 
     /// <summary>
     /// Удаляет запись замка сессии, если он прямо сейчас не занят. Семафор не Dispose-им:
@@ -34,6 +41,7 @@ public sealed class TokenRefreshSemaphores
 
         LastRefreshedAt.TryRemove(key, out _);
         RetryNotBefore.TryRemove(key, out _);
+        RejectedSessions.TryRemove(key, out _);
         Semaphores.TryRemove(key, out _);
         return true;
     }

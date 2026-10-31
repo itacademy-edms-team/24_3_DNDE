@@ -115,6 +115,19 @@ public sealed class TokenRefreshService(
             if (IsInRetryBackoff(sessionKey))
                 return;
 
+            // Держащий замок запрос уже получил окончательный отказ Keycloak: делаем
+            // выход из сессии без повторного запроса к Keycloak (маркер ставится под замком).
+            if (semaphores.RejectedSessions.ContainsKey(sessionKey))
+            {
+                logger.LogDebug(
+                    "Token refresh skipped (session rejected while waiting for lock): session={SessionKey}",
+                    sessionKey
+                );
+                MarkSessionRejected(context);
+                await SignOutAsync(context);
+                return;
+            }
+
             logger.LogInformation(
                 "Performing token refresh for session={SessionKey} (sub={Sub})",
                 sessionKey,
@@ -164,6 +177,11 @@ public sealed class TokenRefreshService(
                     break;
 
                 case TokenRefreshOutcome.Rejected:
+                    // Маркер для запросов этой сессии, дождавшихся замок: повторять обращение
+                    // к Keycloak со старым (уже отозванным) refresh-токеном бессмысленно,
+                    // логичнее выполнить один запрос и отозвать их всех разом.
+                    // Один POST на всю пачку (А2/Б18).
+                    semaphores.RejectedSessions[sessionKey] = 1;
                     MarkSessionRejected(context);
                     await SignOutAsync(context);
                     break;
