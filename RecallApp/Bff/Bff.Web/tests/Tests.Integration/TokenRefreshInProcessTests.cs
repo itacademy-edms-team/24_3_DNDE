@@ -183,6 +183,37 @@ public sealed class TokenRefreshInProcessTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Session_ParallelRequestsAfterRejection_KeycloakCalledOnceAndAllSignOut()
+    {
+        // А2/Б18: ждущие замок запросы не должны повторять обращение к Keycloak со старым
+        // refresh-токеном: один POST на пачку, остальные выходят по маркеру отказа.
+        var release = new TaskCompletionSource();
+        _app.Keycloak.Respond = async _ =>
+        {
+            await release.Task;
+            return FakeKeycloak.Json(HttpStatusCode.BadRequest, """{"error":"invalid_grant"}""");
+        };
+        _app.Time.Advance(IntoRefreshZone);
+
+        var requests = Enumerable
+            .Range(0, 5)
+            .Select(i => BffApp.GetAppSessionAsync(_browser, $"/session?i={i}"))
+            .ToArray();
+        await Task.Delay(200);
+        release.SetResult();
+        var responses = await Task.WhenAll(requests);
+
+        Assert.Equal(1, _app.Keycloak.RequestCount);
+        Assert.All(
+            responses,
+            r => Assert.Contains("expires=Thu, 01 Jan 1970", Assert.Single(BffApp.SessionCookies(r.Response)))
+        );
+
+        var (_, nextBody) = await BffApp.GetAppSessionAsync(_browser);
+        Assert.False(nextBody.GetProperty("isAuthenticated").GetBoolean());
+    }
+
+    [Fact]
     public async Task Session_KeycloakRejects_SignsOutSession()
     {
         _app.Keycloak.Respond = _ =>

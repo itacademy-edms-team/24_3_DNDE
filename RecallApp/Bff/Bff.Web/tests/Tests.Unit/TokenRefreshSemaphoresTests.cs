@@ -22,7 +22,8 @@ public class TokenRefreshSemaphoresTests
     private bool Contains(string key) =>
         _semaphores.Semaphores.ContainsKey(key)
         || _semaphores.LastRefreshedAt.ContainsKey(key)
-        || _semaphores.RetryNotBefore.ContainsKey(key);
+        || _semaphores.RetryNotBefore.ContainsKey(key)
+        || _semaphores.RejectedSessions.ContainsKey(key);
 
     [Fact]
     public void TryEvict_IdleSession_RemovesFromAllMapsAndReturnsTrue()
@@ -49,6 +50,16 @@ public class TokenRefreshSemaphoresTests
     public void TryEvict_UnknownKey_ReturnsTrue()
     {
         Assert.True(_semaphores.TryEvict("missing"));
+    }
+
+    [Fact]
+    public void TryEvict_RejectedSession_RemovesMarkerFromAllMaps()
+    {
+        AddSession("s1", Now);
+        _semaphores.RejectedSessions["s1"] = 1;
+
+        Assert.True(_semaphores.TryEvict("s1"));
+        Assert.False(Contains("s1"));
     }
 
     [Fact]
