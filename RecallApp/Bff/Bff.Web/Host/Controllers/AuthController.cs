@@ -51,7 +51,7 @@ public class AuthController : ControllerBase
             OpenIdConnectDefaults.AuthenticationScheme);
     }
 
-    /// <summary>Состояние текущей сессии: авторизация, личность из токена, client-роли RecallApp.</summary>
+    /// <summary>Состояние текущей сессии: авторизация, личность из токена, client-роли RecallApp. Поля по белому списку</summary>
     [HttpGet("/session")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     // Состояние сессии не кэшируется: bfcache/back-навигация иначе отдавали бы устаревшее состояние.
@@ -66,13 +66,14 @@ public class AuthController : ControllerBase
         var accessToken = await HttpContext.GetTokenAsync("access_token");
         var roles = ExtractRecallAppRoles(accessToken);
 
-        var claims = User.Claims.Select(c => new { c.Type, c.Value });
+        // Внутренние идентификаторы (sid, session_state и пр.) наружу не отдаём.
         return Ok(new
         {
             isAuthenticated = true,
+            sub = User.FindFirst("sub")?.Value,
             name = User.Identity.Name,
+            email = User.FindFirst("email")?.Value,
             roles,
-            claims,
         });
     }
 
