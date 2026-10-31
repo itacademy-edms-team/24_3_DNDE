@@ -13,11 +13,13 @@ using Microsoft.Extensions.Options;
 namespace Tests.Integration.Helpers;
 
 /// <summary>Сессия, которую тест засевает в обход OIDC-входа.</summary>
+/// <param name="WithoutSessionId">Не ставить bff_session_id: сессия без ключа сериализации refresh.</param>
 public sealed record TestSession(
     string AccessToken,
     string? RefreshToken = "initial-refresh",
     TimeSpan? AccessLifetime = null,
-    bool RememberMe = false
+    bool RememberMe = false,
+    bool WithoutSessionId = false
 );
 
 /// <summary>Состояние сессии, как его видит cookie-схема (без TokenRefreshMiddleware).</summary>
@@ -63,8 +65,9 @@ public sealed class TestSessionEndpoints : IStartupFilter
         var now = context.RequestServices.GetRequiredService<TimeProvider>().GetUtcNow();
 
         var properties = new AuthenticationProperties();
-        properties.SetString(BffSessionKeys.SessionId, Guid.NewGuid().ToString("N"));
-        SessionCookieLifetime.Apply(properties, session!.RememberMe, oidc.SsoSession, now);
+        if (!session!.WithoutSessionId)
+            properties.SetString(BffSessionKeys.SessionId, Guid.NewGuid().ToString("N"));
+        SessionCookieLifetime.Apply(properties, session.RememberMe, oidc.SsoSession, now);
 
         var tokens = new List<AuthenticationToken>
         {

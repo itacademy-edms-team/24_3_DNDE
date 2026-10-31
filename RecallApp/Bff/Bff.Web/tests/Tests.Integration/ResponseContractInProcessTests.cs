@@ -49,4 +49,18 @@ public sealed class ResponseContractInProcessTests : IAsyncLifetime
         response.EnsureSuccessStatusCode();
         Assert.Contains("no-store", response.Headers.CacheControl?.ToString());
     }
+
+    [Fact]
+    public async Task Session_Authenticated_ReturnsOnlyWhitelistedFields()
+    {
+        await BffApp.SignInAsync(_browser, new TestSession(TestJwt.Create("initial-role")));
+
+        var (_, body) = await BffApp.GetAppSessionAsync(_browser);
+
+        var fields = body.EnumerateObject().Select(p => p.Name).OrderBy(n => n).ToArray();
+        Assert.Equal(
+            new[] { "email", "isAuthenticated", "name", "roles", "sub" },
+            fields
+        );
+    }
 }

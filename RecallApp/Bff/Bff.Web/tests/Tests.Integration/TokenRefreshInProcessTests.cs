@@ -194,6 +194,23 @@ public sealed class TokenRefreshInProcessTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Session_WithoutBffSessionId_SignsOutWithoutCallingKeycloak()
+    {
+        using var browser = _app.CreateBrowser();
+        await BffApp.SignInAsync(
+            browser,
+            new TestSession(TestJwt.Create("initial-role"), WithoutSessionId: true)
+        );
+        _app.Time.Advance(IntoRefreshZone);
+
+        await BffApp.GetAppSessionAsync(browser);
+        var (_, nextBody) = await BffApp.GetAppSessionAsync(browser);
+
+        Assert.Equal(0, _app.Keycloak.RequestCount);
+        Assert.False(nextBody.GetProperty("isAuthenticated").GetBoolean());
+    }
+
+    [Fact]
     public async Task Session_WindowExpired_IsAnonymousWithoutRefresh()
     {
         _app.Time.Advance(TimeSpan.FromMinutes(31));
