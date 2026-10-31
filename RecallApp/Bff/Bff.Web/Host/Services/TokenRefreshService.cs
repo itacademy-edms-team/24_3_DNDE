@@ -126,6 +126,7 @@ public sealed class TokenRefreshService(
                     "Token refresh failed: refresh_token missing for session={SessionKey}",
                     sessionKey
                 );
+                MarkSessionRejected(context);
                 await SignOutAsync(context);
                 return;
             }
@@ -161,6 +162,7 @@ public sealed class TokenRefreshService(
                     break;
 
                 case TokenRefreshOutcome.Rejected:
+                    MarkSessionRejected(context);
                     await SignOutAsync(context);
                     break;
             }
@@ -186,6 +188,9 @@ public sealed class TokenRefreshService(
         );
         return true;
     }
+
+    private static void MarkSessionRejected(HttpContext context) =>
+        context.Items[BffRequestItems.SessionRejected] = true;
 
     private static Task SignOutAsync(HttpContext context) =>
         context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);

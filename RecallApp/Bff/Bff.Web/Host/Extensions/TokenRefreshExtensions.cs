@@ -21,6 +21,7 @@ public static class TokenRefreshExtensions
         services.AddSingleton<SessionTokenWriter>();
         services.AddScoped<ITokenRefreshService, TokenRefreshService>();
         services.AddScoped<TokenRefreshMiddleware>();
+        services.AddScoped<SessionGuardMiddleware>();
         services
             .AddHttpClient<KeycloakTokenClient>(
                 client =>
@@ -43,4 +44,11 @@ public static class TokenRefreshExtensions
     /// <summary>Добавляет <see cref="TokenRefreshMiddleware"/> в конвейер. Размещать после UseAuthentication.</summary>
     public static IApplicationBuilder UseKeycloakTokenRefresh(this IApplicationBuilder app) =>
         app.UseMiddleware<TokenRefreshMiddleware>();
+
+    /// <summary>
+    /// Добавляет <see cref="SessionGuardMiddleware"/> в конвейер. Размещать после UseKeycloakTokenRefresh,
+    /// чтобы маркер отказа refresh уже стоял в Items.
+    /// </summary>
+    public static IApplicationBuilder UseSessionGuard(this IApplicationBuilder app) =>
+        app.UseMiddleware<SessionGuardMiddleware>();
 }

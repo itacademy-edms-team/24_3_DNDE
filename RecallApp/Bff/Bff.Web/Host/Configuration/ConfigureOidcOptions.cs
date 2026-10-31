@@ -63,6 +63,17 @@ public sealed class ConfigureOidcOptions(IOptions<OidcOptions> oidc, TimeProvide
         // Срабатывает после проверки id_token, то есть только для входа, который точно состоится.
         // Здесь же ещё доступен сырой ответ token-endpoint (refresh_expires_in в SaveTokens не попадает).
         options.Events ??= new OpenIdConnectEvents();
+
+        // fetch из SPA не может проследовать за 302 в Keycloak: для /api/** вместо редиректа
+        // отвечаем 401 problem+json. Редирект остаётся для браузерных переходов (/login и пр.).
+        options.Events.OnRedirectToIdentityProvider = async ctx =>
+        {
+            if (!ctx.Request.Path.StartsWithSegments("/api"))
+                return;
+
+            await ApiProblem.WriteUnauthorizedAsync(ctx.Response, ApiProblem.NotAuthenticated);
+            ctx.HandleResponse();
+        };
         options.Events.OnTokenValidated = ctx =>
         {
             var properties = ctx.Properties!;

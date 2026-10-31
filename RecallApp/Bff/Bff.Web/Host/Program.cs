@@ -107,6 +107,7 @@ try
 
     app.UseAuthentication();
     app.UseKeycloakTokenRefresh();
+    app.UseSessionGuard();
     app.UseAuthorization();
 
     app.MapHealthChecks("/healthz");
