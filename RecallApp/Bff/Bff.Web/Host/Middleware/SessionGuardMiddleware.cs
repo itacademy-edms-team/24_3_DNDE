@@ -9,6 +9,7 @@ namespace Host.Middleware;
 /// <summary>
 /// Граница сессии для API-запросов.
 /// Анонимный запрос к /api/** получает 401 problem+json вместо редиректа в Keycloak;
+/// мутации /api/** без заголовка X-CSRF отклоняются;
 /// после отказа Keycloak на refresh (маркер от TokenRefreshService) /api/** отвечает
 /// 401 session_expired, остальные пути продолжают запрос с анонимной личностью.
 /// Размещать после UseAuthentication и UseKeycloakTokenRefresh.
@@ -17,6 +18,13 @@ public sealed class SessionGuardMiddleware : IMiddleware
 {
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
+        if (IsApiPath(context) && IsMutation(context) && !HasCsrfHeader(context))
+        {
+            // Кросс-сайт-запрос без preflight (форма, img) кастомный заголовок поставить не сможет.
+            await ApiProblem.WriteForbiddenAsync(context.Response, ApiProblem.CsrfFailed);
+            return;
+        }
+
         if (IsApiPath(context) && context.User.Identity?.IsAuthenticated != true)
         {
             // Challenge уходит в DefaultChallengeScheme (OIDC); событие OnRedirectToIdentityProvider
@@ -44,4 +52,13 @@ public sealed class SessionGuardMiddleware : IMiddleware
 
     private static bool IsApiPath(HttpContext context) =>
         context.Request.Path.StartsWithSegments("/api");
+
+    private static bool IsMutation(HttpContext context) =>
+        HttpMethods.IsPost(context.Request.Method)
+        || HttpMethods.IsPut(context.Request.Method)
+        || HttpMethods.IsPatch(context.Request.Method)
+        || HttpMethods.IsDelete(context.Request.Method);
+
+    private static bool HasCsrfHeader(HttpContext context) =>
+        string.Equals(context.Request.Headers["X-CSRF"].ToString(), "1", StringComparison.Ordinal);
 }

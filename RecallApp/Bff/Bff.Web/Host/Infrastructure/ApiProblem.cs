@@ -15,14 +15,27 @@ public static class ApiProblem
     /// <summary>Сессия была, но Keycloak отказал в обновлении токена: сессия завершена.</summary>
     public const string SessionExpired = "session_expired";
 
+    /// <summary>Мутация /api/** без заголовка X-CSRF: кросс-сайт-запрос отклонён.</summary>
+    public const string CsrfFailed = "csrf_failed";
+
     /// <summary>401 application/problem+json с машиночитаемым кодом причины отказа.</summary>
     public static Task WriteUnauthorizedAsync(HttpResponse response, string code)
     {
         response.StatusCode = StatusCodes.Status401Unauthorized;
-        return response.WriteAsJsonAsync(
-            new { type = "about:blank", title = "Unauthorized", status = 401, code },
+        return WriteAsync(response, "Unauthorized", 401, code);
+    }
+
+    /// <summary>403 application/problem+json с машиночитаемым кодом причины отказа.</summary>
+    public static Task WriteForbiddenAsync(HttpResponse response, string code)
+    {
+        response.StatusCode = StatusCodes.Status403Forbidden;
+        return WriteAsync(response, "Forbidden", 403, code);
+    }
+
+    private static Task WriteAsync(HttpResponse response, string title, int status, string code) =>
+        response.WriteAsJsonAsync(
+            new { type = "about:blank", title, status, code },
             options: null,
             contentType: "application/problem+json"
         );
-    }
 }
