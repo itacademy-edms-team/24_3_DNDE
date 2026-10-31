@@ -13,4 +13,4 @@ ENTRYPOINT ["/bin/sh", "-c", "\
   if [ -f /certs/rootCA.pem ]; then \
   cp /certs/rootCA.pem /usr/local/share/ca-certificates/recallapp-dev-ca.crt && update-ca-certificates >/dev/null 2>&1; \
   fi; \
-  exec dotnet watch run --project /src/Host/Host.csproj --urls http://0.0.0.0:8080 --non-interactive"]
+  exec dotnet watch run --project /src/Host/Host.csproj --non-interactive"]
