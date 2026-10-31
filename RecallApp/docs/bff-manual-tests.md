@@ -39,8 +39,8 @@
 | Путь | Назначение |
 |---|---|
 | `GET https://bff.localhost/login` | старт OIDC-входа, редирект на Keycloak, затем обратно |
-| `GET https://bff.localhost/session` | состояние сессии: `{ isAuthenticated, name, roles, claims }` |
-| `GET https://bff.localhost/logout` | выход: сброс cookie и OIDC sign-out |
+| `GET https://bff.localhost/session` | состояние сессии (белый список, `Cache-Control: no-store`): `{ isAuthenticated, sub, name, email, roles }` |
+| `POST https://bff.localhost/logout` | выход: сброс cookie и OIDC sign-out (только POST; GET отвечает 405) |
 
 ### Где смотреть логи
 
@@ -94,7 +94,7 @@ Oidc__TokenRefresh__RefreshThreshold: "00:10:00"
 1. Открыть `https://bff.localhost/session` без входа.
 2. Пройти `https://bff.localhost/login`, войти под тестовым пользователем.
 3. Снова открыть `/session`.
-4. Пройти `https://bff.localhost/logout`.
+4. Выйти: `POST /logout` (в консоли браузера `fetch('/logout', { method: 'POST' })`).
 5. Снова открыть `/session`.
 
 **Ожидаем.**
@@ -214,12 +214,12 @@ Oidc__TokenRefresh__RefreshThreshold: "00:10:00"
 **Где смотреть.** DevTools → Application → Cookies → `https://bff.localhost` → `recall_bff`, столбец Expires / Max-Age: `Session` или дата. Либо Network → ответ на `/signin-oidc` → заголовок `Set-Cookie`, есть ли в нём `expires=`.
 
 **Шаги A: без галочки.**
-1. `/logout`, затем `/login`, войти без отметки Remember me.
+1. POST `/logout`, затем `/login`, войти без отметки Remember me.
 2. Посмотреть cookie.
 3. Полностью закрыть браузер (все окна), открыть `/session`.
 
 **Шаги B: с галочкой.**
-1. `/logout`, затем `/login`, войти с отметкой Remember me.
+1. POST `/logout`, затем `/login`, войти с отметкой Remember me.
 2. Посмотреть cookie.
 3. Полностью закрыть браузер, открыть `/session`.
 
