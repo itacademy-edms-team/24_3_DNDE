@@ -46,13 +46,15 @@ public sealed class TokenRefreshService(
         var sessionKey = authResult.Properties.GetString(BffSessionKeys.SessionId);
         if (string.IsNullOrEmpty(sessionKey))
         {
-            // Cookie без BFF-session-id (выписана до появления маппера). Деградируем на sub,
-            // чтобы не падать; корректность мультисессии при этом не гарантируется.
+            // Ключ сериализации обязателен: сессия без него (cookie выписана до появления маппера)
+            // не сможет корректно обновляться - завершаем её, в Keycloak не ходим.
             logger.LogWarning(
-                "Token refresh: BFF session id missing, falling back to sub for sub={Sub}",
+                "Token refresh: BFF session id missing, signing out session for sub={Sub}",
                 sub
             );
-            sessionKey = sub;
+            MarkSessionRejected(context);
+            await SignOutAsync(context);
+            return;
         }
 
         var expiresAtRaw = authResult.Properties.GetTokenValue(AccessTokenExpiryHelper.TokenName);
