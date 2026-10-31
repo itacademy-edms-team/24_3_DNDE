@@ -40,6 +40,8 @@ public class AuthController : ControllerBase
     /// <summary>Состояние текущей сессии: авторизация, личность из токена, client-роли RecallApp.</summary>
     [HttpGet("/session")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    // Состояние сессии не кэшируется: bfcache/back-навигация иначе отдавали бы устаревшее состояние.
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<IActionResult> Session()
     {
         if (User.Identity?.IsAuthenticated != true)
