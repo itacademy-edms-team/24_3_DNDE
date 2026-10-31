@@ -12,6 +12,7 @@ package "Bff.Web (процесс)" {
     component "RoutingMiddleware" as routemw
     component "AuthenticationMiddleware" as authmw
     component "TokenRefreshMiddleware" as trmw
+    component "SessionGuardMiddleware\n/api: 401/403, сброс User после отказа" as guardmw
     component "..." as tbcmw
     component "AuthController\n/login /logout /session" as ctrl
   }
@@ -31,7 +32,7 @@ package "Bff.Web (процесс)" {
   }
 
   database "ITicketStore\nDistributedCacheTicketStore\n→ IDistributedCache (in-memory)" as store
-  database "TokenRefreshSemaphores\nSemaphores / LastRefreshedAt /\nRetryNotBefore" as sems
+  database "TokenRefreshSemaphores\nSemaphores / LastRefreshedAt /\nRetryNotBefore / RejectedSessions" as sems
 }
 
 database "Cookie recall_bff\n(в браузере)" as cookie
@@ -43,10 +44,12 @@ authmw --> oidch : callback?\n(/signin-oidc)
 authmw --> cookieh : AuthenticateAsync(Cookies)
 authmw --> trmw : next()
 trmw --> trs : RefreshIfNeededAsync
-trmw --> tbcmw: next()
+trmw --> guardmw : next()
+guardmw --> tbcmw: next()
 tbcmw --> ctrl : endpoint.RequestDelegate(context);
 ctrl ..> oidch : Challenge / SignOut
 ctrl ..> cookieh : SignOut
+guardmw ..> ctrl : /api без сессии: Challenge\n(событие OIDC → 401 problem+json)
 
 cookieh --> cookie : читает / пишет\n(ключ стора, зашифрован)
 cookieh --> store : Retrieve / Store /\nRenew / Remove

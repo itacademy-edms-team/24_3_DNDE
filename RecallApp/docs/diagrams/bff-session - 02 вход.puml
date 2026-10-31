@@ -19,7 +19,7 @@ participant "Keycloak" as K
 B -> AM : GET /login?returnUrl=/
 AM -> CH : AuthenticateAsync(Cookies)
 CH --> AM : обычно NoResult (cookie нет, аноним)
-note right of AM : если пользователь уже вошёл,\nзапрос аутентифицирован и идёт\nобычным путём (диаграммы 04, 05)
+note right of AM : если пользователь уже вошёл,\nконтроллер делает 302 на returnUrl:\nChallenge не вызывается, вторая\nсессия в сторе не появляется
 AM -> TR : next()
 TR -> TR : аноним: пропуск;\nвошедший: дерево решений (диаграмма 05)
 TR -> C : next()

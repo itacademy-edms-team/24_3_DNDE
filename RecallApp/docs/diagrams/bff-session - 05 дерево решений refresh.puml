@@ -23,7 +23,12 @@ endif
 тот же результат, что получил AuthenticationMiddleware:
 handler создан на этот запрос и запомнил его,
 стор повторно не читается;
-:sessionKey = properties[bff_session_id]\n(нет: fallback на sub, warning);
+if (bff_session_id в properties?) then (нет)
+  :SignOutAsync(Cookies); <<signout>>
+  :next(); <<pass>>
+  stop
+endif
+:sessionKey = properties[bff_session_id];
 if (expires_at есть и парсится?) then (нет)
   :warning;
   :next(); <<pass>>
@@ -48,18 +53,25 @@ if (RetryNotBefore снова в будущем?) then (да, ждавшие\nв
   :next(); <<pass>>
   stop
 endif
+if (RejectedSessions[sessionKey] есть?) then (да, держащий\nуже получил отказ)
+  :SignOutAsync(Cookies); <<signout>>
+  :Release;
+  :next(); <<pass>>
+  stop
+endif
 if (refresh_token в properties?) then (нет)
   :SignOutAsync(Cookies); <<signout>>
   :Release;
   :next(); <<pass>>
   stop
 endif
-:KeycloakTokenClient.RefreshAsync:\nPOST /token grant_type=refresh_token\n(таймаут 5 с);
+:KeycloakTokenClient.RefreshAsync:\nPOST /token grant_type=refresh_token\n(таймаут KeycloakTimeout, 5 с);
 switch (исход)
 case (Success)
   :SessionTokenWriter:\nStoreTokens, ResetWindow, SignInAsync;
   :LastRefreshedAt = now\nRetryNotBefore удалить\nленивый trim при > 10 000;
-case (Rejected 400/401)
+case (Rejected: 400 invalid_grant)
+  :RejectedSessions[sessionKey] = маркер\nItems[SessionRejected] = маркер;
   :SignOutAsync(Cookies); <<signout>>
 case (Unavailable)
   :RetryNotBefore = now + 15 с\nсессию не трогать; <<deferred>>

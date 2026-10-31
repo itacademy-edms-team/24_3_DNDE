@@ -19,7 +19,7 @@ note over T : проверки до замка: см. диаграмму 05
 T -> SM : Semaphores[sessionKey].WaitAsync()
 T -> SM : double-check LastRefreshedAt, RetryNotBefore
 T -> KC : RefreshAsync(refresh_token)
-KC -> K : POST /token (refresh_token, client_id, секрет),\nтаймаут 5 с
+KC -> K : POST /token (refresh_token, client_id, секрет),\nтаймаут KeycloakTimeout (5 с)
 alt 2xx и в JSON есть access_token, expires_in
   K --> KC : access, refresh (новый, старый отозван),\nid_token, token_type, expires_in
   KC --> T : Success(RefreshedTokens)
@@ -30,14 +30,20 @@ alt 2xx и в JSON есть access_token, expires_in
   CH -> S : RenewAsync(тот же ключ, тикет)
   CH -> CH : Set-Cookie recall_bff (тот же ключ)
   T -> SM : LastRefreshedAt = now, RetryNotBefore удалить
-else 400 / 401
-  K --> KC : invalid_grant / invalid_client
+else 400, error = invalid_grant
+  K --> KC : invalid_grant\n(refresh отозван / истёк, сессия убита)
   KC --> T : Rejected
+  T -> SM : RejectedSessions[sessionKey] = маркер\n(ждущие замок выйдут без повторного POST)
   T -> CH : SignOutAsync(Cookies)
   CH -> S : RemoveAsync(ключ)
   CH -> CH : Set-Cookie recall_bff удалить
-  note right of T : context.User в этом запросе\nостаётся аутентифицированным
-else 5xx, 429, таймаут 5 с, сеть, битый JSON, нет полей
+  note right of T : Items[SessionRejected] сбрасывает User\nв анонима SessionGuardMiddleware ниже по конвейеру
+else 401, 400 с иной ошибкой (invalid_client и пр.)
+  K --> KC : invalid_client / unauthorized_client
+  KC --> T : Unavailable
+  T -> SM : RetryNotBefore = now + 15 с
+  note right of T : сбой конфигурации, а не сессии: LogError,\nсессия, cookie и стор не тронуты;\nLastRefreshedAt не ставится
+else 5xx, 429, таймаут, сеть, битый JSON, нет полей
   K --> KC : ошибка / нет ответа
   KC --> T : Unavailable
   T -> SM : RetryNotBefore = now + 15 с
