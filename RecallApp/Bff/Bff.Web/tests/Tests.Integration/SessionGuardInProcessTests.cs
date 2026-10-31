@@ -75,6 +75,39 @@ public sealed class SessionGuardInProcessTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ApiMutation_WithoutCsrfHeader_Returns403()
+    {
+        await BffApp.SignInAsync(_browser, new TestSession(TestJwt.Create("initial-role")));
+
+        var response = await _browser.PostAsync(TestSessionEndpoints.ApiEchoPath, content: null);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("csrf_failed", body.GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public async Task ApiMutation_WithCsrfHeader_Passes()
+    {
+        await BffApp.SignInAsync(_browser, new TestSession(TestJwt.Create("initial-role")));
+        _browser.DefaultRequestHeaders.Add("X-CSRF", "1");
+
+        var response = await _browser.PostAsync(TestSessionEndpoints.ApiEchoPath, content: null);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ApiRead_WithoutCsrfHeader_Passes()
+    {
+        await BffApp.SignInAsync(_browser, new TestSession(TestJwt.Create("initial-role")));
+
+        var response = await _browser.GetAsync(TestSessionEndpoints.ApiEchoPath);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Session_AfterKeycloakRejection_ReturnsAnonymousInSameResponse()
     {
         await BffApp.SignInAsync(_browser, new TestSession(TestJwt.Create("initial-role")));
