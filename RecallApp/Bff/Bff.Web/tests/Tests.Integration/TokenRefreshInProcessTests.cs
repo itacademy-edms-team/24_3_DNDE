@@ -173,8 +173,8 @@ public sealed class TokenRefreshInProcessTests : IAsyncLifetime
         var (response, body) = await BffApp.GetAppSessionAsync(_browser);
         var (_, nextBody) = await BffApp.GetAppSessionAsync(_browser);
 
-        // §8.4: запрос, в котором случился отказ, ещё видит пользователя; cookie удаляется в его ответе.
-        Assert.True(body.GetProperty("isAuthenticated").GetBoolean());
+        // Guard middleware сбрасывает личность ещё в запросе с отказом: /session сразу анонимен.
+        Assert.False(body.GetProperty("isAuthenticated").GetBoolean());
         Assert.Contains("expires=Thu, 01 Jan 1970", Assert.Single(BffApp.SessionCookies(response)));
         Assert.False(nextBody.GetProperty("isAuthenticated").GetBoolean());
     }

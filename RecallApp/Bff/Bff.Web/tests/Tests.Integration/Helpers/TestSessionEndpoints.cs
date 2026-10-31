@@ -32,12 +32,14 @@ public sealed record SessionSnapshot(
 /// <summary>
 /// Тестовые endpoint-ы, подключаемые перед конвейером приложения только в интеграционных тестах.
 /// POST /test/signin создаёт сессию так же, как вход (SessionCookieLifetime.Apply, bff_session_id),
-/// GET /test/session отдаёт её содержимое.
+/// GET /test/session отдаёт её содержимое,
+/// GET /api/echo имитирует защищённый API за BFF.
 /// </summary>
 public sealed class TestSessionEndpoints : IStartupFilter
 {
     public const string SignInPath = "/test/signin";
     public const string SessionPath = "/test/session";
+    public const string ApiEchoPath = "/api/echo";
 
     public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) =>
         app =>
@@ -46,7 +48,10 @@ public sealed class TestSessionEndpoints : IStartupFilter
             // с path=/test/signin, невидимую для остального приложения.
             app.MapWhen(c => c.Request.Path == SignInPath, branch => branch.Run(SignInAsync));
             app.MapWhen(c => c.Request.Path == SessionPath, branch => branch.Run(ReadSessionAsync));
+            // За конвейером: echo обязан пройти аутентификацию, refresh и SessionGuardMiddleware,
+            // как будущие API за YARP. До next(app) он бы обслуживался в обход всего pipeline.
             next(app);
+            app.MapWhen(c => c.Request.Path == ApiEchoPath, branch => branch.Run(ApiEchoAsync));
         };
 
     private static async Task SignInAsync(HttpContext context)
@@ -87,6 +92,13 @@ public sealed class TestSessionEndpoints : IStartupFilter
         );
         await context
             .SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity), properties);
+    }
+
+    private static async Task ApiEchoAsync(HttpContext context)
+    {
+        await context.Response.WriteAsJsonAsync(
+            new { authenticated = context.User.Identity?.IsAuthenticated == true }
+        );
     }
 
     private static async Task ReadSessionAsync(HttpContext context)

@@ -2,11 +2,15 @@ using System.Globalization;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Host.Services;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
+using Microsoft.IdentityModel.Protocols;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 
 namespace Tests.Integration.Helpers;
 
@@ -46,7 +50,27 @@ public sealed class BffApp : WebApplicationFactory<Program>
         {
             services.AddSingleton<TimeProvider>(Time);
             if (RealKeycloak is null)
+            {
                 services.AddHttpClient<KeycloakTokenClient>().ConfigurePrimaryHttpMessageHandler(() => Keycloak);
+                // Challenge-тесты (401 для /api/**, 302 для /login) не должны ходить за discovery
+                // к несуществующему issuer: статическая конфигурация его endpoint-ов.
+                services.PostConfigure<OpenIdConnectOptions>(
+                    OpenIdConnectDefaults.AuthenticationScheme,
+                    options =>
+                    {
+                        const string authority = "https://auth.test/realms/recallapp";
+                        options.Configuration = new OpenIdConnectConfiguration
+                        {
+                            AuthorizationEndpoint = $"{authority}/protocol/openid-connect/auth",
+                            TokenEndpoint = $"{authority}/protocol/openid-connect/token",
+                            EndSessionEndpoint = $"{authority}/protocol/openid-connect/logout",
+                        };
+                        options.ConfigurationManager = new StaticConfigurationManager<
+                            OpenIdConnectConfiguration
+                        >(options.Configuration);
+                    }
+                );
+            }
             services.AddSingleton<IStartupFilter, TestSessionEndpoints>();
         });
     }
