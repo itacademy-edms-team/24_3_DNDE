@@ -85,6 +85,8 @@ try
 
     builder.Services.AddKeycloakTokenRefreshServices();
 
+    builder.Services.AddProblemDetails();
+
     builder.Services.AddControllers();
 
     // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -93,7 +95,10 @@ try
 
     var app = builder.Build();
 
-    app.UseDeveloperExceptionPage();
+    if (app.Environment.IsDevelopment())
+        app.UseDeveloperExceptionPage();
+    else
+        app.UseExceptionHandler();
     app.UseForwardedHeaders();
 
     // Configure the HTTP request pipeline.
