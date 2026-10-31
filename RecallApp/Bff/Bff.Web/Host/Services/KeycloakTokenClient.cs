@@ -18,8 +18,15 @@ public sealed class KeycloakTokenClient(
 {
     private readonly OidcOptions _oidcOptions = oidcOptions.Value;
 
-    /// <summary>Обменять refresh-токен на новую пару токенов. Не бросает исключений: см <see cref="TokenRefreshResult"/>.</summary>
-    public async Task<TokenRefreshResult> RefreshAsync(string refreshToken)
+    /// <summary>
+    /// Обменять refresh-токен на новую пару токенов.
+    /// Не бросает исключений по сетевым/протокольным ошибкам: они - в исходе результата.
+    /// Отмена через <paramref name="cancellationToken"/> пробрасывается как OperationCanceledException.
+    /// </summary>
+    public async Task<TokenRefreshResult> RefreshAsync(
+        string refreshToken,
+        CancellationToken cancellationToken = default
+    )
     {
         var tokenEndpoint = $"{_oidcOptions.Authority}/protocol/openid-connect/token";
 
@@ -35,18 +42,32 @@ public sealed class KeycloakTokenClient(
         {
             using var response = await http.PostAsync(
                     tokenEndpoint,
-                    new FormUrlEncodedContent(data)
+                    new FormUrlEncodedContent(data),
+                    cancellationToken
                 );
 
-            // 400 (invalid_grant: refresh отозван или истёк) и 401 (неверный клиент или секрет)
-            // это окончательный отказ: повтор того же запроса не поможет.
             if (response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Unauthorized)
             {
-                logger.LogWarning(
-                    "Token refresh rejected by IdP with status {Status}",
-                    response.StatusCode
+                var error = await TryReadErrorAsync(response, cancellationToken);
+
+                // Окончательный отказ только для invalid_grant: refresh отозван или истёк.
+                if (response.StatusCode == HttpStatusCode.BadRequest && error == "invalid_grant")
+                {
+                    logger.LogWarning(
+                        "Token refresh rejected by IdP with status {Status}",
+                        response.StatusCode
+                    );
+                    return new TokenRefreshResult(TokenRefreshOutcome.Rejected);
+                }
+
+                // 401 и 400 с иной ошибкой (invalid_client, unauthorized_client, ...): сбой конфигурации или клиента, а не сессии.
+                // Разлогинивать всех не нужно: ведём себя как при недоступном Keycloak - сессия жива, ретрай после паузы.
+                logger.LogError(
+                    "Token refresh failed with status {Status} and error {Error}: treating as IdP unavailability, session kept",
+                    response.StatusCode,
+                    error
                 );
-                return new TokenRefreshResult(TokenRefreshOutcome.Rejected);
+                return new TokenRefreshResult(TokenRefreshOutcome.Unavailable);
             }
 
             if (!response.IsSuccessStatusCode)
@@ -58,7 +79,7 @@ public sealed class KeycloakTokenClient(
                 return new TokenRefreshResult(TokenRefreshOutcome.Unavailable);
             }
 
-            var json = await response.Content.ReadAsStringAsync();
+            var json = await response.Content.ReadAsStringAsync(cancellationToken);
             using var document = JsonDocument.Parse(json);
             var tokens = ReadTokens(document.RootElement);
             if (tokens is null)
@@ -70,11 +91,37 @@ public sealed class KeycloakTokenClient(
             return new TokenRefreshResult(TokenRefreshOutcome.Success, tokens);
         }
         catch (Exception ex)
-            when (ex is HttpRequestException or TaskCanceledException or JsonException)
+            when (
+                ex is HttpRequestException or JsonException
+                || (ex is TaskCanceledException && !cancellationToken.IsCancellationRequested)
+            )
         {
             // Сеть, таймаут HttpClient (TaskCanceledException) или битый JSON.
+            // Отмена самого запроса пробрасывается выше.
             logger.LogWarning(ex, "Token refresh request failed");
             return new TokenRefreshResult(TokenRefreshOutcome.Unavailable);
+        }
+    }
+
+    /// <summary>Поле error из JSON-тела ответа; null, если тело не JSON или поля нет.</summary>
+    private static async Task<string?> TryReadErrorAsync(
+        HttpResponseMessage response,
+        CancellationToken cancellationToken
+    )
+    {
+        var body = await response.Content.ReadAsStringAsync(cancellationToken);
+        try
+        {
+            using var document = JsonDocument.Parse(body);
+            return document.RootElement.ValueKind == JsonValueKind.Object
+                && document.RootElement.TryGetProperty("error", out var error)
+                && error.ValueKind == JsonValueKind.String
+                ? error.GetString()
+                : null;
+        }
+        catch (JsonException)
+        {
+            return null;
         }
     }
 
