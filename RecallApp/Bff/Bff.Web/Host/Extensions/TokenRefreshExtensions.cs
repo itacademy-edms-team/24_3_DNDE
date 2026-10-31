@@ -1,5 +1,7 @@
+using Host.Configuration;
 using Host.Middleware;
 using Host.Services;
+using Microsoft.Extensions.Options;
 
 namespace Host.Extensions;
 
@@ -24,11 +26,13 @@ public static class TokenRefreshExtensions
         services.AddScoped<SessionGuardMiddleware>();
         services
             .AddHttpClient<KeycloakTokenClient>(
-                client =>
+                (serviceProvider, client) =>
                 {
                     // Запрос ждёт под замком сессии: держим таймаут коротким.
-                    // Если за 5 сек. не успели, то по ответу идём или на ретрай, или на SignOut.
-                    client.Timeout = TimeSpan.FromSeconds(5);
+                    // Если за это время не успели, то по ответу идём или на ретрай, или на SignOut.
+                    // Ограничен сверху RefreshThreshold проверкой на старте (OidcOptionsValidator).
+                    var oidc = serviceProvider.GetRequiredService<IOptions<OidcOptions>>().Value;
+                    client.Timeout = oidc.TokenRefresh.KeycloakTimeout;
                 }
             )
             .ConfigurePrimaryHttpMessageHandler(() =>

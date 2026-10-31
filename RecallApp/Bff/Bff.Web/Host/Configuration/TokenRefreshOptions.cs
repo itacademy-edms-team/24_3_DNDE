@@ -29,6 +29,13 @@ public sealed class TokenRefreshOptions
     public TimeSpan RefreshRetryBackoff { get; set; } = TimeSpan.FromSeconds(15);
 
     /// <summary>
+    /// Таймаут обращения к Keycloak. Обязан быть меньше <see cref="RefreshThreshold"/>:
+    /// иначе ожидание под замком сессии может пережить окно refresh, и баг сценария 9 вернётся.
+    /// Проверяется на старте (<see cref="OidcOptionsValidator"/>).
+    /// </summary>
+    public TimeSpan KeycloakTimeout { get; set; } = TimeSpan.FromSeconds(5);
+
+    /// <summary>
     /// Граница времени жизни refresh-токена, после которого он считается принадлежащим к "Remember Me" сессии.
     /// Смотрим оставшееся время жизни refresh-токена и округляем вверх до целого дня.
     /// Оставшееся время жизни refresh-токена считается, как округлённый вверх минимум из следующих опций:

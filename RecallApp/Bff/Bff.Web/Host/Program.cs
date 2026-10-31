@@ -25,6 +25,7 @@ try
         .Bind(builder.Configuration.GetSection(OidcOptions.SectionName))
         .ValidateDataAnnotations()
         .ValidateOnStart();
+    builder.Services.AddSingleton<IValidateOptions<OidcOptions>, OidcOptionsValidator>();
 
     // Right scheme/host/port forward (за edge-прокси, ADR 0026)
     builder.Services.Configure<ForwardedHeadersOptions>(options =>
