@@ -14,11 +14,13 @@ namespace Host.Infrastructure;
 public sealed class DistributedCacheTicketStore(
     IDistributedCache cache,
     IOptions<OidcOptions> oidc,
-    TimeProvider timeProvider
+    TimeProvider timeProvider,
+    ILogger<DistributedCacheTicketStore> logger
 ) : ITicketStore
 {
     private const string KeyPrefix = "bff-session:";
 
+    private readonly OidcOptions _oidc = oidc.Value;
     private readonly TimeSpan _fallbackLifetime = oidc.Value.SsoSession.SessionIdle;
 
     public async Task<string> StoreAsync(AuthenticationTicket ticket)
@@ -38,6 +40,20 @@ public sealed class DistributedCacheTicketStore(
 
         var bytes = TicketSerializer.Default.Serialize(ticket);
         await cache.SetAsync(key, bytes, options);
+
+        // MemoryDistributedCache при переполнении молча не пишет запись: SetAsync отрабатывает без исключения, запись отсутствует.
+        // Снаружи это видно только на следующем запросе, когда cookie уже выдана, а тикета в сторе нет:
+        // пользователь неожиданно анонимен, и по логам непонятно почему.
+        // Поэтому выполняем проверочное чтение сразу после записи.
+        if (await cache.GetAsync(key) is null)
+        {
+            logger.LogError(
+                "Session store dropped ticket {Key}: size limit {SizeLimitBytes} bytes exceeded. "
+                    + "Affected user got a session cookie without a server ticket and will be anonymous on the next request",
+                key,
+                _oidc.SessionStoreSizeLimitBytes
+            );
+        }
     }
 
     public async Task<AuthenticationTicket?> RetrieveAsync(string key)

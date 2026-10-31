@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.Extensions.Caching.Distributed;
 
 namespace Host.Configuration;
 
@@ -30,4 +31,9 @@ public sealed class OidcOptions
     /// Настройки времени жизни SSO сессии в Keycloak
     /// </summary>
     public SsoSessionOptions SsoSession { get; set; } = new();
+
+    /// <summary>
+    /// Предел памяти серверного хранилища сессий (байт).
+    /// </summary>
+    public long SessionStoreSizeLimitBytes { get; set; } = 200L * 1024 * 1024;
 }

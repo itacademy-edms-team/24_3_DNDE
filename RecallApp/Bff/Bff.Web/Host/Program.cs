@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.Extensions.Caching.Memory;
 using NLog;
 using NLog.Web;
 
@@ -44,7 +45,14 @@ try
     builder.Services.AddSingleton(TimeProvider.System);
 
     // Серверное хранилище сессии (ADR 0021): in-memory за IDistributedCache, Redis по триггеру.
+    // Лимит памяти задаём явно, берём дефолт из фреймворка.
     builder.Services.AddDistributedMemoryCache();
+    builder.Services
+        .AddOptions<MemoryDistributedCacheOptions>()
+        .Configure<IOptions<OidcOptions>>(
+            (cacheOptions, oidc) =>
+                cacheOptions.SizeLimit = oidc.Value.SessionStoreSizeLimitBytes
+        );
     builder.Services.AddSingleton<ITicketStore, DistributedCacheTicketStore>();
 
     // BFF-аутентификация: cookie-сессия + OIDC-вход в Keycloak (ADR 0002).
