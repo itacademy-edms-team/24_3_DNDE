@@ -164,6 +164,25 @@ public sealed class TokenRefreshInProcessTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Session_KeycloakInvalidClient_KeepsSessionAndBacksOff()
+    {
+        // invalid_client -> сбой конфигурации, а не сессии: выходить не нужно.
+        _app.Keycloak.Respond = _ =>
+            Task.FromResult(FakeKeycloak.Json(HttpStatusCode.Unauthorized, """{"error":"invalid_client"}"""));
+        _app.Time.Advance(IntoRefreshZone);
+
+        var (first, firstBody) = await BffApp.GetAppSessionAsync(_browser);
+        var (_, secondBody) = await BffApp.GetAppSessionAsync(_browser);
+
+        Assert.True(firstBody.GetProperty("isAuthenticated").GetBoolean());
+        Assert.True(secondBody.GetProperty("isAuthenticated").GetBoolean());
+        Assert.Empty(BffApp.SessionCookies(first));
+        // Второй запрос в паузе 15 с: Keycloak не вызывается повторно.
+        Assert.Equal(1, _app.Keycloak.RequestCount);
+        Assert.Equal("initial-refresh", (await BffApp.ReadSessionAsync(_browser)).Tokens["refresh_token"]);
+    }
+
+    [Fact]
     public async Task Session_KeycloakRejects_SignsOutSession()
     {
         _app.Keycloak.Respond = _ =>
@@ -177,6 +196,35 @@ public sealed class TokenRefreshInProcessTests : IAsyncLifetime
         Assert.False(body.GetProperty("isAuthenticated").GetBoolean());
         Assert.Contains("expires=Thu, 01 Jan 1970", Assert.Single(BffApp.SessionCookies(response)));
         Assert.False(nextBody.GetProperty("isAuthenticated").GetBoolean());
+    }
+
+    [Fact]
+    public async Task Refresh_ClientAbortsWhileWaitingForLock_WaitCancelsAndLockReleased()
+    {
+        var release = new TaskCompletionSource();
+        _app.Keycloak.Respond = async _ =>
+        {
+            await release.Task;
+            return FakeKeycloak.Success();
+        };
+        _app.Time.Advance(IntoRefreshZone);
+
+        // Первый запрос держит замок, ожидая Keycloak; второй ждёт замок и обрывается.
+        var holder = BffApp.GetAppSessionAsync(_browser, "/session?i=holder");
+        await Task.Delay(200);
+        using var cts = new CancellationTokenSource();
+        var waiter = _browser.GetAsync("/session?i=waiter", cts.Token);
+        await Task.Delay(200);
+        cts.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => waiter);
+
+        release.SetResult();
+        var (_, holderBody) = await holder;
+        Assert.True(holderBody.GetProperty("isAuthenticated").GetBoolean());
+
+        // Замок возвращён: следующий запрос проходит без зависания и видит живую сессию.
+        var (_, nextBody) = await BffApp.GetAppSessionAsync(_browser);
+        Assert.True(nextBody.GetProperty("isAuthenticated").GetBoolean());
     }
 
     [Fact]

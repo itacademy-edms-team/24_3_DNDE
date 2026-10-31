@@ -66,17 +66,19 @@ public sealed class TokenRefreshKeycloakTests
     }
 
     [KeycloakFact]
-    public async Task Session_WrongClientSecret_SignsOut()
+    public async Task Session_WrongClientSecret_KeepsSessionAndBacksOff()
     {
+        // invalid_client -> сбой конфигурации, а не сессии: выходить не нужно.
         var settings = KeycloakTestSettings.Required;
         var login = await KeycloakDirectGrant.LoginAsync(settings);
         await using var app = new BffApp { RealKeycloak = settings with { ClientSecret = "wrong-secret" } };
         using var browser = await SignInWithKeycloakTokensAsync(app, login);
 
         app.Time.Advance(IntoRefreshZone);
-        await BffApp.GetAppSessionAsync(browser);
-        var (_, nextBody) = await BffApp.GetAppSessionAsync(browser);
+        var (_, firstBody) = await BffApp.GetAppSessionAsync(browser);
+        var (_, secondBody) = await BffApp.GetAppSessionAsync(browser);
 
-        Assert.False(nextBody.GetProperty("isAuthenticated").GetBoolean());
+        Assert.True(firstBody.GetProperty("isAuthenticated").GetBoolean());
+        Assert.True(secondBody.GetProperty("isAuthenticated").GetBoolean());
     }
 }

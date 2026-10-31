@@ -90,16 +90,39 @@ public class KeycloakTokenClientTests
         Assert.Null(result.Tokens.TokenType);
     }
 
-    [Theory]
-    [InlineData(HttpStatusCode.BadRequest)]
-    [InlineData(HttpStatusCode.Unauthorized)]
-    public async Task RefreshAsync_Status400Or401_ReturnsRejected(HttpStatusCode status)
+    [Fact]
+    public async Task RefreshAsync_InvalidGrant_ReturnsRejected()
     {
-        var handler = StubHttpMessageHandler.Json(status, """{"error":"invalid_grant"}""");
+        var handler = StubHttpMessageHandler.Json(
+            HttpStatusCode.BadRequest,
+            """{"error":"invalid_grant"}"""
+        );
 
         var result = await CreateClient(handler).RefreshAsync("old-refresh");
 
         Assert.Equal(TokenRefreshOutcome.Rejected, result.Outcome);
+        Assert.Null(result.Tokens);
+    }
+
+    // Ошибки клиента/конфигурации (не сессии) ведут себя как недоступный Keycloak:
+    // сессия должна выжить, и должен выполниться ретрай после паузы. Без разлогинивания.
+    [Theory]
+    [InlineData(HttpStatusCode.BadRequest, """{"error":"invalid_client"}""")]
+    [InlineData(HttpStatusCode.BadRequest, """{"error":"unauthorized_client"}""")]
+    [InlineData(HttpStatusCode.BadRequest, """{"error_description":"no error field"}""")]
+    [InlineData(HttpStatusCode.BadRequest, "not json")]
+    [InlineData(HttpStatusCode.Unauthorized, """{"error":"invalid_client"}""")]
+    [InlineData(HttpStatusCode.Unauthorized, "")]
+    public async Task RefreshAsync_ClientErrorOtherThanInvalidGrant_ReturnsUnavailable(
+        HttpStatusCode status,
+        string body
+    )
+    {
+        var handler = StubHttpMessageHandler.Json(status, body);
+
+        var result = await CreateClient(handler).RefreshAsync("old-refresh");
+
+        Assert.Equal(TokenRefreshOutcome.Unavailable, result.Outcome);
         Assert.Null(result.Tokens);
     }
 
