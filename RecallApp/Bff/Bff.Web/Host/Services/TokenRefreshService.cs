@@ -95,7 +95,7 @@ public sealed class TokenRefreshService(
             return;
 
         var semaphore = semaphores.Semaphores.GetOrAdd(sessionKey, _ => new SemaphoreSlim(1, 1));
-        await semaphore.WaitAsync();
+        await semaphore.WaitAsync(context.RequestAborted);
         try
         {
             if (
@@ -133,7 +133,7 @@ public sealed class TokenRefreshService(
                 return;
             }
 
-            var result = await tokenClient.RefreshAsync(refreshToken);
+            var result = await tokenClient.RefreshAsync(refreshToken, context.RequestAborted);
             switch (result.Outcome)
             {
                 case TokenRefreshOutcome.Success:
