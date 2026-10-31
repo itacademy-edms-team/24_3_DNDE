@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Host.Infrastructure;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 using Tests.Unit.Helpers;
 
@@ -15,11 +16,17 @@ public class DistributedCacheTicketStoreTests
     private static readonly DateTimeOffset Now = new(2026, 10, 28, 12, 0, 0, TimeSpan.Zero);
 
     private readonly RecordingDistributedCache _cache = new();
+    private readonly RecordingLogger<DistributedCacheTicketStore> _logger = new();
     private readonly DistributedCacheTicketStore _store;
 
     public DistributedCacheTicketStoreTests()
     {
-        _store = new DistributedCacheTicketStore(_cache, TestOidcOptions.Wrap(), new FakeTimeProvider(Now));
+        _store = new DistributedCacheTicketStore(
+            _cache,
+            TestOidcOptions.Wrap(),
+            new FakeTimeProvider(Now),
+            _logger
+        );
     }
 
     private static AuthenticationTicket CreateTicket(DateTimeOffset? expiresUtc)
@@ -99,5 +106,25 @@ public class DistributedCacheTicketStoreTests
         await _store.RemoveAsync(key);
 
         Assert.Null(await _store.RetrieveAsync(key));
+    }
+
+    [Fact]
+    public async Task StoreAsync_StoreDropsWrite_LogsErrorWithSizeLimit()
+    {
+        // MemoryDistributedCache при переполнении молча не пишет запись -> стор обязан это заметить.
+        _cache.DropWrites = true;
+
+        await _store.StoreAsync(CreateTicket(Now.AddMinutes(30)));
+
+        var error = Assert.Single(_logger.Entries, e => e.Level == LogLevel.Error);
+        Assert.Contains("size limit", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task StoreAsync_StoreKeepsWrite_NoErrorLogged()
+    {
+        await _store.StoreAsync(CreateTicket(Now.AddMinutes(30)));
+
+        Assert.DoesNotContain(_logger.Entries, e => e.Level == LogLevel.Error);
     }
 }

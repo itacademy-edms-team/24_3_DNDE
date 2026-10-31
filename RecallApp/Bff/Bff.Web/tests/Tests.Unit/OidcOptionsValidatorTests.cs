@@ -37,7 +37,7 @@ public class OidcOptionsValidatorTests
         );
 
         Assert.False(result.Succeeded);
-        Assert.True(result.Failures!.Any(f => f.Contains("KeycloakTimeout", StringComparison.Ordinal)));
+        Assert.Contains(result.Failures!, f => f.Contains("KeycloakTimeout", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -49,6 +49,6 @@ public class OidcOptionsValidatorTests
         );
 
         Assert.False(result.Succeeded);
-        Assert.True(result.Failures!.Any(f => f.Contains("KeycloakTimeout", StringComparison.Ordinal)));
+        Assert.Contains(result.Failures!, f => f.Contains("KeycloakTimeout", StringComparison.Ordinal));
     }
 }

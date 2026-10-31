@@ -10,13 +10,20 @@ internal sealed class RecordingDistributedCache : IDistributedCache
 {
     public Dictionary<string, (byte[] Value, DistributedCacheEntryOptions Options)> Entries { get; } = [];
 
-    public byte[]? Get(string key) => Entries.TryGetValue(key, out var entry) ? entry.Value : null;
+    /// <summary>Имитация переполнения стора: Set проходит, но запись не появляется.</summary>
+    public bool DropWrites { get; set; }
+
+    public byte[]? Get(string key) =>
+        !DropWrites && Entries.TryGetValue(key, out var entry) ? entry.Value : null;
 
     public Task<byte[]?> GetAsync(string key, CancellationToken token = default) =>
         Task.FromResult(Get(key));
 
-    public void Set(string key, byte[] value, DistributedCacheEntryOptions options) =>
-        Entries[key] = (value, options);
+    public void Set(string key, byte[] value, DistributedCacheEntryOptions options)
+    {
+        if (!DropWrites)
+            Entries[key] = (value, options);
+    }
 
     public Task SetAsync(
         string key,
