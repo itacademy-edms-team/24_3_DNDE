@@ -18,6 +18,7 @@ public sealed class KeycloakTokenClient(
 {
     private readonly OidcOptions _oidcOptions = oidcOptions.Value;
 
+    /// <summary>Обменять refresh-токен на новую пару токенов. Не бросает исключений: см <see cref="TokenRefreshResult"/>.</summary>
     public async Task<TokenRefreshResult> RefreshAsync(string refreshToken)
     {
         var tokenEndpoint = $"{_oidcOptions.Authority}/protocol/openid-connect/token";

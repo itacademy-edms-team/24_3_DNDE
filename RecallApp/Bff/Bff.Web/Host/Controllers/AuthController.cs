@@ -8,9 +8,8 @@ using Microsoft.IdentityModel.JsonWebTokens;
 namespace Host.Controllers;
 
 /// <summary>
-/// Контроллер аутентификации и состояния серверной сессии BFF.
-/// Страницы входа/регистрации используем из Keycloak (ADR 0023);
-/// контроллер только инициирует редиректы и отдаёт состояние сессии.
+/// Контроллер аутентификации и состояния серверной сессии BFF:
+/// инициирует вход/выход редиректами и отдаёт клиенту состояние сессии и client-роли RecallApp.
 /// </summary>
 [ApiController]
 public class AuthController : ControllerBase

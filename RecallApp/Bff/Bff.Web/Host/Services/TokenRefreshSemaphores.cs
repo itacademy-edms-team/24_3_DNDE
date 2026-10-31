@@ -12,8 +12,13 @@ namespace Host.Services;
 /// </summary>
 public sealed class TokenRefreshSemaphores
 {
+    /// <summary>Семафор на BFF-сессию: сериализует обновление её цепочки токенов.</summary>
     public ConcurrentDictionary<string, SemaphoreSlim> Semaphores { get; } = new();
+
+    /// <summary>Время последнего успешного refresh по сессии (двойная проверка под семафором).</summary>
     public ConcurrentDictionary<string, DateTimeOffset> LastRefreshedAt { get; } = new();
+
+    /// <summary>Момент, раньше которого не повторять refresh после временного сбоя Keycloak.</summary>
     public ConcurrentDictionary<string, DateTimeOffset> RetryNotBefore { get; } = new();
 
     /// <summary>

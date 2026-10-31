@@ -110,6 +110,7 @@ public class ConfigureOidcOptionsLoginEventsTests
         Assert.Equal(Now + _oidc.SsoSession.SessionIdle, properties.ExpiresUtc);
     }
 
+    // Граничное значение: ровно порог ещё обычной сессии, Remember Me - строго больше.
     [Fact]
     public async Task OnTokenValidated_RefreshLifetimeEqualToThreshold_AppliesRegularMode()
     {

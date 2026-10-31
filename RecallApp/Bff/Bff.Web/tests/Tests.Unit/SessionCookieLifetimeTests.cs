@@ -4,6 +4,10 @@ using Microsoft.AspNetCore.Authentication;
 
 namespace Tests.Unit;
 
+/// <summary>
+/// Срок и персистентность cookie по режиму сессии (обычный / «запомнить меня»):
+/// применение на входе, перезапуск окна и чтение маркера режима.
+/// </summary>
 public class SessionCookieLifetimeTests
 {
     private static readonly DateTimeOffset Now = new(2026, 10, 28, 12, 0, 0, TimeSpan.Zero);

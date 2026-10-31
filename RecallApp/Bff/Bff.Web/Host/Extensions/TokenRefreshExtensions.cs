@@ -4,10 +4,14 @@ using Host.Services;
 namespace Host.Extensions;
 
 /// <summary>
-/// Набор расширений для работы с обновлениями access-токена в Keycloak
+/// Расширения для регистрация сервисов и middleware упреждающего обновления access-токена.
 /// </summary>
 public static class TokenRefreshExtensions
 {
+    /// <summary>
+    /// Регистрирует состояние замков, уборщика, писателя сессии, координатор refresh
+    /// и typed HttpClient <see cref="KeycloakTokenClient"/> с коротким таймаутом.
+    /// </summary>
     public static IServiceCollection AddKeycloakTokenRefreshServices(
         this IServiceCollection services
     )
@@ -36,6 +40,7 @@ public static class TokenRefreshExtensions
         return services;
     }
 
+    /// <summary>Добавляет <see cref="TokenRefreshMiddleware"/> в конвейер. Размещать после UseAuthentication.</summary>
     public static IApplicationBuilder UseKeycloakTokenRefresh(this IApplicationBuilder app) =>
         app.UseMiddleware<TokenRefreshMiddleware>();
 }

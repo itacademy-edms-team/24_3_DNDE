@@ -12,8 +12,7 @@ public sealed class SsoSessionOptions
     public TimeSpan SessionIdle { get; set; } = TimeSpan.FromMinutes(30);
 
     /// <summary>
-    /// Потолок времени жизни сессии, которое она может прожить в простое.
-    /// Сбрасывается каждый раз, когда выполняется token-refresh.
+    /// Потолок времени жизни сессии «запомнить меня» в простое.
     /// Применяется, если во время входа отметить флаг "Remember Me".
     /// </summary>
     public TimeSpan SessionIdleRememberMe { get; set; } = TimeSpan.FromDays(30);

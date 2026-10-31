@@ -5,6 +5,10 @@ using Tests.Unit.Helpers;
 
 namespace Tests.Unit;
 
+/// <summary>
+/// Фоновую уборку записей замков запускает по таймеру:
+/// удаляются простаивающие и осиротевшие записи, свежие и занятые сохраняются.
+/// </summary>
 public class TokenRefreshSessionJanitorTests
 {
     private static readonly DateTimeOffset Start = new(2026, 10, 28, 12, 0, 0, TimeSpan.Zero);

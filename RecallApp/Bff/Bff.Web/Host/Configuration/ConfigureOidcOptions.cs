@@ -9,13 +9,16 @@ using Microsoft.IdentityModel.Tokens;
 namespace Host.Configuration;
 
 /// <summary>
-/// Настраивает OpenIdConnectOptions из <see cref="OidcOptions"/>:
+/// Настраивает OpenIdConnectOptions BFF из <see cref="OidcOptions"/>:
+/// endpoint-ы и учётные данные клиента, Auth Code + PKCE, сохранение токенов
+/// и события входа (идентификатор BFF-сессии, режим «запомнить меня», единое expires_at).
 /// </summary>
 public sealed class ConfigureOidcOptions(IOptions<OidcOptions> oidc, TimeProvider timeProvider)
     : IConfigureNamedOptions<OpenIdConnectOptions>
 {
     private readonly OidcOptions _oidc = oidc.Value;
 
+    /// <summary>Применяет настройку только к именованной схеме OpenIdConnect; другие имена игнорирует.</summary>
     public void Configure(string? name, OpenIdConnectOptions options)
     {
         if (name != OpenIdConnectDefaults.AuthenticationScheme)
@@ -24,6 +27,7 @@ public sealed class ConfigureOidcOptions(IOptions<OidcOptions> oidc, TimeProvide
         Configure(options);
     }
 
+    /// <summary>Применяет настройку к заданному экземпляру options.</summary>
     public void Configure(OpenIdConnectOptions options)
     {
         options.Authority = _oidc.Authority;

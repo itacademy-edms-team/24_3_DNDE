@@ -9,12 +9,15 @@ public sealed class OidcOptions
 {
     public const string SectionName = "Oidc";
 
+    /// <summary>Базовый URL Keycloak с realm (issuer).</summary>
     [Required]
     public string Authority { get; set; } = string.Empty;
 
+    /// <summary>ClientId конфиденциального OIDC-клиента BFF.</summary>
     [Required]
     public string ClientId { get; set; } = string.Empty;
 
+    /// <summary>Секрет OIDC-клиента. Подаётся через env.</summary>
     [Required]
     public string ClientSecret { get; set; } = string.Empty;
 

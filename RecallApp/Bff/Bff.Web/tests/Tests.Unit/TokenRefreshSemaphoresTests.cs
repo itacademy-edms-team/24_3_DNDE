@@ -2,6 +2,10 @@ using Host.Services;
 
 namespace Tests.Unit;
 
+/// <summary>
+/// Операции с записями замков обновления токенов: удаление простаивающей записи
+/// и ленивый trim с ограничением объёма уборки.
+/// </summary>
 public class TokenRefreshSemaphoresTests
 {
     private static readonly DateTimeOffset Now = new(2026, 10, 28, 12, 0, 0, TimeSpan.Zero);
@@ -40,6 +44,7 @@ public class TokenRefreshSemaphoresTests
         Assert.True(_semaphores.LastRefreshedAt.ContainsKey("s1"));
     }
 
+    // Удаление несуществующей записи не считается ошибкой: уборщик и trim ходят по всем ключам.
     [Fact]
     public void TryEvict_UnknownKey_ReturnsTrue()
     {
@@ -60,6 +65,8 @@ public class TokenRefreshSemaphoresTests
         Assert.True(Contains("newest"));
     }
 
+    // Занятая запись пропускается без подстановки следующей жертвы:
+    // так объём уборки не превышает maxToRemove, а занятый замок не трогаем.
     [Fact]
     public void TrimOldest_OldestLockHeld_SkipsItWithoutTakingNext()
     {

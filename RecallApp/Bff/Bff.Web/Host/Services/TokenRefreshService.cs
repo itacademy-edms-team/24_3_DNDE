@@ -28,6 +28,7 @@ public sealed class TokenRefreshService(
 
     private readonly OidcOptions _oidcOptions = oidcOptions.Value;
 
+    /// <inheritdoc/>
     public async Task RefreshIfNeededAsync(HttpContext context)
     {
         if (context.User?.Identity?.IsAuthenticated != true)

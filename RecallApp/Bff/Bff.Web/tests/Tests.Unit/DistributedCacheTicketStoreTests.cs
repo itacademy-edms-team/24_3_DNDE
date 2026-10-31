@@ -6,6 +6,10 @@ using Tests.Unit.Helpers;
 
 namespace Tests.Unit;
 
+/// <summary>
+/// Серверное хранилище сессии: уникальные префиксные ключи, сериализация тикета,
+/// срок жизни записи по ExpiresUtc тикета с запасным вариантом из SSO Idle.
+/// </summary>
 public class DistributedCacheTicketStoreTests
 {
     private static readonly DateTimeOffset Now = new(2026, 10, 28, 12, 0, 0, TimeSpan.Zero);

@@ -4,10 +4,10 @@ using Microsoft.AspNetCore.Authentication;
 namespace Host.Infrastructure;
 
 /// <summary>
-/// Политика когерентности cookie BFF с сессией Keycloak (ADR 0027).
-/// Срок и персистентность cookie выравниваются на SSO Idle выбранного режима.
-/// Режим ("запомнить меня") определяется на входе по длине жизни refresh-токена
-/// и хранится маркером в <see cref="AuthenticationProperties"/>, переживая refresh.
+/// Вычисляет срок жизни и персистентность cookie BFF-сессии по режиму сессии.
+/// Срок выравнивается на SSO Idle выбранного режима (обычный или «запомнить меня»).
+/// Режим определяется на входе по длине жизни refresh-токена и хранится маркером
+/// в <see cref="AuthenticationProperties"/>, переживая refresh.
 /// </summary>
 public static class SessionCookieLifetime
 {

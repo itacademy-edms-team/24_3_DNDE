@@ -8,9 +8,9 @@ using Microsoft.Extensions.Options;
 namespace Host.Services;
 
 /// <summary>
-/// Записывает токены в BFF-сессию (cookie + серверный стор).
+/// Записывает обновлённые токены в BFF-сессию (cookie + серверный стор).
 /// Единственная точка ручного SignIn на cookie-схеме после входа: сохранение сессии
-/// всегда сдвигает окно (<see cref="SessionCookieLifetime.ResetWindow"/>), ADR 0027.
+/// всегда сдвигает окно (<see cref="SessionCookieLifetime.ResetWindow"/>).
 /// </summary>
 public sealed class SessionTokenWriter(IOptions<OidcOptions> oidcOptions, TimeProvider timeProvider)
 {

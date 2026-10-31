@@ -7,6 +7,7 @@ namespace Host.Services;
 /// </summary>
 public static class AccessTokenExpiryHelper
 {
+    /// <summary>Имя сохраняемого токена-метки: момент истечения access-токена (уже за вычетом буфера).</summary>
     public const string TokenName = "expires_at";
 
     /// <summary>Момент, после которого BFF считает access истёкшим.</summary>

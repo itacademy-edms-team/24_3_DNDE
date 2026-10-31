@@ -5,6 +5,10 @@ using Tests.Unit.Helpers;
 
 namespace Tests.Unit;
 
+/// <summary>
+/// Классификация ответов token-endpoint: успех, окончательный отказ (400/401),
+/// временный сбой (остальные ошибки, сеть, таймаут, битый JSON) и состав <see cref="RefreshedTokens"/> из ответа.
+/// </summary>
 public class KeycloakTokenClientTests
 {
     private static KeycloakTokenClient CreateClient(HttpMessageHandler handler) =>
@@ -68,6 +72,8 @@ public class KeycloakTokenClientTests
         Assert.Null(result.Tokens.TokenType);
     }
 
+    // Нестроковое значение обязательного типа JsonElement.GetString() бросило бы исключение
+    // мимо классификации исходов, поэтому такие поля считаем отсутствующими.
     [Theory]
     [InlineData("""{"access_token":"new-access","expires_in":300,"refresh_token":42,"id_token":true,"token_type":{}}""")]
     [InlineData("""{"access_token":"new-access","expires_in":300,"refresh_token":null,"id_token":null,"token_type":null}""")]

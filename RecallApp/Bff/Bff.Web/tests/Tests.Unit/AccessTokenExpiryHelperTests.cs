@@ -2,6 +2,10 @@ using Host.Services;
 
 namespace Tests.Unit;
 
+/// <summary>
+/// Расчёт и формат expires_at, которым BFF оперирует при refresh:
+/// буфер на рассинхрон часов, round-trip формат SaveTokens и парсинг.
+/// </summary>
 public class AccessTokenExpiryHelperTests
 {
     private static readonly DateTimeOffset Expiry = new(2026, 10, 28, 13, 32, 0, 843, TimeSpan.Zero);
