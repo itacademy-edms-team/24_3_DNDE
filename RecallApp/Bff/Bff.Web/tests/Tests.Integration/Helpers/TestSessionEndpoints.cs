@@ -40,6 +40,7 @@ public sealed class TestSessionEndpoints : IStartupFilter
     public const string SignInPath = "/test/signin";
     public const string SessionPath = "/test/session";
     public const string ApiEchoPath = "/api/echo";
+    public const string ApiThrowPath = "/api/throw";
 
     public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) =>
         app =>
@@ -52,6 +53,7 @@ public sealed class TestSessionEndpoints : IStartupFilter
             // как будущие API за YARP. До next(app) он бы обслуживался в обход всего pipeline.
             next(app);
             app.MapWhen(c => c.Request.Path == ApiEchoPath, branch => branch.Run(ApiEchoAsync));
+            app.MapWhen(c => c.Request.Path == ApiThrowPath, branch => branch.Run(ApiThrowAsync));
         };
 
     private static async Task SignInAsync(HttpContext context)
@@ -100,6 +102,9 @@ public sealed class TestSessionEndpoints : IStartupFilter
             new { authenticated = context.User.Identity?.IsAuthenticated == true }
         );
     }
+
+    private static Task ApiThrowAsync(HttpContext context) =>
+        throw new InvalidOperationException("test exception marker");
 
     private static async Task ReadSessionAsync(HttpContext context)
     {
