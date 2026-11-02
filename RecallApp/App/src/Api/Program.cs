@@ -29,8 +29,8 @@ app.UseAuthorization();
 
 app.MapAccounts();
 app.MapGet("/health/live", () => Results.Ok(new { Status = "alive" }));
-app.MapGet("/health/ready", async (IServiceProvider services, CancellationToken ct) =>
-    await services.CanConnectAccounts(ct)
+app.MapGet("/health/ready", async (IServiceProvider services, CancellationToken cancellationToken) =>
+    await services.CanConnectAccounts(cancellationToken)
         ? Results.Ok(new { Status = "ready" })
         : Results.StatusCode(503));
 

@@ -37,9 +37,9 @@ public static class AccountsModule
         return endpoints;
     }
 
-    public static Task MigrateAccounts(this IServiceProvider services, CancellationToken ct = default) =>
-        services.GetRequiredService<AccountsDbContext>().Database.MigrateAsync(ct);
+    public static Task MigrateAccounts(this IServiceProvider services, CancellationToken cancellationToken = default) =>
+        services.GetRequiredService<AccountsDbContext>().Database.MigrateAsync(cancellationToken);
 
-    public static Task<bool> CanConnectAccounts(this IServiceProvider services, CancellationToken ct = default) =>
-        services.GetRequiredService<AccountsDbContext>().Database.CanConnectAsync(ct);
+    public static Task<bool> CanConnectAccounts(this IServiceProvider services, CancellationToken cancellationToken = default) =>
+        services.GetRequiredService<AccountsDbContext>().Database.CanConnectAsync(cancellationToken);
 }
