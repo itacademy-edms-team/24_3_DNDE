@@ -5,10 +5,13 @@ networks:
     driver: bridge
   iam_net:
     driver: bridge
+  app_net:
+    driver: bridge
 
 volumes:
   shared_certs:
   iam_db_data:
+  app_db_data:
 
 services:
   # Генератор локального Root CA + сертификатов *.localhost для dev-TLS (ADR 0026)
@@ -93,3 +96,43 @@ services:
       - ./Bff/Bff.Web/tests/TestResults:/results
     networks:
       - dev_net
+
+  app-db:
+    image: postgres:17
+    volumes:
+      - app_db_data:/var/lib/postgresql/data
+    networks:
+      - app_net
+
+  app:
+    build:
+      context: ./App
+      dockerfile: Dockerfile.development
+    depends_on:
+      - iam
+      - app-db
+    volumes:
+      - ./App:/src
+      # анонимные тома маскируют host-овые bin/obj (Windows-артефакты не мешают сборке в контейнере)
+      - /src/src/Api/bin
+      - /src/src/Api/obj
+      - /src/src/Modules/Accounts/Accounts.Infrastructure/bin
+      - /src/src/Modules/Accounts/Accounts.Infrastructure/obj
+      - shared_certs:/certs:ro
+    networks:
+      - dev_net
+      - app_net
+
+  # Прогон тестов App (App/tests). Только по профилю test:
+  #   docker compose --profile test run --rm app-tests
+  app-tests:
+    build:
+      context: ./App
+      dockerfile: tests/Dockerfile.Testing
+    profiles: [test]
+    volumes:
+      - shared_certs:/certs:ro
+      - ./App/tests/TestResults:/results
+    networks:
+      - dev_net
+      - app_net

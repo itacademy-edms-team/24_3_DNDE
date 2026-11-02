@@ -23,7 +23,7 @@ public sealed class ModuleBoundariesTests
         {
             var document = XDocument.Load(ProjectPath(project));
             var references = document.Descendants("ProjectReference")
-                .Select(x => Path.GetFileNameWithoutExtension(x.Attribute("Include")!.Value))
+                .Select(x => Path.GetFileNameWithoutExtension(x.Attribute("Include")!.Value.Replace('\\', '/')))
                 .ToArray();
             Assert.All(references, name => Assert.Contains(name, allowedRefs));
         }

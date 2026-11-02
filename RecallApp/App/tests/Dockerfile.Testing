@@ -1,0 +1,37 @@
+# Образ тестов App (Tests.Architecture + Tests.Integration).
+# Сборка из контекста App/, запуск через compose-сервис app-tests (профиль test):
+#   docker compose --profile test run --rm app-tests
+# Без категории: TEST_FILTER="Category!=Keycloak".
+FROM mcr.microsoft.com/dotnet/sdk:8.0
+
+WORKDIR /src
+
+# Сначала проекты: restore кэшируется, пока не меняются зависимости.
+COPY App.sln Directory.Packages.props Directory.Build.props ./
+COPY src/Api/Api.csproj src/Api/
+COPY src/Common/Common.Application/Common.Application.csproj src/Common/Common.Application/
+COPY src/Common/Common.Infrastructure/Common.Infrastructure.csproj src/Common/Common.Infrastructure/
+COPY src/Modules/Accounts/Accounts.Domain/Accounts.Domain.csproj src/Modules/Accounts/Accounts.Domain/
+COPY src/Modules/Accounts/Accounts.Application/Accounts.Application.csproj src/Modules/Accounts/Accounts.Application/
+COPY src/Modules/Accounts/Accounts.Infrastructure/Accounts.Infrastructure.csproj src/Modules/Accounts/Accounts.Infrastructure/
+COPY src/Modules/Accounts/Accounts.Contracts/Accounts.Contracts.csproj src/Modules/Accounts/Accounts.Contracts/
+COPY tests/Tests.Architecture/Tests.Architecture.csproj tests/Tests.Architecture/
+COPY tests/Tests.Integration/Tests.Integration.csproj tests/Tests.Integration/
+RUN dotnet restore App.sln
+
+COPY . .
+RUN dotnet build App.sln -c Release --no-restore
+
+ENV TEST_FILTER=""
+
+# entrypoint:
+# доверяем Root CA из тома shared_certs,
+# update-ca-certificates требует root.
+# dotnet test; trx-отчёты в /results.
+ENTRYPOINT ["/bin/sh", "-c", "\
+  if [ -f /certs/rootCA.pem ]; then \
+  cp /certs/rootCA.pem /usr/local/share/ca-certificates/recallapp-dev-ca.crt && update-ca-certificates >/dev/null 2>&1; \
+  fi; \
+  exec dotnet test App.sln -c Release --no-build \
+  --logger 'console;verbosity=normal' --logger trx --results-directory /results \
+  ${TEST_FILTER:+--filter \"$TEST_FILTER\"}"]

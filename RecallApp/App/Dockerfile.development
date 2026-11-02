@@ -1,0 +1,16 @@
+# Dev-образ App.
+# Исходники монтируются bind-ом из compose.
+FROM mcr.microsoft.com/dotnet/sdk:8.0
+
+WORKDIR /src
+EXPOSE 8080
+
+# entrypoint:
+# доверяем Root CA из тома shared_certs (JWT-валидация ходит за metadata/JWKS на https://auth.localhost),
+# update-ca-certificates требует root, поэтому dev-контейнер работает от root.
+# затем dotnet watch.
+ENTRYPOINT ["/bin/sh", "-c", "\
+  if [ -f /certs/rootCA.pem ]; then \
+  cp /certs/rootCA.pem /usr/local/share/ca-certificates/recallapp-dev-ca.crt && update-ca-certificates >/dev/null 2>&1; \
+  fi; \
+  exec dotnet watch run --project /src/src/Api/Api.csproj --non-interactive"]

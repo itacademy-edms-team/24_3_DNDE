@@ -43,3 +43,32 @@ services:
       KeycloakTests__Password: ${BFF_TEST_USER_PASSWORD}
       # Пусто - все тесты; "Category!=Keycloak" - без Keycloak.
       TEST_FILTER: ${BFF_TEST_FILTER:-}
+
+  app-db:
+    environment:
+      POSTGRES_DB: app
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${APP_DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  app:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      # bind-mount на Windows/WSL: события файлов не всегда доходят — polling для dotnet watch
+      DOTNET_USE_POLLING_FILE_WATCHER: "true"
+      Oidc__Authority: https://auth.localhost/realms/recallapp
+      ConnectionStrings__Database: Host=app-db:5432;Database=app;Username=app;Password=${APP_DB_PASSWORD}
+      # миграции модулей применяются при старте dev-контейнера
+      Database__ApplyMigrations: "true"
+
+  app-tests:
+    environment:
+      # Тесты App: тестовая БД в app-db
+      ConnectionStrings__Database: Host=app-db:5432;Database=app;Username=app;Password=${APP_DB_PASSWORD}
+      Oidc__Authority: https://auth.localhost/realms/recallapp
+      # Пусто - все тесты.
+      TEST_FILTER: ${APP_TEST_FILTER:-}
