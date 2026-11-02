@@ -13,7 +13,9 @@ internal sealed class UserProvisioner(AccountsDbContext db, TimeProvider clock) 
 {
     public async Task EnsureProvisionedAsync(ClaimsPrincipal user, CancellationToken cancellationToken)
     {
-        var keycloakSub = Guid.Parse(user.FindFirst("sub")!.Value);
+        var subClaim = user.FindFirst("sub")
+            ?? throw new InvalidOperationException("JWT не содержит claim 'sub' — проверьте MapInboundClaims и состав токена.");
+        var keycloakSub = Guid.Parse(subClaim.Value);
         var email = user.FindFirst("email")?.Value ?? string.Empty;
         var displayName = user.FindFirst("name")?.Value ?? string.Empty;
 

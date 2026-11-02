@@ -30,6 +30,7 @@ builder.Services.AddAuthentication()
             ?? throw new InvalidOperationException("Set Oidc__Authority (Keycloak realm URL).");
         options.Authority = authority;
         options.RequireHttpsMetadata = builder.Configuration.GetValue("Oidc:RequireHttpsMetadata", !builder.Environment.IsDevelopment());
+        options.MapInboundClaims = false; // сырые имена claim'ов (sub, email, ...), без маппинга в ClaimTypes
         options.TokenValidationParameters.ValidateAudience = false; // ADR 0028: aud = account in Keycloak
         options.TokenValidationParameters.NameClaimType = "name";
     });
