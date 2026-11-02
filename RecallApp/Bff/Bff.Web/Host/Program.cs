@@ -1,6 +1,7 @@
 using Host.Configuration;
 using Host.Extensions;
 using Host.Infrastructure;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
@@ -8,6 +9,9 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Caching.Memory;
 using NLog;
 using NLog.Web;
+using System.Net.Http.Headers;
+using Yarp.ReverseProxy.Configuration;
+using Yarp.ReverseProxy.Transforms;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -98,6 +102,48 @@ try
 
     builder.Services.AddControllers();
 
+    // YARP: проксирование /api/** -> монолит (ADR 0028, Trusted Domain).
+    // Access-токен текущей сессии прикрепляется трансформером;
+    // клиентские Authorization/Cookie отбрасываются - монолит доверяет только тому, что решил BFF.
+    // Включается только при заданном AppProxy:Destination (compose).
+    var appProxyDestination = builder.Configuration["AppProxy:Destination"];
+    if (appProxyDestination is not null)
+    {
+        builder.Services
+            .AddReverseProxy()
+            .LoadFromMemory(
+                new[]
+                {
+                    new RouteConfig
+                    {
+                        RouteId = "app-api",
+                        ClusterId = "app",
+                        Match = new RouteMatch { Path = "/api/{**catch-all}" },
+                    },
+                },
+                new[]
+                {
+                    new ClusterConfig
+                    {
+                        ClusterId = "app",
+                        Destinations = new Dictionary<string, DestinationConfig>
+                        {
+                            ["app"] = new DestinationConfig { Address = appProxyDestination },
+                        },
+                    },
+                })
+            .AddTransforms(transforms => transforms.AddRequestTransform(async context =>
+            {
+                context.ProxyRequest.Headers.Authorization = null;
+                context.ProxyRequest.Headers.Remove("Cookie");
+
+                var auth = await context.HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                var token = auth.Properties?.GetTokenValue("access_token");
+                if (token is not null)
+                    context.ProxyRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            }));
+    }
+
     // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
@@ -126,6 +172,8 @@ try
 
     app.MapHealthChecks("/healthz");
     app.MapControllers();
+    if (appProxyDestination is not null)
+        app.MapReverseProxy();
 
     app.Run();
 }

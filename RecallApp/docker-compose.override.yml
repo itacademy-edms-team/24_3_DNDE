@@ -69,6 +69,8 @@ services:
       ConnectionStrings__AccountsMigrations: Host=app-db:5432;Database=app;Username=accounts_owner;Password=${APP_DB_ACCOUNTS_OWNER_PASSWORD}
       # миграции модулей применяются при старте dev-контейнера
       Database__ApplyMigrations: "true"
+      # YARP: проксирование /api/** -> монолит; в тестах не задаётся
+      AppProxy__Destination: http://app:8080
 
   app-tests:
     environment:
