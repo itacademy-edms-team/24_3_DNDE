@@ -1,17 +1,18 @@
 # Тесты App (модульный монолит)
 
-Два проекта: `Tests.Architecture` и `Tests.Integration`. Категории trait пока нет — все тесты самодостаточны и не требуют запуска в контейнере.
+Два проекта: `Tests.Architecture` и `Tests.Integration`. Интеграционные тесты делятся по trait `Category`.
 
-| Проект | Что проверяет | Что нужно для запуска |
+| Проект, категория | Что проверяет | Что нужно для запуска |
 |---|---|---|
 | `Tests.Architecture` | границы модулей (ADR 0029): разрешённые project references из csproj, «публична только композиция модуля», все сущности и FK в схеме своего модуля | ничего |
-| `Tests.Integration` | конвейер хоста в процессе теста (`WebApplicationFactory<Program>`): анонимный `GET /api/users/me` → 401; бюджет пула соединений (`ConnectionPoolBudget`) | ничего |
+| `Tests.Integration` (без категории) | конвейер хоста в процессе теста (`WebApplicationFactory<Program>`): анонимный `GET /api/users/me` → 401; бюджет пула соединений (`ConnectionPoolBudget`) | ничего |
+| `Tests.Integration`, `Category=Database` | JIT-провижининг (ADR 0020) против живой app_db: аутентифицированный `GET /api/users/me` создаёт доменную строку (upsert идемпотентен, id стабилен) | app_db (контейнер) |
 
-Конфигурация тестового хоста (строки подключения, `Oidc:Authority`) — в `AppFactory.cs`, подключение к БД тесты не используют. Подключение к БД понадобится тестам JIT-провижининга: `ConnectionStrings__Database`/`AccountsMigrations` уже прокидываются в контейнере.
+Конфигурация тестового хоста — в `AppFactory.cs`: тестовая аутентификация (claims по заголовку `X-Test-Auth`, challenge остаётся на JwtBearer), строки подключения берутся из env контейнера, локально подменяются заглушками. `DatabaseFact` пропускает тест, если не задан `ConnectionStrings__AccountsMigrations` (паттерн `KeycloakFact` из BFF).
 
 ## Запуск в контейнере
 
-Образ `tests/Dockerfile.Testing`, сервис `app-tests` в профиле `test` корневого compose. Сейчас тесты БД не трогают, но сервис подключён к `app-db` — для будущих тестов.
+Образ `tests/Dockerfile.Testing`, сервис `app-tests` в профиле `test` корневого compose. Тесты категории `Database` применяют миграции к app_db (`DatabaseFixture`, owner-подключение).
 
 Из корня `RecallApp`, все тесты:
 
@@ -19,10 +20,17 @@
 docker compose --profile test run --rm --build app-tests
 ```
 
-Фильтр по имени/классу — через `APP_TEST_FILTER`:
+Без БД (миграции и Database-тесты не нужны):
 
 ```powershell
-$env:APP_TEST_FILTER='FullyQualifiedName~ConnectionPoolBudget'
+$env:APP_TEST_FILTER='Category!=Database'
+docker compose --profile test run --rm app-tests
+```
+
+Только Database-тесты:
+
+```powershell
+$env:APP_TEST_FILTER='Category=Database'
 docker compose --profile test run --rm app-tests
 ```
 
@@ -36,4 +44,4 @@ docker compose --profile test run --rm app-tests
 dotnet test
 ```
 
-Тесты пока не требуют БД, Keycloak или переменных окружения - запускаются как обычно из Rider/VS или CLI.
+Тесты без категории `Database` не требуют БД, Keycloak или переменных окружения. Тесты `Database` без `ConnectionStrings__AccountsMigrations` пропускаются (Skip) с подсказкой про контейнер.
