@@ -1,17 +1,12 @@
 using System.Net;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Tests.Integration;
 
-public sealed class GetMyAccountTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class GetMyAccountTests : IClassFixture<AppFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly AppFactory _factory;
 
-    public GetMyAccountTests(WebApplicationFactory<Program> factory) => _factory = factory
-        .WithWebHostBuilder(builder => builder
-            .UseSetting("ConnectionStrings:Database", "Host=localhost;Database=unused")
-            .UseSetting("Oidc:Authority", "http://localhost/realms/recallapp")
-            .UseSetting("Oidc:RequireHttpsMetadata", "false"));
+    public GetMyAccountTests(AppFactory factory) => _factory = factory;
 
     [Fact]
     public async Task GetMyAccount_Anonymous_Returns401()
