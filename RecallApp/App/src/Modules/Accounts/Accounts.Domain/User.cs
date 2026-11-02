@@ -1,3 +1,5 @@
+using ErrorOr;
+
 namespace Accounts.Domain;
 
 /// <summary>
@@ -24,16 +26,17 @@ public sealed class User
 
     public DateTime UpdatedAt { get; private set; }
 
-    public static User Create(Guid keycloakSub, string email, string displayName, DateTime utcNow)
+    public static ErrorOr<User> Create(Guid keycloakSub, string email, string displayName, DateTime utcNow)
     {
         if (keycloakSub == Guid.Empty)
-            throw new ArgumentException("KeycloakSub must not be empty.", nameof(keycloakSub));
+            return UserErrors.KeycloakSubEmpty;
 
-        ArgumentException.ThrowIfNullOrWhiteSpace(email);
+        if (string.IsNullOrWhiteSpace(email))
+            return UserErrors.EmailEmpty;
 
         var name = displayName.Trim();
         if (name.Length is 0 or > DisplayNameMaxLength)
-            throw new ArgumentException($"DisplayName must be 1..{DisplayNameMaxLength} characters.", nameof(displayName));
+            return UserErrors.DisplayNameInvalid(DisplayNameMaxLength);
 
         return new User
         {
