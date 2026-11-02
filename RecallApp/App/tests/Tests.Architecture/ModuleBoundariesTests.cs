@@ -17,6 +17,7 @@ public sealed class ModuleBoundariesTests
             ["Accounts.Contracts"] = ["Common.Application"],
             ["Accounts.Application"] = ["Accounts.Domain", "Common.Application"],
             ["Accounts.Infrastructure"] = ["Accounts.Application", "Accounts.Contracts", "Common.Application", "Common.Infrastructure"],
+            ["Api"] = ["Accounts.Infrastructure", "Common.Infrastructure"],
         };
 
         foreach (var (project, allowedRefs) in allowed)
@@ -51,8 +52,13 @@ public sealed class ModuleBoundariesTests
         }
     }
 
-    private static string ProjectPath(string projectName) =>
-        Path.Combine(FindRoot(), "src", "Modules", "Accounts", projectName, $"{projectName}.csproj");
+    private static string ProjectPath(string projectName)
+    {
+        var relative = projectName == "Api"
+            ? Path.Combine("src", "Api")
+            : Path.Combine("src", "Modules", "Accounts", projectName);
+        return Path.Combine(FindRoot(), relative, $"{projectName}.csproj");
+    }
 
     private static string FindRoot()
     {

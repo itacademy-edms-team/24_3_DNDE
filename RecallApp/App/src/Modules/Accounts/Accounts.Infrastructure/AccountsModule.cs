@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 
 namespace Accounts.Infrastructure;
 
@@ -13,9 +14,13 @@ namespace Accounts.Infrastructure;
 /// </summary>
 public static class AccountsModule
 {
-    public static IServiceCollection AddAccounts(this IServiceCollection services, string connectionString)
+    /// <summary>
+    /// Регистрирует модуль на общем runtime-пуле соединений (квота резервируется хостом
+    /// через ConnectionPoolBudget до вызова).
+    /// </summary>
+    public static IServiceCollection AddAccounts(this IServiceCollection services, NpgsqlDataSource dataSource)
     {
-        services.AddDbContext<AccountsDbContext>(options => options.UseNpgsql(connectionString,
+        services.AddDbContext<AccountsDbContext>(options => options.UseNpgsql(dataSource,
             pg => pg.MigrationsHistoryTable("__EFMigrationsHistory", "accounts")));
 
         return services;

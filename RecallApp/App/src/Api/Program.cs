@@ -1,4 +1,7 @@
 using Accounts.Infrastructure;
+using Api;
+using Common.Infrastructure.Data;
+using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,7 +10,18 @@ var connectionString = builder.Configuration.GetConnectionString("Database")
 
 builder.Services.AddProblemDetails();
 builder.Services.AddSingleton(TimeProvider.System);
-builder.Services.AddAccounts(connectionString);
+
+// Чтобы изменить общий максимальный пул соединений к БД, который распределяют все модули, явно задайте Max Pool Size к ConnectionStrings__Database.
+// Сейчас используется дефолт в 100, заданный NpgsqlConnectionStringBuilder, т.к. в строке подключения явно Max Pool Size не задан.
+var dataSource = new NpgsqlDataSourceBuilder(connectionString).Build();
+var poolBudget = new ConnectionPoolBudget(dataSource);
+var accountsPoolLease = poolBudget.GetPools(
+    builder.Configuration.GetValue("AppDb:AccountsPoolQuota", 20));
+builder.Services.AddSingleton(dataSource);
+builder.Services.AddSingleton(poolBudget);
+builder.Services.AddSingleton(new PoolLeaseHolder(accountsPoolLease));
+
+builder.Services.AddAccounts(dataSource);
 
 builder.Services.AddAuthentication()
     .AddJwtBearer(options =>
