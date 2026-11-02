@@ -40,6 +40,7 @@ var app = builder.Build();
 app.UseExceptionHandler();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseDomainProvisioning();
 
 app.MapAccounts();
 app.MapGet("/health/live", () => Results.Ok(new { Status = "alive" }));

@@ -1,4 +1,8 @@
+using Accounts.Application.Abstractions;
+using Accounts.Application.Users;
 using Accounts.Infrastructure.Data;
+using Common.Application.Provisioning;
+using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -23,6 +27,10 @@ public static class AccountsModule
         services.AddDbContext<AccountsDbContext>(options => options.UseNpgsql(dataSource,
             pg => pg.MigrationsHistoryTable("__EFMigrationsHistory", "accounts")));
 
+        services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(IUserRepository).Assembly));
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IDomainProvisioner, UserProvisioner>();
+
         return services;
     }
 
@@ -30,13 +38,12 @@ public static class AccountsModule
     {
         var group = endpoints.MapGroup("/api/users").WithTags("Accounts");
 
-        group.MapGet("/me", (HttpContext context) =>
+        group.MapGet("/me", async (HttpContext context, ISender sender, CancellationToken cancellationToken) =>
         {
-            var sub = context.User.FindFirst("sub")?.Value;
-            var email = context.User.FindFirst("email")?.Value;
-            var name = context.User.FindFirst("name")?.Value;
+            var sub = Guid.Parse(context.User.FindFirst("sub")!.Value);
             var emailVerified = context.User.FindFirst("email_verified")?.Value == "true";
-            return Results.Ok(new { sub, email, name, emailVerified });
+            var account = await sender.Send(new GetMyAccountQuery(sub, emailVerified), cancellationToken);
+            return account is null ? Results.NotFound() : Results.Ok(account);
         }).RequireAuthorization();
 
         return endpoints;
