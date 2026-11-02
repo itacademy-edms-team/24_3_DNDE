@@ -101,6 +101,7 @@ services:
     image: postgres:17
     volumes:
       - app_db_data:/var/lib/postgresql/data
+      - ./App/scripts/01-roles-and-schemas.sh:/docker-entrypoint-initdb.d/01-roles-and-schemas.sh:ro
     networks:
       - app_net
 

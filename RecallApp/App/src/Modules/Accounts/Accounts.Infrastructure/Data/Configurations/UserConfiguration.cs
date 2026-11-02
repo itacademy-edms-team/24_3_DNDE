@@ -10,6 +10,7 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
     {
         builder.ToTable("users");
         builder.HasKey(u => u.Id);
+        builder.Property(u => u.Id).HasColumnName("id");
         builder.Property(u => u.KeycloakSub).HasColumnName("keycloak_sub").IsRequired();
         builder.HasIndex(u => u.KeycloakSub).IsUnique();
         builder.Property(u => u.Email).HasColumnName("email").IsRequired();

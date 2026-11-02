@@ -37,8 +37,18 @@ public static class AccountsModule
         return endpoints;
     }
 
-    public static Task MigrateAccounts(this IServiceProvider services, CancellationToken cancellationToken = default) =>
-        services.GetRequiredService<AccountsDbContext>().Database.MigrateAsync(cancellationToken);
+    /// <summary>
+    /// Применяет миграции модуля.
+    /// </summary>
+    /// <param name="connectionString">Строка подключения к БД пользователя, привязанного к модулю и схеме Accounts.</param>
+    /// <param name="cancellationToken">Токен отслеживания отмены операции.</param>
+    public static async Task MigrateAccounts(string connectionString, CancellationToken cancellationToken = default)
+    {
+        var options = new DbContextOptionsBuilder<AccountsDbContext>().UseNpgsql(connectionString,
+            pg => pg.MigrationsHistoryTable("__EFMigrationsHistory", "accounts")).Options;
+        await using var db = new AccountsDbContext(options);
+        await db.Database.MigrateAsync(cancellationToken);
+    }
 
     public static Task<bool> CanConnectAccounts(this IServiceProvider services, CancellationToken cancellationToken = default) =>
         services.GetRequiredService<AccountsDbContext>().Database.CanConnectAsync(cancellationToken);

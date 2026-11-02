@@ -37,8 +37,10 @@ app.MapGet("/health/ready", async (IServiceProvider services, CancellationToken 
 var migrateOnly = args.Contains("--migrate");
 if (migrateOnly || builder.Configuration.GetValue("Database:ApplyMigrations", false))
 {
-    await using var scope = app.Services.CreateAsyncScope();
-    await scope.ServiceProvider.MigrateAccounts();
+    // Миграции выполняются под пользователем, который привязан к конкретной схеме и модулю.
+    var migrationsConnectionString = builder.Configuration.GetConnectionString("AccountsMigrations")
+        ?? throw new InvalidOperationException("Set ConnectionStrings__AccountsMigrations (schema owner).");
+    await AccountsModule.MigrateAccounts(migrationsConnectionString);
     if (migrateOnly) return;
 }
 

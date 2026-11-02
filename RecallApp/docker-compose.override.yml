@@ -48,7 +48,10 @@ services:
     environment:
       POSTGRES_DB: app
       POSTGRES_USER: app
-      POSTGRES_PASSWORD: ${APP_DB_PASSWORD}
+      POSTGRES_PASSWORD: ${APP_DB_SUPERUSER_PASSWORD}
+      # Инициализация ролей/схем модулей: см. init-скрипт App/scripts/01-roles-and-schemas.sh
+      APP_DB_RUNTIME_PASSWORD: ${APP_DB_RUNTIME_PASSWORD}
+      APP_DB_ACCOUNTS_OWNER_PASSWORD: ${APP_DB_ACCOUNTS_OWNER_PASSWORD}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U app"]
       interval: 5s
@@ -61,14 +64,17 @@ services:
       # bind-mount на Windows/WSL: события файлов не всегда доходят — polling для dotnet watch
       DOTNET_USE_POLLING_FILE_WATCHER: "true"
       Oidc__Authority: https://auth.localhost/realms/recallapp
-      ConnectionStrings__Database: Host=app-db:5432;Database=app;Username=app;Password=${APP_DB_PASSWORD}
+      # runtime-подключение (app_runtime: только DML в accounts, без DDL)
+      ConnectionStrings__Database: Host=app-db:5432;Database=app;Username=app_runtime;Password=${APP_DB_RUNTIME_PASSWORD}
+      ConnectionStrings__AccountsMigrations: Host=app-db:5432;Database=app;Username=accounts_owner;Password=${APP_DB_ACCOUNTS_OWNER_PASSWORD}
       # миграции модулей применяются при старте dev-контейнера
       Database__ApplyMigrations: "true"
 
   app-tests:
     environment:
-      # Тесты App: тестовая БД в app-db
-      ConnectionStrings__Database: Host=app-db:5432;Database=app;Username=app;Password=${APP_DB_PASSWORD}
+      # Тесты App: тестовая БД в app-db (runtime; owner - для миграций из тестов)
+      ConnectionStrings__Database: Host=app-db:5432;Database=app;Username=app_runtime;Password=${APP_DB_RUNTIME_PASSWORD}
+      ConnectionStrings__AccountsMigrations: Host=app-db:5432;Database=app;Username=accounts_owner;Password=${APP_DB_ACCOUNTS_OWNER_PASSWORD}
       Oidc__Authority: https://auth.localhost/realms/recallapp
       # Пусто - все тесты.
       TEST_FILTER: ${APP_TEST_FILTER:-}
