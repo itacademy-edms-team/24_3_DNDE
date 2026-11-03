@@ -9,9 +9,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Remove default Microsoft logging providers
 builder.Logging.ClearProviders();
-// Register NLog
+// Register NLog (nlog.config)
 builder.Host.UseNLog();
-var bootstrapLogger = LogManager.Setup().LoadConfigurationFromAppSettings().GetCurrentClassLogger();
+var bootstrapLogger = LogManager.GetCurrentClassLogger();
 
 try
 {

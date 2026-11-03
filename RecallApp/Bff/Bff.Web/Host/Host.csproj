@@ -16,6 +16,10 @@
     </ItemGroup>
 
     <ItemGroup>
+      <None Update="nlog.config" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+
+    <ItemGroup>
       <Content Include="..\.dockerignore">
         <Link>.dockerignore</Link>
       </Content>
