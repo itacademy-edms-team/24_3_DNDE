@@ -11,6 +11,9 @@ export default defineConfig({
     // настоящие CSS-слои Mantine/Tailwind, layout и медиа-запросы, без jsdom-эмуляции.
     // Перед первым запуском: npx playwright install chromium.
     include: ["src/**/*.test.{ts,tsx}"],
+    // По умолчанию Vitest подменяет CSS пустыми строками,
+    // поэтому нужно включить поддержку CSS, чтобы тесты рендерились корректно.
+    css: true,
 
     browser: {
       enabled: true,
