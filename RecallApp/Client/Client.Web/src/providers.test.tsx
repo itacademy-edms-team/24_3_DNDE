@@ -1,18 +1,18 @@
-import { render, screen } from "@testing-library/react";
-import { Button } from "@mantine/core";
 import { describe, expect, it } from "vitest";
+import { render } from "vitest-browser-react";
 
+import App from "./App";
 import { Providers } from "./providers";
 
-// Smoke проверка связки Mantine + Providers в тестовом окружении.
+// Проверка связки Mantine + провайдеры в реальном браузере (CSS-слои, layout, matchMedia).
 describe("Providers", () => {
-  it("renders a Mantine component", () => {
-    render(
+  it("renders a Mantine component", async () => {
+    const screen = await render(
       <Providers>
-        <Button>Начать</Button>
+        <App />
       </Providers>,
     );
 
-    expect(screen.getByRole("button", { name: "Начать" })).toBeInTheDocument();
+    await expect.element(screen.getByRole("heading", { name: "RecallApp" })).toBeInTheDocument();
   });
 });
