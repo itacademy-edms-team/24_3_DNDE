@@ -25,6 +25,9 @@ services:
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD}
 
   bff:
+    # логи NLog (bin/Debug/net8.0/logs внутри контейнера) пробрасываем на хост
+    volumes:
+      - ./Bff/Bff.Web/Host/logs:/src/Host/bin/Debug/net8.0/logs
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       # bind-mount на Windows/WSL: события файлов не всегда доходят — polling для dotnet watch
@@ -61,6 +64,9 @@ services:
       retries: 5
 
   app:
+    # логи NLog (bin/Debug/net8.0/logs внутри контейнера) пробрасываем на хост — смотреть из Rider/VSCode, не теряются при down -v
+    volumes:
+      - ./App/src/Api/logs:/src/src/Api/bin/Debug/net8.0/logs
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       # bind-mount на Windows/WSL: события файлов не всегда доходят — polling для dotnet watch
