@@ -13,7 +13,7 @@ describe("toErrorView", () => {
   });
 
   it("marks 401 as unauthenticated and uses the code dictionary", () => {
-    const view = toErrorView(new RestApiError(401, { title: "session_expired", status: 401 }));
+    const view = toErrorView(new RestApiError(401, { title: "SessionExpired", status: 401 }));
 
     expect(view.unauthenticated).toBe(true);
     expect(view.retryable).toBe(false);
