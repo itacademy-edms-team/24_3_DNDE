@@ -67,6 +67,18 @@ describe("routes", () => {
     expect(navbarX()).toBeGreaterThanOrEqual(0);
   });
 
+  it("marks only the current route as active in the navigation", async () => {
+    stubAnonymousSession();
+    await renderAt("/");
+
+    await expect
+      .element(page.getByRole("link", { name: "Главная" }))
+      .toHaveAttribute("aria-current", "page");
+    await expect
+      .element(page.getByRole("link", { name: "Аккаунт" }))
+      .not.toHaveAttribute("aria-current", "page");
+  });
+
   it("renders not found page for an unknown route", async () => {
     stubAnonymousSession();
     const screen = await renderAt("/no-such-page");
