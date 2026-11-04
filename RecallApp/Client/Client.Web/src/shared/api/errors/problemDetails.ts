@@ -9,5 +9,7 @@ export interface ProblemDetails {
   instance?: string;
   /** Ошибки валидации: ключ - имя поля (target), значение - список сообщений. */
   errors?: Record<string, string[]>;
+  /** Кто отказал: BFF (сессия, CSRF) или домен (App). */
+  source?: "bff" | "app";
   [extension: string]: unknown;
 }
