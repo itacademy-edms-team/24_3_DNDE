@@ -40,9 +40,9 @@
    6. Require PKCE: ON
    7. PKCE Method: S256
    8. Остальное: OFF
-   9. Valid redirect URIs: `https://bff.localhost/signin-oidc`
-   10. Valid post logout redirect URIs: `https://bff.localhost/signout-callback-oidc`
-   11. Web origins: `https://bff.localhost`
+   9. Valid redirect URIs: `https://bff.recallapp.localhost/signin-oidc`
+   10. Valid post logout redirect URIs: `https://bff.recallapp.localhost/signout-callback-oidc`
+   11. Web origins: `https://bff.recallapp.localhost`
 
 2. Перейдите в созданный ранее клиент. Запомните Client Secret - он поднадобится для Bff.Web
 

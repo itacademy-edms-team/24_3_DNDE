@@ -38,7 +38,7 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     // Vite отклоняет запросы с неизвестным заголовком Host (защита от DNS-rebinding).
-    allowedHosts: ["app.localhost"],
+    allowedHosts: ["app.recallapp.localhost"],
     hmr: behindProxy ? { clientPort: 443 } : undefined,
   },
 });

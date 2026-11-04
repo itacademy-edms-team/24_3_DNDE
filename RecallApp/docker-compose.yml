@@ -24,7 +24,7 @@ services:
         [ ! -f /certs/rootCA.pem ] && openssl req -x509 -new -nodes -key /certs/rootCA.key -sha256 -days 1024 -out /certs/rootCA.pem -subj '/CN=RecallApp Local Dev CA' || true &&
         openssl genrsa -out /certs/server.key 2048 &&
         openssl req -new -key /certs/server.key -out /certs/server.csr -subj '/CN=*.localhost' &&
-        printf 'subjectAltName=DNS:localhost,DNS:app.localhost,DNS:bff.localhost,DNS:auth.localhost\nbasicConstraints=CA:FALSE\n' > /certs/san.ext &&
+        printf 'subjectAltName=DNS:localhost,DNS:app.recallapp.localhost,DNS:bff.recallapp.localhost,DNS:auth.localhost\nbasicConstraints=CA:FALSE\n' > /certs/san.ext &&
         openssl x509 -req -in /certs/server.csr -CA /certs/rootCA.pem -CAkey /certs/rootCA.key -CAcreateserial -out /certs/server.crt -days 365 -sha256 -extfile /certs/san.ext"
     volumes:
       - shared_certs:/certs
@@ -47,8 +47,8 @@ services:
     networks:
       dev_net:
         aliases:
-          - app.localhost
-          - bff.localhost
+          - app.recallapp.localhost
+          - bff.recallapp.localhost
           - auth.localhost
 
   iam-db:
