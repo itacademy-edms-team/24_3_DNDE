@@ -1,6 +1,6 @@
 # ADR 0030. Хостинг SPA на субдомене и CORS-политика BFF
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-11-03
 - **Decision-maker(s):** Aleksandr
 - **Owner:** Aleksandr
@@ -20,7 +20,7 @@
 
 ### Вариант 1. SPA на отдельном origin `app.*`, CORS-политика BFF с allowlist - ВЫБРАН
 
-SPA хостится на собственном субдомене (`app.localhost` в dev, `app.<domain>` в проде), BFF разрешает CORS только для `/api/**` и только с доверенных origin'ов: `AllowCredentials` + точный allowlist (не `*`).
+SPA хостится на собственном субдомене (`app.recallapp.localhost` в dev, `app.<domain>` в проде), BFF разрешает CORS только для `/api/**` и только с доверенных origin'ов: `AllowCredentials` + точный allowlist (не `*`).
 
 - **Плюсы:**
   - **Независимость узлов.** Статика и API развиваются, кэшируются и релизятся отдельно: обновление SPA не трогает BFF, в проде статика уезжает на nginx/CDN без пересборки образа BFF.
@@ -60,14 +60,14 @@ Edge-proxy маршрутизирует префикс `/app` на статич�
 
 ## Решение
 
-SPA хостится на **отдельном origin `app.*`**. В dev: сервис `client-web` за edge-proxy, server-блок `app.localhost` -> `client-web:<port>`; в проде: статика за отдельным веб-сервером (детали релизного конвейера - отдельной записью позже). BFF получает CORS-политику `spa`: применяется **только к маршруту `/api/**`**, `AllowCredentials`, allowlist - точные origin'ы из конфигурации (dev: `https://app.localhost`), preflight пропускается без аутентификации. Навигация на вход и выход остаётся полноценными переходами браузера, а не запросами из скрипта: логин - смена URL страницы на `bff.*/login` (пользователь уходит на форму Keycloak и возвращается с кукой сессии), логаут - обычная отправка HTML-формы (`method="POST"`, не fetch). CORS регулилирует только чтение ответов кросс-origin из скриптов (fetch/XHR), на переходы браузера он не действует, поэтому эти эндпоинты в CORS-политику не включаются и отдельных правил для них не требуется. Следствие для клиента: в `/login` и `/logout` ходим только навигацией и формой.
+SPA хостится на **отдельном origin `app.*`**. В dev: сервис `client-web` за edge-proxy, server-блок `app.recallapp.localhost` -> `client-web:5173`; в проде: статика за отдельным веб-сервером (детали релизного конвейера - отдельной записью позже). BFF получает CORS-политику `spa`: применяется **только к маршруту `/api/**`**, `AllowCredentials`, allowlist - точные origin'ы из конфигурации (dev: `https://app.recallapp.localhost`, плюс локальные `http://localhost:5173/5179` для запуска Vite без прокси), preflight пропускается без аутентификации. Навигация на вход и выход остаётся полноценными переходами браузера, а не запросами из скрипта: логин - смена URL страницы на `bff.*/login` (пользователь уходит на форму Keycloak и возвращается с кукой сессии), логаут - обычная отправка HTML-формы (`method="POST"`, не fetch). CORS регулилирует только чтение ответов кросс-origin из скриптов (fetch/XHR), на переходы браузера он не действует, поэтому эти эндпоинты в CORS-политику не включаются и отдельных правил для них не требуется. Следствие для клиента: в `/login` и `/logout` ходим только навигацией и формой.
 
 ## Последствия
 
 - Edge-proxy: появится новый app-блок в конфиге, потребуется расписать правило для websocket, чтобы работал HMR в dev.
 - BFF: новая CORS-политика на YARP-маршруте `/api/**`; preflight (OPTIONS) должен проходить до аутентификации.
-- Compose: сервис `client` (node, bind-mount `./Client/Client.Web`), сеть dev_net; Dockerfile для dev - `Dockerfile.development` рядом с шаблонным production-Dockerfile.
-- SPA ходит в API по абсолютному URL `https://bff.localhost/api` с `credentials: 'include'`; base URL не захардкожен.
+- Compose: сервис `client-web` (node, bind-mount `./Client/Client.Web`, анонимный том на `node_modules`), сеть dev_net; Dockerfile для dev - `Dockerfile.development` рядом с шаблонным production-Dockerfile.
+- SPA ходит в API по абсолютному URL `https://bff.recallapp.localhost/api` с `credentials: 'include'`; base URL не захардкожен.
 - При добавлении окружений (staging, prod-домены) origin'ы добавляются в конфигурацию BFF; wildcard-origины запрещены.
 - Офлайн-устойчивость одиночного обучения (план платформы §6) - вне рассмотрения этой записи; при появлении PWA/service worker потребуется отдельная ADR.
 
