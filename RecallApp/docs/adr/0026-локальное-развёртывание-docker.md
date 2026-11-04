@@ -65,4 +65,5 @@ Keycloak хранит свои данные в **отдельной Postgres б�
 - [ADR 0021](./0021-хранилище-сессий-bff.md) - серверная сессия BFF.
 - [ADR 0025](./0025-фреймворк-bff.md) - свой BFF на ASP.NET Core, сериализация refresh.
 - [dev-https для SPA/BFF/IAM](../dev-https-для-spa-bff-iam.md) - визуализация edge-прокси, локального Root CA и docker-compose для dev.
+- [ADR 0033](./0033-домены-dev-окружения.md) - уточняет доменную часть этой записи: прикладные узлы живут в общей зоне `*.recallapp.localhost`, здесь указаны устаревшие `app.localhost`/`bff.localhost`.
 - [Диаграмма: dev-https топология](../diagrams/dev-https%20-%20топология.puml) - схема единого входа, TLS/HTTP2 и доверия сертификатам.

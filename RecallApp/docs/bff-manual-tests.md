@@ -32,15 +32,16 @@
 1. Стек поднят: `docker compose up` из корня `RecallApp`. Контейнеры `edge-proxy`, `iam`, `iam-db`, `bff` живы.
 2. Локальный Root CA импортирован в доверенные Windows (замок на `https://*.localhost` валиден).
 3. В realm `recallapp` есть тестовый пользователь с клиентской ролью `app-user` (клиент `RecallApp`).
-4. Хосты: приложение BFF - `https://bff.localhost`, Keycloak - `https://auth.localhost`.
+4. Хосты: приложение BFF - `https://bff.recallapp.localhost`, Keycloak - `https://auth.localhost`. Все прикладные узлы живут в зоне `*.recallapp.localhost` (ADR 0033): cookie сессии `SameSite=Lax` не уйдёт в `fetch` между разными зонами.
 
 ### Эндпоинты BFF
 
-| Путь | Назначение |
-|---|---|
-| `GET https://bff.localhost/login` | старт OIDC-входа, редирект на Keycloak, затем обратно |
-| `GET https://bff.localhost/session` | состояние сессии (белый список, `Cache-Control: no-store`): `{ isAuthenticated, sub, name, email, roles }` |
-| `POST https://bff.localhost/logout` | выход: сброс cookie и OIDC sign-out (только POST; GET отвечает 405) |
+| Путь | Назначение                                                                                                                                                      |
+|---|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `GET https://bff.recallapp.localhost/login` | старт OIDC-входа, редирект на Keycloak, затем обратно                                                                                                           |
+| `GET https://bff.recallapp.localhost/session` | проба живости сессии (белый список, `Cache-Control: no-store`): `{ isAuthenticated, name, email }`; анонимно - `{ isAuthenticated: false }`                     |
+| `GET https://bff.recallapp.localhost/debug/session` | диагностика под флагом `Diagnostics:Session` (в dev включён): `{ isAuthenticated, sub, name, email, roles, accessTokenExpiresAt }`; при выключенном флаге - 404 |
+| `POST https://bff.recallapp.localhost/logout` | выход: сброс cookie и OIDC sign-out (только POST; GET отвечает 405)                                                                                             |
 
 ### Где смотреть логи
 
@@ -91,8 +92,8 @@ Oidc__TokenRefresh__RefreshThreshold: "00:10:00"
 **Цель.** Регресс после рефакторинга: вход, сессия с ролью, выход.
 
 **Шаги.**
-1. Открыть `https://bff.localhost/session` без входа.
-2. Пройти `https://bff.localhost/login`, войти под тестовым пользователем.
+1. Открыть `https://bff.recallapp.localhost/session` без входа.
+2. Пройти `https://bff.recallapp.localhost/login`, войти под тестовым пользователем.
 3. Снова открыть `/session`.
 4. Выйти: `POST /logout` (в консоли браузера `fetch('/logout', { method: 'POST' })`).
 5. Снова открыть `/session`.
@@ -100,7 +101,7 @@ Oidc__TokenRefresh__RefreshThreshold: "00:10:00"
 **Ожидаем.**
 - Шаг 1: `isAuthenticated: false`.
 - После входа в браузере появляется cookie `recall_bff`.
-- Шаг 3: `isAuthenticated: true`, `name` заполнен, `roles` содержит `app-user`.
+- Шаг 3: `isAuthenticated: true`, `name` заполнен. Роли проверяются по `GET /debug/session` (в dev включён): `roles` содержит `app-user`.
 - Шаг 5: `isAuthenticated: false`.
 
 ---
@@ -211,7 +212,7 @@ Oidc__TokenRefresh__RefreshThreshold: "00:10:00"
 
 **Предусловия.** В realm включён Remember Me, SSO Session Idle = 30 минут, SSO Session Idle Remember Me = 30 дней. Порог `RefreshThreshold` по умолчанию, Access Token Lifespan боевой (5 минут). В браузере выключено восстановление сессии («Продолжить с того же места» или «Работать в фоне после закрытия окон»)
 
-**Где смотреть.** DevTools → Application → Cookies → `https://bff.localhost` → `recall_bff`, столбец Expires / Max-Age: `Session` или дата. Либо Network → ответ на `/signin-oidc` → заголовок `Set-Cookie`, есть ли в нём `expires=`.
+**Где смотреть.** DevTools → Application → Cookies → `https://bff.recallapp.localhost` → `recall_bff`, столбец Expires / Max-Age: `Session` или дата. Либо Network → ответ на `/signin-oidc` → заголовок `Set-Cookie`, есть ли в нём `expires=`.
 
 **Шаги A: без галочки.**
 1. POST `/logout`, затем `/login`, войти без отметки Remember me.
@@ -230,7 +231,7 @@ Oidc__TokenRefresh__RefreshThreshold: "00:10:00"
 - B: Expires ≈ сейчас + 30 дней; после перезапуска браузера `/session` → `isAuthenticated: true` (протухший access обновится refresh-ем).
 - C: `expires=` сдвинулся вперёд на время, прошедшее с прошлой выдачи cookie. `Set-Cookie` есть только в ответах, на которых прошёл refresh.
 
-**Нюанс по cookie.** Панель Application → Cookies показывает cookie только для origin, у которого сейчас открыта страница. Пока `bff.localhost` не загружен, список пуст, хотя cookie на месте.
+**Нюанс по cookie.** Панель Application → Cookies показывает cookie только для origin, у которого сейчас открыта страница. Пока `bff.recallapp.localhost` не загружен, список пуст, хотя cookie на месте.
 
 **Если в варианте B получилось `Session`.** Не сработала эвристика: проверить, что в realm SSO Session Idle Remember Me действительно 30 дней, и что `refresh_expires_in` при входе с галочкой больше `Oidc:TokenRefresh:RememberMeThreshold`.
 
@@ -294,7 +295,7 @@ Oidc__TokenRefresh__RefreshThreshold: "00:10:00"
   ```
 
   Окно BFF при этом короче SSO Idle Keycloak, сессия Keycloak за время теста не истечёт.
-- Вход без Remember Me. Других вкладок с `bff.localhost` нет, автоматического поллинга `/session` нет.
+- Вход без Remember Me. Других вкладок с `bff.recallapp.localhost` нет, автоматического поллинга `/session` нет.
 
 **Почему такие тайминги.** Вход в момент 0:00. Окно cookie 0:00–6:00, `expires_at` access 4:30 (срок 5:00 минус `ClockSkewBuffer`; до 2026-10-28 на входе буфер не вычитался, было 5:00).
 
@@ -308,7 +309,7 @@ Oidc__TokenRefresh__RefreshThreshold: "00:10:00"
 
 **Шаги.**
 1. Войти через `/login` и записать время входа по часам. На входе refresh не выполняется, поэтому ориентира в логе не будет.
-2. Оставить открытой страницу `bff.localhost` с DevTools (Network с фильтром `session`, включённый Preserve log). Никаких запросов не делать.
+2. Оставить открытой страницу `bff.recallapp.localhost` с DevTools (Network с фильтром `session`, включённый Preserve log). Никаких запросов не делать.
 3. В интервале 4:15–4:45 после входа отправить пачку параллельных запросов из консоли:
 
    ```js
@@ -346,12 +347,12 @@ Oidc__TokenRefresh__RefreshThreshold: "00:10:00"
 2. Прокси включён: `docker compose config | Select-String AppProxy` показывает `AppProxy__Destination=http://app:8080`.
 3. В realm `recallapp` есть тестовый пользователь с клиентской ролью `app-user`.
 
-**Эндпоинт.** `GET https://bff.localhost/api/users/me` → монолит `GET /api/users/me`.
+**Эндпоинт.** `GET https://bff.recallapp.localhost/api/users/me` → монолит `GET /api/users/me`.
 
 **Шаги.**
-1. Анонимно: `GET https://bff.localhost/api/users/me`.
-2. `https://bff.localhost/login`, войти под тестовым пользователем.
-3. В той же сессии: `GET https://bff.localhost/api/users/me`.
+1. Анонимно: `GET https://bff.recallapp.localhost/api/users/me`.
+2. `https://bff.recallapp.localhost/login`, войти под тестовым пользователем.
+3. В той же сессии: `GET https://bff.recallapp.localhost/api/users/me`.
 4. Повторить запрос из шага 3.
 5. Проверить строку в БД: `docker compose exec app-db psql -U app_runtime -d app -c "SELECT id, keycloak_sub, email, display_name FROM accounts.users;"`.
 

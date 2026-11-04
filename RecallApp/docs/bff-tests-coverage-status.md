@@ -1,15 +1,25 @@
 # BFF: статус тестового покрытия
 
-**Дата:** 2026-10-30, C0-дополнения реализованы (пакеты 1–6, код в коммитах после `306274d`). Документ отслеживает, что из поведения BFF ещё не проверено. Согласованные доработки взяты из п.1 дополнения C0 (номера вида 3.1, 1.8 совпадают с таблицей слабых мест).
+**Дата:** 2026-11-04 (обновлено после C3: узкий контракт `/session`, диагностика `/debug/session`, CORS из конфигурации, унифицированный формат ошибок). Документ отслеживает, что из поведения BFF ещё не проверено. Согласованные доработки взяты из п.1 дополнения C0 (номера вида 3.1, 1.8 совпадают с таблицей слабых мест).
 
 Как запускать тесты: [Bff/Bff.Web/tests/README.md](../Bff/Bff.Web/tests/README.md). Ручные сценарии: [bff-manual-tests.md](bff-manual-tests.md).
+
+## Актуальные цифры (2026-11-04)
+
+| Проект | Количество |
+|---|---|
+| `Tests.Unit` | 90 |
+| `Tests.Integration` без Keycloak и Database | 43 |
+| `Tests.Integration`, `Keycloak` | 3 |
+
+Тесты монолита ведутся отдельно: [App/tests/README.md](../App/tests/README.md) (интеграционные, в т.ч. контейнерные с БД).
 
 ## Что уже покрыто
 
 | Слой | Количество | Что проверяет |
 |---|---|---|
-| `Tests.Unit` | 68 | клиент token endpoint (включая классификацию `invalid_grant` vs прочих ошибок), правило `expires_at`, окно cookie, ticket store (включая детект тихого отказа записи), замки и уборщик, события входа OIDC, валидация опций на старте |
-| `Tests.Integration`, `InProcess` | 31 | refresh у порога, ротация, `token_type`, параллельные запросы после простоя, Keycloak недоступен и backoff, отказ Keycloak, нет refresh-токена, нет `bff_session_id`, обрыв клиента у замка, окно истекло, Remember Me после refresh; API-контракт: 401 problem+json (аноним/Rejected), CSRF, login/logout, белый список `/session`, `no-store`, problem+json для исключений, нестартует при невалидных опциях |
+| `Tests.Unit` | 90 | клиент token endpoint (включая классификацию `invalid_grant` vs прочих ошибок), правило `expires_at`, окно cookie, ticket store (включая детект тихого отказа записи), замки и уборщик, события входа OIDC, валидация опций на старте, валидатор CORS-политик, формат кодов в `ApiProblem` |
+| `Tests.Integration`, `InProcess` | 43 | refresh у порога, ротация, `token_type`, параллельные запросы после простоя, Keycloak недоступен и backoff, отказ Keycloak, нет refresh-токена, нет `bff_session_id`, обрыв клиента у замка, окно истекло, Remember Me после refresh; API-контракт: 401 problem+json (аноним/Rejected) и `source=bff`, CSRF, login/logout, узкий контракт `/session` (`isAuthenticated, name, email`), `/debug/session` под флагом и 404 при выключенном, `no-store`, problem+json для исключений, CORS preflight, нестартует при невалидных опциях |
 | `Tests.Integration`, `Keycloak` | 3 | форма ответа настоящего Keycloak и роли, повторно использованный refresh-токен, неверный секрет клиента (сессия выживает: `invalid_client` ≠ `invalid_grant`) |
 | Ручные сценарии | 9 | вход и выход, Remember Me при перезапуске браузера (7A, 7B), остальное продублировано автотестами |
 
@@ -28,8 +38,8 @@
 | А7 | Атрибуты cookie | `recall_bff`, `HttpOnly`, `Secure`, `SameSite=Lax`, `path=/` | IP | С | не покрыто |
 | А8 | `/login?returnUrl=https://evil` | Challenge с `RedirectUri = "/"`, open redirect закрыт | IP (OIDC `Configuration` без discovery) | В | не покрыто |
 | А9 | Выход | Запись стора удалена, cookie удаляется, 302 на end_session с `id_token_hint` | IP, как А8 | С | не покрыто |
-| А10 | `/session`: нет `resource_access` или роли не массив | `roles: []`, 200 | U | Н | не покрыто |
-| А11 | `/session`: access-токен не JWT | Сейчас 500 из `ReadJsonWebToken`. Keycloak всегда выдаёт JWT, кейс теоретический | U | Н | не покрыто |
+| А10 | `/debug/session`: нет `resource_access` или роли не массив | `roles: []`, 200 | U | Н | не покрыто |
+| А11 | `/debug/session`: access-токен не JWT | Сейчас 500 из `ReadJsonWebToken`. Keycloak всегда выдаёт JWT, кейс теоретический | U | Н | не покрыто |
 | А12 | Ленивый trim при > 10 000 замков из сервиса | После успешного refresh снимаются 100 самых старых | U | Н | не покрыто |
 | А13 | Истёк SSO Session Max | Keycloak отклоняет refresh, BFF выходит. Нужен короткий Max в тестовом realm | KC или Р | Н | не покрыто |
 | А14 | Remember Me на настоящем входе | Режим по `refresh_expires_in` | Р (сценарий 7) | — | покрыто вручную |
@@ -51,13 +61,16 @@
 | Б9 | 1.8 | `invalid_client` или код, отличный от `invalid_grant`: сессия жива, backoff, лог Error. KC-тест `WrongClientSecret_SignsOut` заменить | U, IP, KC | сделано |
 | Б10 | 1.7 | Таймаут Keycloak не меньше порога refresh: приложение не стартует | U, IP | сделано |
 | Б11 | 3.8 | `/login` при открытой сессии: 302 на `returnUrl`, новая сессия не создаётся | IP | сделано |
-| Б12 | 3.7 | `/session` отдаёт только `isAuthenticated, sub, name, email, roles` | IP | сделано |
+| Б12 | 3.7 | `/session` отдаёт только `isAuthenticated, name, email`; `sub` и роли убраны (ADR 0032) | IP | сделано |
 | Б13 | 3.9 | `POST /logout` без сессии: локальный 302 на `/`, в Keycloak не ведёт | IP | сделано |
 | Б14 | 1.11 | В сессии нет `bff_session_id`: выход, в Keycloak не ходим | IP | сделано |
 | Б15 | 1.1 | Запись стора не прочиталась сразу после записи: ошибка в логе. Сначала сверить `SizeLimit` | U | сделано |
 | Б16 | 1.6 | Клиент оборвал запрос во время ожидания замка: ожидание отменено, замок корректен | IP | сделано |
 | Б17 | 1.12 | При старте контейнера нет предупреждения `HTTP_PORTS` | Р (лог) | код готов, проверить при старте контейнера |
 | Б18 | А2 | Отказ Keycloak ставит маркер «сессия отклонена»: ждавшие замок в Keycloak не ходят и сразу выходят. Один POST на пачку | IP | сделано |
+| Б19 | — | `GET /debug/session` при `Diagnostics:Session = true`: `sub`, роли из access-токена, `accessTokenExpiresAt`, `no-store`; анонимно — только `isAuthenticated` | IP | сделано |
+| Б20 | — | `GET /debug/session` при выключенном флаге: 404 (диагностика не существует в проде) | IP | сделано |
+| Б21 | — | Единый формат ошибок: код в `title` (PascalCase), `source = bff`, есть `status`/`detail`, поля `code` больше нет (ADR 0031) | IP, U | сделано |
 
 ## В. Осознанно не проверяем
 

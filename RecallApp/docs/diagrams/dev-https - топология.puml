@@ -1,5 +1,5 @@
 @startuml dev-https-топология
-title Локальная dev-топология: HTTPS для SPA + BFF + Keycloak (ADR 0026)
+title Локальная dev-топология: HTTPS для SPA + BFF + Keycloak (ADR 0026, ADR 0033)
 
 skinparam componentStyle rectangle
 skinparam shadowing false
@@ -13,9 +13,9 @@ package "Windows (host)" {
 }
 
 package "Docker-сеть dev_net" {
-  component "edge-proxy (Nginx) \n :443 TLS + HTTP/2 \n aliases: \n - app.localhost \n - bff.localhost \n - auth.localhost" as edge
-  component "spa (Vite) \n :5173" as spa
-  component "bff (.NET) \n :5000" as bff
+  component "edge-proxy (Nginx) \n :443 TLS + HTTP/2 \n aliases: \n - app.recallapp.localhost \n - bff.recallapp.localhost \n - auth.localhost" as edge
+  component "client-web (Vite) \n :5173" as spa
+  component "bff (.NET) \n :8080" as bff
   component "iam (Keycloak) \n :8080  start-dev" as iam
   database "iam-db \n (Postgres)" as iamdb
   component "ca-generator \n (openssl)" as ca
@@ -25,8 +25,8 @@ package "Docker-сеть dev_net" {
 dev --> browser
 
 ' front-channel: браузер всегда по https через edge-прокси
-browser --> edge : https h2 \n app.localhost (SPA)
-browser --> edge : https h2 \n bff.localhost (API, httpOnly cookie)
+browser --> edge : https h2 \n app.recallapp.localhost (SPA)
+browser --> edge : https h2 \n bff.recallapp.localhost (API, httpOnly cookie)
 browser --> edge : https h2 \n auth.localhost (хостовые страницы входа)
 
 ' edge терминирует TLS, дальше http внутри сети
@@ -44,7 +44,7 @@ end note
 iam --> iamdb : jdbc
 
 ' доверие и сертификаты
-ca --> certs : генерирует rootCA + *.localhost
+ca --> certs : генерирует rootCA + серт с SAN на зону (app/bff.recallapp.localhost, auth.localhost)
 certs --> edge : server.crt/key
 certs --> bff : rootCA (update-ca-certificates \n в entrypoint)
 certs --> winca : импорт rootCA вручную (п.5)
@@ -56,6 +56,8 @@ bff ..> mono : API (YARP), появится позже
 legend right
   Единый origin через edge-прокси: решает Mismatched Issuer,
   Secure-cookie (реальный https), HTTP/2 (мультиплексирование).
+  Прикладные узлы - в общей зоне *.recallapp.localhost (ADR 0033):
+  только тогда SameSite=Lax отправит cookie сессии в fetch-cross-origin.
   BFF статику SPA НЕ отдаёт - это делает edge-прокси.
 endlegend
 

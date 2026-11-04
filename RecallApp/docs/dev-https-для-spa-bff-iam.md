@@ -4,7 +4,7 @@
 
 При попытке запустить связку SPA (React) + BFF (.NET) + Keycloak на локальной машине без настройки HTTPS возникают три критические проблемы:
 1. Проблема двойного адреса Keycloak (Mismatched Issuer URL): Для протокола OpenID Connect (OIDC) критически важно, чтобы адрес Keycloak (Issuer) был абсолютно одинаковым как для внешнего браузера, так и для бэкенда (BFF). Если пользователь заходит в Keycloak через браузер по адресу https://auth.localhost, а BFF под капотом обращается к нему по внутреннему имени Docker-сети http://iam:8080 (для обмена кода на токен), Keycloak заблокирует запрос из-за несовпадения Issuer. Оба участника должны видеть Keycloak по единому HTTPS-адресу.
-2. Требование по безопасности Cookies (Secure, SameSite): Паттерн BFF подразумевает, что бэкенд сохраняет выданные токены в зашифрованную HttpOnly куку и отдает её в браузер. Для защиты от CSRF-атак современный стандарт требует выставлять флаги SameSite=Lax; Secure. Флаг Secure принудительно требует наличия HTTPS-соединения, иначе браузер просто такую куку проигнорирует.
+2. Требование по безопасности Cookies (Secure, SameSite): Паттерн BFF подразумевает, что бэкенд сохраняет выданные токены в зашифрованную HttpOnly куку и отдает её в браузер. Для защиты от CSRF-атак современный стандарт требует выставлять флаги SameSite=Lax; Secure. Флаг Secure принудительно требует наличия HTTPS-соединения, иначе браузер просто такую куку проигнорирует. Дополнительно: SPA и BFF обязаны жить в одной зоне доменов (`*.recallapp.localhost`), иначе `SameSite=Lax` не отправит cookie в кросс-origin `fetch` - см. [ADR 0033](adr/0033-домены-dev-окружения.md).
 3. Цепочка доверия SSL внутри Docker: Даже если выдать контейнерам самоподписанные SSL-сертификаты, код внутри контейнера BFF заблокирует любой запрос к Keycloak с ошибкой `AuthenticationException: The remote certificate is invalid`. Контейнеры как-то должны доверять одному и тому же корневому центру сертификации (Root CA) внутри Docker. Этот же центр сертификации нужно будет доставлять разработчику на машину, чтобы Windows не браковала выданные контейнерам сертификаты.
 
 Данное решение, на мой взгляд, предоставляет очень удобное решение для проблем выше. С учётом выбранного стека.
@@ -17,7 +17,7 @@
 Ключевые компоненты решения:
 
 - Единая точка входа (Reverse Proxy): Контейнер с прокси-сервером слушает внешние порты 80 и 443. Он принимает весь трафик (включая внутренний трафик между контейнерами), расшифровывает HTTPS и передает его конечным сервисам по HTTP внутри изолированной сети.
-- Сетевые псевдонимы (Docker Network Aliases): Мы назначаем доменные имена (app.localhost, bff.localhost, auth.localhost) как alias-адреса для контейнера Reverse Proxy. Благодаря этому, когда BFF делает запрос на https://auth.localhost, Docker-сеть маршрутизирует этот запрос не в интернет, а на локальный прокси-сервер.
+- Сетевые псевдонимы (Docker Network Aliases): Мы назначаем доменные имена (app.recallapp.localhost, bff.recallapp.localhost, auth.localhost) как alias-адреса для контейнера Reverse Proxy. Благодаря этому, когда BFF делает запрос на https://auth.localhost, Docker-сеть маршрутизирует этот запрос не в интернет, а на локальный прокси-сервер.
 - Общий Root CA Volume: Корневой сертификат пробрасывается в контейнер BFF и в операционную систему Windows. Цепочка доверия становится непрерывной.
 
 ## Пошаговое решение
@@ -57,12 +57,12 @@ http {
     server {
         listen 443 ssl;
         http2 on;
-        server_name app.localhost;
+        server_name app.recallapp.localhost;
         ssl_certificate /etc/nginx/certs/server.crt;
         ssl_certificate_key /etc/nginx/certs/server.key;
 
         location / {
-            proxy_pass http://spa:5173; # порт dev-сервера Vite по умолчанию
+            proxy_pass http://client-web:5173; # порт dev-сервера Vite по умолчанию
         }
     }
 
@@ -70,12 +70,12 @@ http {
     server {
         listen 443 ssl;
         http2 on;
-        server_name bff.localhost;
+        server_name bff.recallapp.localhost;
         ssl_certificate /etc/nginx/certs/server.crt;
         ssl_certificate_key /etc/nginx/certs/server.key;
 
         location / {
-            proxy_pass http://bff:5000;
+            proxy_pass http://bff:8080;
         }
     }
 
@@ -99,13 +99,13 @@ http {
     # Перенаправление с HTTP на HTTPS
     server {
         listen 80;
-        server_name app.localhost bff.localhost auth.localhost;
+        server_name app.recallapp.localhost bff.recallapp.localhost auth.localhost;
         return 301 https://$host$request_uri;
     }
 }
 ```
 
-> **Про Vite HMR за прокси.** Одних `Upgrade`/`Connection`-заголовков мало: Vite-клиент по умолчанию стучится ws-ом на свой origin и порт. Чтобы HMR ходил через `https://app.localhost`, в `vite.config` задать `server.hmr` (`protocol: 'wss'`, `host: 'app.localhost'`, `clientPort: 443`) и `server.host: true`. Без этого горячая перезагрузка молча отвалится, хотя статика грузится.
+> **Про Vite HMR за прокси.** Одних `Upgrade`/`Connection`-заголовков мало: Vite-клиент по умолчанию стучится ws-ом на свой origin и порт. Чтобы HMR ходил через `https://app.recallapp.localhost`, в `vite.config` задать `server.hmr` (`protocol: 'wss'`, `host: 'app.recallapp.localhost'`, `clientPort: 443`) и `server.host: true`. Без этого горячая перезагрузка молча отвалится, хотя статика грузится.
 
 Для Bff-контейнера потребуется написать startup-скрипт, который будет принудительно обновлять информацию об имеющихся сертификатах. По умолчанию контейнеры так не делают, даже если пробросили сертификат или rootCA.
 
@@ -135,17 +135,18 @@ volumes:
   iam_db_data:
 
 services:
-  # Автоматический генератор локального Root CA + wildcard-серта *.localhost
+  # Автоматический генератор локального Root CA + серта на зону *.recallapp.localhost
   ca-generator:
     image: alpine
     entrypoint: >
       sh -c "apk add --no-cache openssl &&
              mkdir -p /certs &&
              [ ! -f /certs/rootCA.key ] && openssl genrsa -out /certs/rootCA.key 2048 || true &&
-             [ ! -f /certs/rootCA.pem ] && openssl req -x509 -new -nodes -key /certs/rootCA.key -sha256 -days 1024 -out /certs/rootCA.pem -subj '/CN=LocalDevCA' || true &&
+             [ ! -f /certs/rootCA.pem ] && openssl req -x509 -new -nodes -key /certs/rootCA.key -sha256 -days 1024 -out /certs/rootCA.pem -subj '/CN=RecallApp Local Dev CA' || true &&
              openssl genrsa -out /certs/server.key 2048 &&
              openssl req -new -key /certs/server.key -out /certs/server.csr -subj '/CN=*.localhost' &&
-             openssl x509 -req -in /certs/server.csr -CA /certs/rootCA.pem -CAkey /certs/rootCA.key -CAcreateserial -out /certs/server.crt -days 365 -sha256"
+             printf 'subjectAltName=DNS:localhost,DNS:app.recallapp.localhost,DNS:bff.recallapp.localhost,DNS:auth.localhost\nbasicConstraints=CA:FALSE\n' > /certs/san.ext &&
+             openssl x509 -req -in /certs/server.csr -CA /certs/rootCA.pem -CAkey /certs/rootCA.key -CAcreateserial -out /certs/server.crt -days 365 -sha256 -extfile /certs/san.ext"
     volumes:
       - shared_certs:/certs
 
@@ -163,8 +164,8 @@ services:
     networks:
       dev_net:
         aliases:
-          - app.localhost
-          - bff.localhost
+          - app.recallapp.localhost
+          - bff.recallapp.localhost
           - auth.localhost
 
   # Отдельный Postgres под Keycloak (ADR 0026): своя схема IAM, не доменная БД

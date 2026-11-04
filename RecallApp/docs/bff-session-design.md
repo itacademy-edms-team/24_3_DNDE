@@ -419,11 +419,14 @@
 | Мутация (POST/PUT/PATCH/DELETE) без заголовка `X-CSRF: 1` | 403 `problem+json`, `title = CsrfFailed` | не применимо |
 | Необработанное исключение | 500 `problem+json` без stack trace (`UseExceptionHandler`; developer-страница только в Development) | то же |
 
+Формат problem-ответов общий с монолитом (ADR 0031): код ошибки в `title` в PascalCase, пояснение в `detail`, происхождение в extension `source` (`bff`).
+
 Правила:
 
 - SPA на 401 делает top-level навигацию на bff `/login` (не fetch). Отдельной обработки `SessionExpired` не требуется: любой 401 ведёт по этому же пути, а если SSO-сессия Keycloak ещё жива, вход произойдёт молча и пользователь вернётся без формы логина.
 - Заголовок `X-CSRF` проверяется только на мутациях: GET не меняет состояние, а SameSite=Lax уже отсекает кросс-сайт-чтение.
-- `GET /session` отдаёт белый список полей (`isAuthenticated, sub, name, email, roles`; внутренние `sid`/`session_state` наружу не идут) и всегда `Cache-Control: no-store` (bfcache/back-навигация иначе отдавали бы устаревшее состояние).
+- `GET /session` — проба живости сессии для SPA (ADR 0032): отдаёт `{ isAuthenticated, name, email }` и всегда `Cache-Control: no-store` (bfcache/back-навигация иначе отдавали бы устаревшее состояние). В монолит не ходит: иначе недоступность `App` выглядело бы как разлогин. `sub` и роли клиенту не передаются — авторизация проверяется ответами `/api/**`, а не данными в JS.
+- `GET /debug/session` — диагностика (что именно лежит в сессии и в access-токене): `{ isAuthenticated, sub, name, email, roles, accessTokenExpiresAt }`. Закрыт флагом `Diagnostics:Session` (по умолчанию `false`, включён в Development), при выключенном флаге отвечает 404. Это не контракт для SPA.
 - `/logout` — только POST; без живой сессии делает локальный redirect на `/` без похода в Keycloak. `/login` при открытой сессии сразу возвращает на `returnUrl`, не создавая вторую, дублирующую и перезаписывающую, сессию.
 - Стартовые проверки опций (`OidcOptionsValidator`): таймаут Keycloak обязан быть меньше `RefreshThreshold`, иначе приложение не стартует (защита от регрессии п. 8.1).
 - Ожидание замка и запрос к Keycloak отменяются по обрыву клиента (`RequestAborted`).
