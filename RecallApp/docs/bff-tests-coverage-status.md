@@ -40,9 +40,9 @@
 
 | # | Доработка | Кейс | Способ | Статус |
 |---|---|---|---|---|
-| Б1 | 3.1 | `/api/**` без сессии: 401 problem+json, `code=not_authenticated`, без 302 | IP | сделано |
+| Б1 | 3.1 | `/api/**` без сессии: 401 problem+json, `title=NotAuthenticated`, без 302 | IP | сделано |
 | Б2 | 3.1 | Путь вне `/api` без сессии: по-прежнему 302 на Keycloak | IP | сделано |
-| Б3 | 3.2, 2.2 | Отказ Keycloak на `/api/**`: 401, `code=session_expired`, cookie удаляется | IP | сделано |
+| Б3 | 3.2, 2.2 | Отказ Keycloak на `/api/**`: 401, `title=SessionExpired`, cookie удаляется | IP | сделано |
 | Б4 | 3.2 | Отказ Keycloak на `/session`: `isAuthenticated: false` в этом же ответе | IP | сделано |
 | Б5 | 3.4, 1.9 | Необработанное исключение: problem+json без stack trace вне Development | IP | сделано |
 | Б6 | 3.5 | `/session` отвечает с `Cache-Control: no-store` | IP | сделано |

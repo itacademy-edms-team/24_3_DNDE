@@ -414,14 +414,14 @@
 
 | Ситуация | Ответ на `/api/**` | Ответ на остальных путях |
 |---|---|---|
-| Анонимный запрос | 401 `problem+json`, `code = not_authenticated` | редирект в Keycloak как раньше (перехват в `OnRedirectToIdentityProvider`) |
-| Keycloak отказал в refresh (Rejected) | 401 `problem+json`, `code = session_expired`, cookie удаляется | `User` сброшен в анонимного в этом же запросе (закрыт п. 8.4) |
-| Мутация (POST/PUT/PATCH/DELETE) без заголовка `X-CSRF: 1` | 403 `problem+json`, `code = csrf_failed` | не применимо |
+| Анонимный запрос | 401 `problem+json`, `title = NotAuthenticated` | редирект в Keycloak как раньше (перехват в `OnRedirectToIdentityProvider`) |
+| Keycloak отказал в refresh (Rejected) | 401 `problem+json`, `title = SessionExpired`, cookie удаляется | `User` сброшен в анонимного в этом же запросе (закрыт п. 8.4) |
+| Мутация (POST/PUT/PATCH/DELETE) без заголовка `X-CSRF: 1` | 403 `problem+json`, `title = CsrfFailed` | не применимо |
 | Необработанное исключение | 500 `problem+json` без stack trace (`UseExceptionHandler`; developer-страница только в Development) | то же |
 
 Правила:
 
-- SPA на 401 делает top-level навигацию на bff `/login` (не fetch). Отдельной обработки `session_expired` не требуется: любой 401 ведёт по этому же пути, а если SSO-сессия Keycloak ещё жива, вход произойдёт молча и пользователь вернётся без формы логина.
+- SPA на 401 делает top-level навигацию на bff `/login` (не fetch). Отдельной обработки `SessionExpired` не требуется: любой 401 ведёт по этому же пути, а если SSO-сессия Keycloak ещё жива, вход произойдёт молча и пользователь вернётся без формы логина.
 - Заголовок `X-CSRF` проверяется только на мутациях: GET не меняет состояние, а SameSite=Lax уже отсекает кросс-сайт-чтение.
 - `GET /session` отдаёт белый список полей (`isAuthenticated, sub, name, email, roles`; внутренние `sid`/`session_state` наружу не идут) и всегда `Cache-Control: no-store` (bfcache/back-навигация иначе отдавали бы устаревшее состояние).
 - `/logout` — только POST; без живой сессии делает локальный redirect на `/` без похода в Keycloak. `/login` при открытой сессии сразу возвращает на `returnUrl`, не создавая вторую, дублирующую и перезаписывающую, сессию.
