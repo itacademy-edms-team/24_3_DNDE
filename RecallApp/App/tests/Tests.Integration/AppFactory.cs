@@ -18,6 +18,9 @@ public sealed class AppFactory : WebApplicationFactory<Program>
     public const string TestAuthScheme = "TestAuth";
     public const string TestAuthHeader = "X-Test-Auth";
 
+    /// <summary>Подмена claim sub: проверка отказов по невалидной идентичности.</summary>
+    public const string TestSubHeader = "X-Test-Sub";
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         // Env-first: в контейнере (app-tests) строки подключения и authority приходят из compose,
@@ -57,9 +60,16 @@ internal sealed class TestAuthHandler(IOptionsMonitor<AuthenticationSchemeOption
         new("name", "Test User"),
     ];
 
-    protected override Task<AuthenticateResult> HandleAuthenticateAsync() =>
-        Task.FromResult(
-            Context.Request.Headers.TryGetValue(AppFactory.TestAuthHeader, out var value) && value == "true"
-                ? AuthenticateResult.Success(new(new ClaimsPrincipal(new ClaimsIdentity(Claims, Scheme.Name)), Scheme.Name))
-                : AuthenticateResult.NoResult());
+    protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+    {
+        if (!Context.Request.Headers.TryGetValue(AppFactory.TestAuthHeader, out var value) || value != "true")
+            return Task.FromResult(AuthenticateResult.NoResult());
+
+        var claims = Claims.AsEnumerable();
+        if (Context.Request.Headers.TryGetValue(AppFactory.TestSubHeader, out var sub))
+            claims = claims.Where(c => c.Type != "sub").Append(new Claim("sub", sub.ToString()));
+
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, Scheme.Name));
+        return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(principal, Scheme.Name)));
+    }
 }
