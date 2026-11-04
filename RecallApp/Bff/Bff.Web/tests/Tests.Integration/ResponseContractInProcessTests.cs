@@ -57,10 +57,8 @@ public sealed class ResponseContractInProcessTests : IAsyncLifetime
 
         var (_, body) = await BffApp.GetAppSessionAsync(_browser);
 
+        // sub и роли клиенту не отдаются: авторизация - по ответам монолита, диагностика - /debug/session.
         var fields = body.EnumerateObject().Select(p => p.Name).OrderBy(n => n).ToArray();
-        Assert.Equal(
-            new[] { "email", "isAuthenticated", "name", "roles", "sub" },
-            fields
-        );
+        Assert.Equal(new[] { "email", "isAuthenticated", "name" }, fields);
     }
 }

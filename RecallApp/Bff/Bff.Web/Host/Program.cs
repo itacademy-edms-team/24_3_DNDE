@@ -38,6 +38,9 @@ try
         .ValidateOnStart();
     builder.Services.AddSingleton<IValidateOptions<SpaOptions>, SpaOptionsValidator>();
 
+    builder.Services.AddOptions<DiagnosticsOptions>()
+        .Bind(builder.Configuration.GetSection(DiagnosticsOptions.SectionName));
+
     // Right scheme/host/port forward (за edge-прокси, ADR 0026)
     builder.Services.Configure<ForwardedHeadersOptions>(options =>
     {

@@ -1,23 +1,19 @@
-﻿using System.Text.Json;
-using Host.Configuration;
+﻿using Host.Configuration;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.JsonWebTokens;
 
 namespace Host.Controllers;
 
 /// <summary>
 /// Контроллер аутентификации и состояния серверной сессии BFF:
-/// инициирует вход/выход редиректами и отдаёт клиенту состояние сессии и client-роли RecallApp.
+/// инициирует вход/выход редиректами и отвечает SPA, жива ли сессия.
 /// </summary>
 [ApiController]
 public class AuthController(IOptions<SpaOptions> spa) : ControllerBase
 {
-    private const string RolesClientId = "RecallApp";
-
     private readonly SpaOptions _spa = spa.Value;
 
     /// <summary>
@@ -74,49 +70,28 @@ public class AuthController(IOptions<SpaOptions> spa) : ControllerBase
             OpenIdConnectDefaults.AuthenticationScheme);
     }
 
-    /// <summary>Состояние текущей сессии: авторизация, личность из токена, client-роли RecallApp. Поля по белому списку</summary>
+    /// <summary>
+    /// Проба живости серверной сессии для SPA: жива ли cookie, и кто в ней.
+    /// В монолит не ходит: недоступность App не должна выглядеть как разлогин.
+    /// Роли и sub здесь не отдаются - это диагностика, см. /debug/session.
+    /// </summary>
     [HttpGet("/session")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     // Состояние сессии не кэшируется: bfcache/back-навигация иначе отдавали бы устаревшее состояние.
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-    public async Task<IActionResult> Session()
+    public IActionResult Session()
     {
         if (User.Identity?.IsAuthenticated != true)
             return Ok(new { isAuthenticated = false });
 
-        // Роли приложения - client-роли RecallApp в access-токене (resource_access), ADR 0024.
-        // В ID-токене/principal их нет, поэтому достаём из сохранённого access-токена.
-        var accessToken = await HttpContext.GetTokenAsync("access_token");
-        var roles = ExtractRecallAppRoles(accessToken);
-
         // Внутренние идентификаторы (sid, session_state и пр.) наружу не отдаём.
-        return Ok(new
-        {
-            isAuthenticated = true,
-            sub = User.FindFirst("sub")?.Value,
-            name = User.Identity.Name,
-            email = User.FindFirst("email")?.Value,
-            roles,
-        });
-    }
-
-    private static string[] ExtractRecallAppRoles(string? accessToken)
-    {
-        if (string.IsNullOrEmpty(accessToken))
-            return [];
-
-        var jwt = new JsonWebTokenHandler().ReadJsonWebToken(accessToken);
-        if (!jwt.TryGetPayloadValue<JsonElement>("resource_access", out var resourceAccess)
-            || !resourceAccess.TryGetProperty(RolesClientId, out var client)
-            || !client.TryGetProperty("roles", out var rolesElement)
-            || rolesElement.ValueKind != JsonValueKind.Array)
-        {
-            return [];
-        }
-
-        return rolesElement.EnumerateArray()
-            .Select(e => e.GetString())
-            .Where(r => r is not null)
-            .ToArray()!;
+        return Ok(
+            new
+            {
+                isAuthenticated = true,
+                name = User.Identity.Name,
+                email = User.FindFirst("email")?.Value,
+            }
+        );
     }
 }
