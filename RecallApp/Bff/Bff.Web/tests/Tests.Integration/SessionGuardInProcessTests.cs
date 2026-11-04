@@ -8,7 +8,7 @@ namespace Tests.Integration;
 
 /// <summary>
 /// Граница сессии для API и поведение после отказа Keycloak на refresh:
-/// /api/** без сессии должен возвращать 401 problem+json вместо 302, после Rejected - 401 session_expired,
+/// /api/** без сессии должен возвращать 401 problem+json вместо 302, после Rejected - 401 SessionExpired,
 /// не-API пути после Rejected продолжают запрос с анонимной личностью.
 /// </summary>
 [Trait("Category", "InProcess")]
@@ -42,7 +42,7 @@ public sealed class SessionGuardInProcessTests : IAsyncLifetime
 
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         // Формат общий с монолитом: код в title, происходит отказ от BFF.
-        Assert.Equal("not_authenticated", body.GetProperty("title").GetString());
+        Assert.Equal(ApiProblem.NotAuthenticated, body.GetProperty("title").GetString());
         Assert.Equal(ProblemSource.Bff, body.GetProperty("source").GetString());
         Assert.Equal(401, body.GetProperty("status").GetInt32());
         Assert.False(body.TryGetProperty("code", out _));
@@ -70,15 +70,15 @@ public sealed class SessionGuardInProcessTests : IAsyncLifetime
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal("session_expired", body.GetProperty("title").GetString());
+        Assert.Equal(ApiProblem.SessionExpired, body.GetProperty("title").GetString());
         Assert.Equal(ProblemSource.Bff, body.GetProperty("source").GetString());
         Assert.Contains("expires=Thu, 01 Jan 1970", Assert.Single(BffApp.SessionCookies(response)));
 
-        // Cookie удалена: следующий запрос анонимен и получает not_authenticated.
+        // Cookie удалена: следующий запрос анонимен и получает NotAuthenticated.
         var nextResponse = await _browser.GetAsync(TestSessionEndpoints.ApiEchoPath);
         Assert.Equal(HttpStatusCode.Unauthorized, nextResponse.StatusCode);
         var nextBody = await nextResponse.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal("not_authenticated", nextBody.GetProperty("title").GetString());
+        Assert.Equal(ApiProblem.NotAuthenticated, nextBody.GetProperty("title").GetString());
     }
 
     [Fact]
@@ -90,7 +90,7 @@ public sealed class SessionGuardInProcessTests : IAsyncLifetime
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal("csrf_failed", body.GetProperty("title").GetString());
+        Assert.Equal(ApiProblem.CsrfFailed, body.GetProperty("title").GetString());
         Assert.Equal(ProblemSource.Bff, body.GetProperty("source").GetString());
     }
 
