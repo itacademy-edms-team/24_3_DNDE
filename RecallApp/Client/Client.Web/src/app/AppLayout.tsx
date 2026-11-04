@@ -1,15 +1,13 @@
-import { AppShell, Burger, Button, Container } from "@mantine/core";
+import { AppShell, Burger, Container } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import { Outlet } from "react-router";
 
-import { useSession } from "@/features/session/api/useSession";
-import { SessionPanel } from "@/features/session/ui/SessionPanel";
+import { SessionMenu } from "@/features/session/ui/SessionMenu";
 import { AppHeader } from "@/shared/ui/AppHeader";
 import { MainNav } from "./MainNav";
 
 /**
- * Каркас приложения: шапка с двумя переключателями, скрывающаяся навигация слева,
- * скрывающаяся панель пользователя справа и область страницы.
+ * App layout.
  */
 export function AppLayout() {
   // getInitialValueInEffect: false - значение медиа-запроса читается сразу из matchMedia.
@@ -19,13 +17,6 @@ export function AppLayout() {
     getInitialValueInEffect: false,
   });
   const [navOpened, nav] = useDisclosure(!isMobile);
-  const [panelOpened, panel] = useDisclosure(false);
-  const { data: session } = useSession();
-
-  const isAuthenticated = session?.isAuthenticated === true;
-  const panelLabel = isAuthenticated
-    ? (session.name ?? session.email ?? "Аккаунт")
-    : "Войти";
 
   return (
     <AppShell
@@ -34,11 +25,6 @@ export function AppLayout() {
         width: 240,
         breakpoint: "sm",
         collapsed: { desktop: !navOpened, mobile: !navOpened },
-      }}
-      aside={{
-        width: 280,
-        breakpoint: "sm",
-        collapsed: { desktop: !panelOpened, mobile: !panelOpened },
       }}
       padding="md"
     >
@@ -52,21 +38,13 @@ export function AppLayout() {
               aria-label={navOpened ? "Скрыть меню" : "Показать меню"}
             />
           }
-          right={
-            <Button variant="subtle" size="compact-md" onClick={panel.toggle}>
-              {panelLabel}
-            </Button>
-          }
+          right={<SessionMenu />}
         />
       </AppShell.Header>
 
       <AppShell.Navbar p="md">
         <MainNav onNavigate={nav.close} />
       </AppShell.Navbar>
-
-      <AppShell.Aside p="md">
-        <SessionPanel onNavigate={panel.close} />
-      </AppShell.Aside>
 
       <AppShell.Main>
         <Container size="lg" py="md">
