@@ -72,7 +72,7 @@ public sealed class ConfigureOidcOptions(IOptions<OidcOptions> oidc, IOptions<Sp
             if (!ctx.Request.Path.StartsWithSegments("/api"))
                 return;
 
-            await ApiProblem.WriteUnauthorizedAsync(ctx.Response, ApiProblem.NotAuthenticated);
+            await ApiProblem.WriteUnauthorizedAsync(ctx.HttpContext, ApiProblem.NotAuthenticated);
             ctx.HandleResponse();
         };
         options.Events.OnTokenValidated = ctx =>

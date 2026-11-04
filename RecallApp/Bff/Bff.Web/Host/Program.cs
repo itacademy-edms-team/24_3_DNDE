@@ -107,7 +107,11 @@ try
 
     builder.Services.AddKeycloakTokenRefreshServices();
 
-    builder.Services.AddProblemDetails();
+    builder.Services.AddProblemDetails(options =>
+        options.CustomizeProblemDetails = ctx =>
+            // Добавить bff, как источник в ответе
+            ctx.ProblemDetails.Extensions["source"] = ProblemSource.Bff
+    );
 
     builder.Services.AddControllers();
 

@@ -21,7 +21,7 @@ public sealed class SessionGuardMiddleware : IMiddleware
         if (IsApiPath(context) && IsMutation(context) && !HasCsrfHeader(context))
         {
             // Кросс-сайт-запрос без preflight (форма, img) кастомный заголовок поставить не сможет.
-            await ApiProblem.WriteForbiddenAsync(context.Response, ApiProblem.CsrfFailed);
+            await ApiProblem.WriteForbiddenAsync(context, ApiProblem.CsrfFailed);
             return;
         }
 
@@ -38,7 +38,7 @@ public sealed class SessionGuardMiddleware : IMiddleware
             if (IsApiPath(context))
             {
                 // Set-Cookie с удалением сессии уже записан sign-out-ом в TokenRefreshService.
-                await ApiProblem.WriteUnauthorizedAsync(context.Response, ApiProblem.SessionExpired);
+                await ApiProblem.WriteUnauthorizedAsync(context, ApiProblem.SessionExpired);
                 return;
             }
 
