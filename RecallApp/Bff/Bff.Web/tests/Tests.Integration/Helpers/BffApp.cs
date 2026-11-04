@@ -21,6 +21,9 @@ namespace Tests.Integration.Helpers;
 /// </summary>
 public sealed class BffApp : WebApplicationFactory<Program>
 {
+    /// <summary>Origin браузерного клиента, разрешённый политикой CORS в тестах.</summary>
+    public const string BrowserOrigin = "https://spa.test";
+
     // Часы стартуют от реального «сейчас»: MemoryDistributedCache живёт по системным часам,
     // и записи стора не должны истечь раньше времени. Старт с целой секунды, т.к. cookie-схема
     // сериализует IssuedUtc/ExpiresUtc с точностью до секунды.
@@ -45,6 +48,13 @@ public sealed class BffApp : WebApplicationFactory<Program>
         builder.UseSetting("Oidc:ClientId", RealKeycloak?.ClientId ?? "Bff.Web");
         builder.UseSetting("Oidc:ClientSecret", RealKeycloak?.ClientSecret ?? "test-secret");
         builder.UseSetting("Oidc:SsoSession:SessionIdle", SessionIdle.ToString("c", CultureInfo.InvariantCulture));
+
+        builder.UseSetting("Cors:Default", "Browser");
+        builder.UseSetting("Cors:Policies:Browser:AllowCredentials", "true");
+        builder.UseSetting("Cors:Policies:Browser:AllowedOrigins:Any", "false");
+        builder.UseSetting("Cors:Policies:Browser:AllowedOrigins:Values:0", BrowserOrigin);
+        builder.UseSetting("Cors:Policies:Browser:AllowedHeaders:Any", "true");
+        builder.UseSetting("Cors:Policies:Browser:AllowedMethods:Any", "true");
 
         builder.ConfigureServices(services =>
         {
