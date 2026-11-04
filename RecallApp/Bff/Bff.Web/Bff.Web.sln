@@ -8,6 +8,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{D41F952A-FF36-4368-814C-C59797356D7A}"
+	ProjectSection(SolutionItems) = preProject
+		tests\Dockerfile.Testing = tests\Dockerfile.Testing
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests.Unit", "tests\Tests.Unit\Tests.Unit.csproj", "{96986C3F-58E5-4A17-9BE7-F3E43DDDC572}"
 EndProject

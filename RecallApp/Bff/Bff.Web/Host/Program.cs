@@ -102,6 +102,8 @@ try
 
     builder.Services.AddControllers();
 
+    builder.Services.AddCorsUsingOptions(builder.Configuration);
+
     // YARP: проксирование /api/** -> монолит (ADR 0028, Trusted Domain).
     // Access-токен текущей сессии прикрепляется трансформером;
     // клиентские Authorization/Cookie отбрасываются - монолит доверяет только тому, что решил BFF.
@@ -164,7 +166,7 @@ try
     }
 
     app.UseRouting();
-
+    app.UseCorsUsingOptions();
     app.UseAuthentication();
     app.UseKeycloakTokenRefresh();
     app.UseSessionGuard();
