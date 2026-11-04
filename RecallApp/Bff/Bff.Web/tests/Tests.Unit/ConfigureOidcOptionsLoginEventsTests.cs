@@ -32,7 +32,7 @@ public class ConfigureOidcOptionsLoginEventsTests
 
     public ConfigureOidcOptionsLoginEventsTests()
     {
-        new ConfigureOidcOptions(TestOidcOptions.Wrap(_oidc), new FakeTimeProvider(Now)).Configure(
+        new ConfigureOidcOptions(TestOidcOptions.Wrap(_oidc), TestSpaOptions.Wrap(), new FakeTimeProvider(Now)).Configure(
             OpenIdConnectDefaults.AuthenticationScheme,
             _options
         );
@@ -200,7 +200,7 @@ public class ConfigureOidcOptionsLoginEventsTests
     {
         var options = new OpenIdConnectOptions();
 
-        new ConfigureOidcOptions(TestOidcOptions.Wrap(_oidc), new FakeTimeProvider(Now)).Configure(
+        new ConfigureOidcOptions(TestOidcOptions.Wrap(_oidc), TestSpaOptions.Wrap(), new FakeTimeProvider(Now)).Configure(
             "Other",
             options
         );

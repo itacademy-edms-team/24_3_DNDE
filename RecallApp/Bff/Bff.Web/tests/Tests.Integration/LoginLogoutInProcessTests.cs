@@ -34,7 +34,7 @@ public sealed class LoginLogoutInProcessTests : IAsyncLifetime
         var response = await _browser.GetAsync("/login?returnUrl=/dashboard");
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Equal("/dashboard", response.Headers.Location?.ToString());
+        Assert.Equal($"{BffApp.SpaBaseUrl}/dashboard", response.Headers.Location?.ToString());
         // Повторный Challenge не вызывался: новой cookie (и новой записи в сторе за ней) нет.
         Assert.Empty(BffApp.SessionCookies(response));
     }
@@ -71,6 +71,6 @@ public sealed class LoginLogoutInProcessTests : IAsyncLifetime
         var response = await _browser.PostAsync("/logout", content: null);
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Equal("/", response.Headers.Location?.ToString());
+        Assert.Equal($"{BffApp.SpaBaseUrl}/", response.Headers.Location?.ToString());
     }
 }
