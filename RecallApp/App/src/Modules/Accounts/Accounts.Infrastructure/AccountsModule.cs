@@ -2,6 +2,7 @@ using Accounts.Application.Abstractions;
 using Accounts.Application.Users;
 using Accounts.Infrastructure.Data;
 using Common.Application.Provisioning;
+using Common.Infrastructure.Http;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -40,10 +41,13 @@ public static class AccountsModule
 
         group.MapGet("/me", async (HttpContext context, ISender sender, CancellationToken cancellationToken) =>
         {
-            var sub = Guid.Parse(context.User.FindFirst("sub")!.Value);
             var emailVerified = context.User.FindFirst("email_verified")?.Value == "true";
-            var account = await sender.Send(new GetMyAccountQuery(sub, emailVerified), cancellationToken);
-            return account is null ? Results.NotFound() : Results.Ok(account);
+            var result = await sender.Send(
+                new GetMyAccountQuery(context.User.FindFirst("sub")?.Value, emailVerified),
+                cancellationToken);
+
+            // Ошибки домена отдаются ProblemDetails (ADR 0031): код в title, source добавляет хост.
+            return result.IsError ? result.Errors.ToProblem() : Results.Ok(result.Value);
         }).RequireAuthorization();
 
         return endpoints;

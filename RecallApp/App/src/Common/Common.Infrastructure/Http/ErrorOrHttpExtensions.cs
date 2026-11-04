@@ -1,14 +1,19 @@
-using ErrorOr;
+﻿using ErrorOr;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Api;
+namespace Common.Infrastructure.Http;
 
 /// <summary>
 /// Маппинг ErrorOr-ошибок в ProblemDetails-ответы (ErrorType → HTTP-статус).
+/// CustomizeProblemDetails хоста.
 /// </summary>
-public static class ErrorOrExtensions
+public static class ErrorOrHttpExtensions
 {
+    /// <summary>Единственная ошибка → один problem+json с кодом в title.</summary>
+    public static IResult ToProblem(this Error error) => Single(error);
+
+    /// <summary>Ошибки валидации → ValidationProblem (errors по полям), иначе первая ошибка.</summary>
     public static IResult ToProblem(this List<Error> errors)
     {
         if (errors.Count == 1)
