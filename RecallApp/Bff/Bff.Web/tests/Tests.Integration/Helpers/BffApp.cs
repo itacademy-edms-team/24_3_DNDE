@@ -34,6 +34,9 @@ public sealed class BffApp : WebApplicationFactory<Program>
 
     public FakeKeycloak Keycloak { get; } = new();
 
+    /// <summary>Включить GET /debug/session.</summary>
+    public bool DiagnosticsSession { get; init; }
+
     /// <summary>Окно обычной сессии (SSO Idle). По умолчанию как в ADR 0027.</summary>
     public TimeSpan SessionIdle { get; init; } = TimeSpan.FromMinutes(30);
 
@@ -51,6 +54,7 @@ public sealed class BffApp : WebApplicationFactory<Program>
         builder.UseSetting("Oidc:ClientSecret", RealKeycloak?.ClientSecret ?? "test-secret");
         builder.UseSetting("Oidc:SsoSession:SessionIdle", SessionIdle.ToString("c", CultureInfo.InvariantCulture));
         builder.UseSetting("Spa:BaseUrl", SpaBaseUrl);
+        builder.UseSetting("Diagnostics:Session", DiagnosticsSession ? "true" : "false");
 
         builder.UseSetting("Cors:Default", "Browser");
         builder.UseSetting("Cors:Policies:Browser:AllowCredentials", "true");

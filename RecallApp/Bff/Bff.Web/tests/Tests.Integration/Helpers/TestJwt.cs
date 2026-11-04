@@ -13,7 +13,13 @@ public static class TestJwt
     {
         var header = Encode(new { alg = "none", typ = "JWT" });
         var payload = Encode(
-            new { sub = "user-1", resource_access = new { RecallApp = new { roles = new[] { role } } } }
+            new
+            {
+                sub = "user-1",
+                // 2026-01-01T00:00:00Z: фиксированный exp, чтобы тесты не зависели от часов.
+                exp = 1_767_225_600,
+                resource_access = new { RecallApp = new { roles = new[] { role } } },
+            }
         );
         return $"{header}.{payload}.signature";
     }

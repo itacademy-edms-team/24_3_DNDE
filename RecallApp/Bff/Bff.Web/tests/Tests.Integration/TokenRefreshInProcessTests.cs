@@ -13,7 +13,8 @@ public sealed class TokenRefreshInProcessTests : IAsyncLifetime
 {
     private static readonly TimeSpan IntoRefreshZone = TimeSpan.FromMinutes(3) + TimeSpan.FromSeconds(40);
 
-    private readonly BffApp _app = new();
+    // Диагностика включена: после refresh нужно видеть состав access-токена, а /session его больше не отдаёт.
+    private readonly BffApp _app = new() { DiagnosticsSession = true };
     private HttpClient _browser = null!;
 
     public async Task InitializeAsync()
@@ -43,13 +44,15 @@ public sealed class TokenRefreshInProcessTests : IAsyncLifetime
     {
         _app.Time.Advance(IntoRefreshZone);
 
-        var (response, body) = await BffApp.GetAppSessionAsync(_browser);
+        var (response, _) = await BffApp.GetAppSessionAsync(_browser);
 
         Assert.Equal(1, _app.Keycloak.RequestCount);
         Assert.Contains("refresh_token=initial-refresh", _app.Keycloak.RequestBodies.Single());
         Assert.Single(BffApp.SessionCookies(response));
+
         // Контроллер в том же запросе видит новый access (GetTokenAsync после refresh).
-        Assert.Equal("refreshed-role", body.GetProperty("roles")[0].GetString());
+        var (_, debug) = await BffApp.GetAppSessionAsync(_browser, "/debug/session");
+        Assert.Equal("refreshed-role", debug.GetProperty("roles")[0].GetString());
     }
 
     [Fact]
