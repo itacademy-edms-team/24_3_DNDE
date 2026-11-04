@@ -1,23 +1,25 @@
-import { Anchor, Container, Group, Title } from "@mantine/core";
+import { Anchor, Group, Title } from "@mantine/core";
 import { Link } from "react-router";
 
-/** Каркас шапки: бренд, навигация и слот действий. Не знает о фичах и доменах. */
-export function AppHeader({ actions }: { actions?: React.ReactNode }) {
+/** Шапка приложения. Левый элемент, бренд, правый элемент. */
+export function AppHeader({
+  left,
+  right,
+}: {
+  left?: React.ReactNode;
+  right?: React.ReactNode;
+}) {
   return (
-    <Container size="lg" py="sm">
-      <Group justify="space-between">
-        <Group gap="lg">
-          <Title order={4}>
-            <Anchor component={Link} to="/" underline="never">
-              RecallApp
-            </Anchor>
-          </Title>
-          <Anchor component={Link} to="/account" size="sm" c="dimmed">
-            Аккаунт
+    <Group h="100%" px="md" justify="space-between" wrap="nowrap">
+      <Group gap="md" wrap="nowrap">
+        {left}
+        <Title order={4}>
+          <Anchor component={Link} to="/" underline="never">
+            RecallApp
           </Anchor>
-        </Group>
-        {actions}
+        </Title>
       </Group>
-    </Container>
+      {right}
+    </Group>
   );
 }

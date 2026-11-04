@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { page } from "vitest/browser";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { render } from "vitest-browser-react";
 
@@ -9,14 +10,30 @@ import { routes } from "./routes";
 function stubAnonymousSession() {
   vi.stubGlobal(
     "fetch",
-    vi.fn(
-      async () =>
-        new Response(JSON.stringify({ isAuthenticated: false }), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
+    vi.fn(async () =>
+      new Response(JSON.stringify({ isAuthenticated: false }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
     ),
   );
+}
+
+/** Рендерит приложение на заданном маршруте в провайдерах. */
+async function renderAt(path: string) {
+  const router = createMemoryRouter(routes, { initialEntries: [path] });
+  return render(
+    <Providers>
+      <RouterProvider router={router} />
+    </Providers>,
+  );
+}
+
+/** Положение левой панели навигации: отрицательный x означает, что она за экраном. */
+function navbarX(): number {
+  const navbar = document.querySelector(".mantine-AppShell-navbar");
+  expect(navbar).not.toBeNull();
+  return (navbar as Element).getBoundingClientRect().x;
 }
 
 describe("routes", () => {
@@ -24,15 +41,9 @@ describe("routes", () => {
     vi.unstubAllGlobals();
   });
 
-  it("shows the login action on the home page for a guest", async () => {
+  it("shows the home page content for a guest", async () => {
     stubAnonymousSession();
-
-    const router = createMemoryRouter(routes, { initialEntries: ["/"] });
-    const screen = await render(
-      <Providers>
-        <RouterProvider router={router} />
-      </Providers>,
-    );
+    const screen = await renderAt("/");
 
     await expect
       .element(screen.getByRole("heading", { name: "RecallApp", level: 1 }))
@@ -43,17 +54,22 @@ describe("routes", () => {
       .toBeInTheDocument();
   });
 
+  it("keeps navigation off-canvas on mobile until the burger is used", async () => {
+    stubAnonymousSession();
+    await renderAt("/");
+
+    // Mobile-first: панель навигации существует, но скрыта за левым краем.
+    expect(navbarX()).toBeLessThan(0);
+
+    await page.getByRole("button", { name: "Показать меню" }).click();
+
+    await expect.element(page.getByRole("link", { name: "Главная" })).toBeVisible();
+    expect(navbarX()).toBeGreaterThanOrEqual(0);
+  });
+
   it("renders not found page for an unknown route", async () => {
     stubAnonymousSession();
-
-    const router = createMemoryRouter(routes, {
-      initialEntries: ["/no-such-page"],
-    });
-    const screen = await render(
-      <Providers>
-        <RouterProvider router={router} />
-      </Providers>,
-    );
+    const screen = await renderAt("/no-such-page");
 
     await expect
       .element(screen.getByRole("heading", { name: "Страница не найдена" }))

@@ -2,7 +2,6 @@ import { Button } from "@mantine/core";
 import { describe, expect, it } from "vitest";
 import { render } from "vitest-browser-react";
 
-import "../styles/app.css";
 import { Providers } from "./providers";
 
 // Дымовая проверка связки Mantine + провайдеры в реальном браузере.

@@ -26,6 +26,9 @@ export function createRestClient(baseURL: string): AxiosInstance {
   const client = axios.create({
     baseURL,
     withCredentials: true,
+    // fetch-адаптер вместо XHR: тот же браузерный транспорт, что был до axios,
+    // и запросы можно подменять в тестах через stubGlobal("fetch", ...).
+    adapter: "fetch",
     headers: { Accept: "application/json" },
   });
 
