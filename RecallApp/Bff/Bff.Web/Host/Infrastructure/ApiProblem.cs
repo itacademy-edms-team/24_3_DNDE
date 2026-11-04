@@ -3,18 +3,18 @@ using Microsoft.AspNetCore.Mvc;
 namespace Host.Infrastructure;
 
 /// <summary>
-/// Ответы HTTP 401 в формате problem+json для запросов к /api/**.
+/// Отказы BFF в формате problem+json.
 /// </summary>
 public static class ApiProblem
 {
     /// <summary>Сессии нет или она уже недействительна на момент запроса.</summary>
-    public const string NotAuthenticated = "not_authenticated";
+    public const string NotAuthenticated = "NotAuthenticated";
 
     /// <summary>Сессия была, но Keycloak отказал в обновлении токена: сессия завершена.</summary>
-    public const string SessionExpired = "session_expired";
+    public const string SessionExpired = "SessionExpired";
 
     /// <summary>Мутация /api/** без заголовка X-CSRF: кросс-сайт-запрос отклонён.</summary>
-    public const string CsrfFailed = "csrf_failed";
+    public const string CsrfFailed = "CsrfFailed";
 
     /// <summary>
     /// 401 для запросов из fetch: SPA не может проследовать за 302 в Keycloak,
@@ -23,7 +23,7 @@ public static class ApiProblem
     public static Task WriteUnauthorizedAsync(HttpContext context, string code) =>
         WriteAsync(context, code, StatusCodes.Status401Unauthorized, Describe(code));
 
-    /// <summary>403 для запросов, отклонённых на входе в /api/**.</summary>
+    /// <summary>403 для запросов, отклонённых на входе в /api/** (CSRF).</summary>
     public static Task WriteForbiddenAsync(HttpContext context, string code) =>
         WriteAsync(context, code, StatusCodes.Status403Forbidden, Describe(code));
 

@@ -11,7 +11,7 @@ namespace Host.Middleware;
 /// Анонимный запрос к /api/** получает 401 problem+json вместо редиректа в Keycloak;
 /// мутации /api/** без заголовка X-CSRF отклоняются;
 /// после отказа Keycloak на refresh (маркер от TokenRefreshService) /api/** отвечает
-/// 401 session_expired, остальные пути продолжают запрос с анонимной личностью.
+/// 401 SessionExpired, остальные пути продолжают запрос с анонимной личностью.
 /// Размещать после UseAuthentication и UseKeycloakTokenRefresh.
 /// </summary>
 public sealed class SessionGuardMiddleware : IMiddleware
