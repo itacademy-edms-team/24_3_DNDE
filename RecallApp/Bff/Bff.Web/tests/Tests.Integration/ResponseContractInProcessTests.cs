@@ -1,4 +1,6 @@
 using System.Net;
+using System.Text.Json;
+using Host.Infrastructure;
 using Tests.Integration.Helpers;
 
 namespace Tests.Integration;
@@ -39,6 +41,10 @@ public sealed class ResponseContractInProcessTests : IAsyncLifetime
         var body = await response.Content.ReadAsStringAsync();
         Assert.DoesNotContain("test exception marker", body);
         Assert.DoesNotContain(nameof(InvalidOperationException), body);
+
+        // Необработанные исключения тоже помечаются происхождением: клиент по source отличает BFF от домена.
+        var problem = JsonDocument.Parse(body).RootElement;
+        Assert.Equal(ProblemSource.Bff, problem.GetProperty("source").GetString());
     }
 
     [Fact]
