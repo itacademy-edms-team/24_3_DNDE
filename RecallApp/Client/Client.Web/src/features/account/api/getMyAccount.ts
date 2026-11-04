@@ -1,7 +1,8 @@
-import { apiFetch } from "../../../shared/api/http";
+import { apiClient } from "../../../shared/api/clients/apiClient";
 import type { UserProfile } from "../model/types";
 
 /** Профиль текущего пользователя из домена (GET /api/users/me). */
 export async function getMyAccount(signal?: AbortSignal): Promise<UserProfile> {
-  return apiFetch<UserProfile>("/users/me", { signal });
+  const { data } = await apiClient.get<UserProfile>("/users/me", { signal });
+  return data;
 }

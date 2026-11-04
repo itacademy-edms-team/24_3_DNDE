@@ -2,6 +2,7 @@ import { Center, Loader, Stack, Text } from "@mantine/core";
 import { useEffect } from "react";
 import { useLocation } from "react-router";
 
+import { toErrorView } from "../../../shared/api/errors/errorView";
 import { useSession } from "../api/useSession";
 import { loginUrl } from "../model/sessionUrls";
 
@@ -32,12 +33,13 @@ export function RequireSession({ children }: { children: React.ReactNode }) {
   }
 
   if (isError) {
+    const view = toErrorView(error);
     return (
       <Center h="50vh">
         <Stack gap="xs" align="center">
           <Text fw={600}>Не удалось проверить сессию</Text>
           <Text c="dimmed" size="sm">
-            {error instanceof Error ? error.message : "Неизвестная ошибка"}
+            {view.message}
           </Text>
         </Stack>
       </Center>
@@ -47,7 +49,7 @@ export function RequireSession({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated) {
     return (
       <Center h="50vh">
-        <Text c="dimmed">Перенаправляем на вход...</Text>
+        <Text c="dimmed">Перенаправляем на вход…</Text>
       </Center>
     );
   }

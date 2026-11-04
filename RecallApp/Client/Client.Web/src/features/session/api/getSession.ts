@@ -1,5 +1,4 @@
-import { bffBaseUrl } from "../../../shared/api/apiConfig";
-import { ApiError, readProblemDetails } from "../../../shared/api/problemDetails";
+import { authClient } from "../../../shared/api/clients/authClient";
 
 /** Состояние серверной сессии BFF: только белый список полей (см. GET /session). */
 export interface SessionState {
@@ -15,15 +14,6 @@ export interface SessionState {
 
 /** Читает состояние сессии у BFF. Эндпоинт не кэшируется на сервере. */
 export async function getSession(signal?: AbortSignal): Promise<SessionState> {
-  const response = await fetch(`${bffBaseUrl}/session`, {
-    credentials: "include",
-    signal,
-    headers: { Accept: "application/json" },
-  });
-
-  if (!response.ok) {
-    throw new ApiError(response.status, await readProblemDetails(response));
-  }
-
-  return (await response.json()) as SessionState;
+  const { data } = await authClient.get<SessionState>("/session", { signal });
+  return data;
 }
