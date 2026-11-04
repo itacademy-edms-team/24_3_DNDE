@@ -1,7 +1,7 @@
 import { Button } from "@mantine/core";
 import { useLocation } from "react-router";
 
-import { loginUrl } from "../model/sessionUrls";
+import { loginUrl } from "@/features/session/model/sessionUrls";
 
 /** Кнопка входа: обычная навигация на BFF, откуда уходим на страницу входа Keycloak. */
 export function LoginButton() {

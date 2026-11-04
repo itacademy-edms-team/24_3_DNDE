@@ -1,4 +1,4 @@
-import type { ErrorView } from "../errorView";
+import type { ErrorView } from "@/shared/api/errors/errorView";
 
 /** Представление для ошибки, которую не удалось отнести к транспорту. */
 export function mapUnknownError(error: unknown): ErrorView {

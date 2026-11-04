@@ -1,4 +1,4 @@
-import { bffBaseUrl } from "../apiConfig";
+import { bffBaseUrl } from "@/shared/api/apiConfig";
 import { createRestClient } from "./createRestClient";
 
 /**

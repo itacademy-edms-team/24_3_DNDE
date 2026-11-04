@@ -1,4 +1,5 @@
 /// <reference types="vitest/config" />
+import { fileURLToPath, URL } from "node:url";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { playwright } from "@vitest/browser-playwright";
@@ -6,6 +7,11 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  resolve: {
+    alias: {
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+    },
+  },
   test: {
     // Все тесты клиента идут в реальном браузере (Playwright под капотом Vitest):
     // настоящие CSS-слои Mantine/Tailwind, layout и медиа-запросы, без jsdom-эмуляции.
@@ -13,8 +19,8 @@ export default defineConfig({
     include: ["src/**/*.test.{ts,tsx}"],
     // Каждый тестовый файл получает стили приложения через общий setup.
     setupFiles: ["./src/test/setup.ts"],
-    // По умолчанию Vitest подменяет CSS пустыми строками;
-    // в браузерном режиме нужны настоящие стили Mantine/Tailwind, без них тесты не будут работать корректно.
+    // По умолчанию Vitest подменяет CSS пустыми строками; в браузерном режиме
+    // нужны настоящие стили Mantine/Tailwind, иначе проверки вёрстки бессмысленны.
     css: true,
     browser: {
       enabled: true,

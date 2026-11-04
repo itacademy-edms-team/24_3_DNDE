@@ -2,7 +2,7 @@ import { AxiosError, AxiosHeaders, type InternalAxiosRequestConfig } from "axios
 import { describe, expect, it } from "vitest";
 
 import { createRestClient } from "./createRestClient";
-import { RestApiError } from "../errors/restApiError";
+import { RestApiError } from "@/shared/api/errors/restApiError";
 
 /** Adapter, который отвечает заданной ошибкой, не выходя в сеть. */
 function failingAdapter(status: number, data: unknown) {

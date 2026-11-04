@@ -1,5 +1,5 @@
-import { loginUrl } from "../features/session/model/sessionUrls";
-import { toErrorView } from "../shared/api/errors/errorView";
+import { loginUrl } from "@/features/session/model/sessionUrls";
+import { toErrorView } from "@/shared/api/errors/errorView";
 import { router } from "./router";
 
 /** Защита от цикла: один раз инициированный переход на вход не повторяем. */

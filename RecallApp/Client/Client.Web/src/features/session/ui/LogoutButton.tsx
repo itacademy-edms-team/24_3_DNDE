@@ -1,6 +1,6 @@
 import { Button } from "@mantine/core";
 
-import { logoutUrl } from "../model/sessionUrls";
+import { logoutUrl } from "@/features/session/model/sessionUrls";
 
 /**
  * Кнопка выхода: отправка HTML-формы на BFF (POST /logout).

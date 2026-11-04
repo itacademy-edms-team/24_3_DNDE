@@ -1,7 +1,7 @@
 import type { RouteObject } from "react-router";
 
-import { AccountPage } from "../pages/account/AccountPage";
-import { HomePage } from "../pages/home/HomePage";
+import { AccountPage } from "@/pages/account/AccountPage";
+import { HomePage } from "@/pages/home/HomePage";
 import { AppLayout } from "./AppLayout";
 import { NotFoundPage } from "./NotFoundPage";
 

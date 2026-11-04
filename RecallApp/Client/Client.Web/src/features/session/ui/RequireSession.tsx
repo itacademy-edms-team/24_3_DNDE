@@ -2,9 +2,9 @@ import { Center, Loader, Stack, Text } from "@mantine/core";
 import { useEffect } from "react";
 import { useLocation } from "react-router";
 
-import { toErrorView } from "../../../shared/api/errors/errorView";
-import { useSession } from "../api/useSession";
-import { loginUrl } from "../model/sessionUrls";
+import { toErrorView } from "@/shared/api/errors/errorView";
+import { useSession } from "@/features/session/api/useSession";
+import { loginUrl } from "@/features/session/model/sessionUrls";
 
 /**
  * Пропускает дальше только пользователя с активной сессией.

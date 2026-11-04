@@ -1,6 +1,6 @@
 import { Badge, Card, Group, Stack, Text } from "@mantine/core";
 
-import type { UserProfile } from "../model/types";
+import type { UserProfile } from "@/features/account/model/types";
 
 /** Карточка профиля: доменное имя, email и статус подтверждения адреса. */
 export function ProfileCard({ profile }: { profile: UserProfile }) {

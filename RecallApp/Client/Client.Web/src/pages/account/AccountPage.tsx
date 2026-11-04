@@ -1,9 +1,9 @@
 import { Center, Loader, Stack, Text } from "@mantine/core";
 
-import { toErrorView } from "../../shared/api/errors/errorView";
-import { useMyAccount } from "../../features/account/api/useMyAccount";
-import { ProfileCard } from "../../features/account/ui/ProfileCard";
-import { RequireSession } from "../../features/session/ui/RequireSession";
+import { toErrorView } from "@/shared/api/errors/errorView";
+import { useMyAccount } from "@/features/account/api/useMyAccount";
+import { ProfileCard } from "@/features/account/ui/ProfileCard";
+import { RequireSession } from "@/features/session/ui/RequireSession";
 
 /** Страница аккаунта: доступна только с сессией, показывает профиль из домена. */
 export function AccountPage() {

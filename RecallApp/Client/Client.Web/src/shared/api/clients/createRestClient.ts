@@ -1,6 +1,6 @@
 import axios, { type AxiosInstance } from "axios";
 
-import { isProblemDetails, RestApiError } from "../errors/restApiError";
+import { isProblemDetails, RestApiError } from "@/shared/api/errors/restApiError";
 
 /** Переводит любую ошибку axios в RestApiError: тело бэкенда сохраняется, обёртка отбрасывается. */
 export function normalizeRestError(error: unknown): RestApiError {

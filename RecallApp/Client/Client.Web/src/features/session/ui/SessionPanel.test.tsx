@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { render } from "vitest-browser-react";
 
-import { Providers } from "../../../app/providers";
+import { Providers } from "@/app/providers";
 import { SessionPanel } from "./SessionPanel";
 
 /** Стаб ответа BFF /session для вошедшего пользователя. */

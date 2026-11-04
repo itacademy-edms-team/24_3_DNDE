@@ -2,9 +2,9 @@ import { AppShell, Burger, Button, Container } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
 import { Outlet } from "react-router";
 
-import { useSession } from "../features/session/api/useSession";
-import { SessionPanel } from "../features/session/ui/SessionPanel";
-import { AppHeader } from "../shared/ui/AppHeader";
+import { useSession } from "@/features/session/api/useSession";
+import { SessionPanel } from "@/features/session/ui/SessionPanel";
+import { AppHeader } from "@/shared/ui/AppHeader";
 import { MainNav } from "./MainNav";
 
 /**

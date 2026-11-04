@@ -1,7 +1,7 @@
 import { Button, Divider, Stack, Text } from "@mantine/core";
 import { Link } from "react-router";
 
-import { useSession } from "../api/useSession";
+import { useSession } from "@/features/session/api/useSession";
 import { LoginButton } from "./LoginButton";
 import { LogoutButton } from "./LogoutButton";
 

@@ -1,5 +1,5 @@
-import { authClient } from "../../../shared/api/clients/authClient";
-import type { SessionState } from "../model/types";
+import { authClient } from "@/shared/api/clients/authClient";
+import type { SessionState } from "@/features/session/model/types";
 
 /** Читает состояние сессии у BFF. Эндпоинт не кэшируется на сервере. */
 export async function getSession(signal?: AbortSignal): Promise<SessionState> {

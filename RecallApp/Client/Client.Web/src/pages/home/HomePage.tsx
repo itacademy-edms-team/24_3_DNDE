@@ -1,8 +1,8 @@
 import { Button, Center, Stack, Text, Title } from "@mantine/core";
 import { Link } from "react-router";
 
-import { useSession } from "../../features/session/api/useSession";
-import { LoginButton } from "../../features/session/ui/LoginButton";
+import { useSession } from "@/features/session/api/useSession";
+import { LoginButton } from "@/features/session/ui/LoginButton";
 
 /** Главная страница */
 export function HomePage() {

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { useSession } from "../../session/api/useSession";
+import { useSession } from "@/features/session/api/useSession";
 import { getMyAccount } from "./getMyAccount";
 import { accountKeys } from "./accountKeys";
 

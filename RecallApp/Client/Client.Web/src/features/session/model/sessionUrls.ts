@@ -1,4 +1,4 @@
-import { bffBaseUrl } from "../../../shared/api/apiConfig";
+import { bffBaseUrl } from "@/shared/api/apiConfig";
 
 /**
  * Абсолютный URL входа на BFF. Вход - переход браузера целиком (страницы входа отдаёт Keycloak),

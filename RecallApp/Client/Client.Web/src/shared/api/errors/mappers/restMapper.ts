@@ -1,6 +1,6 @@
-import { restCodeMessage } from "../restCodes";
-import type { ErrorView } from "../errorView";
-import type { RestApiError } from "../restApiError";
+import { restCodeMessage } from "@/shared/api/errors/restCodes";
+import type { ErrorView } from "@/shared/api/errors/errorView";
+import type { RestApiError } from "@/shared/api/errors/restApiError";
 
 /** Переводит ошибку REST-вызова в представление для интерфейса. */
 export function mapRestError(error: RestApiError): ErrorView {
