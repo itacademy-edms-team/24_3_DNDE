@@ -1,7 +1,7 @@
-/** Формат тела ошибки RFC 7807 ProblemDetails, как его отдаёт бэкенд. */
+/** Формат тела ошибки RFC 9457 ProblemDetails, как его отдаёт бэкенд. */
 export interface ProblemDetails {
   type?: string;
-  /** Машиночитаемый код ошибки в PascalCase или snake_case-коде BFF (например, not_authenticated). */
+  /** Машиночитаемый код ошибки в PascalCase (например, InvalidEmail, NotAuthenticated). */
   title?: string;
   status?: number;
   /** Пояснение для разработчика; не всегда пригодно для показа пользователю. */
@@ -9,7 +9,7 @@ export interface ProblemDetails {
   instance?: string;
   /** Ошибки валидации: ключ - имя поля (target), значение - список сообщений. */
   errors?: Record<string, string[]>;
-  /** Кто отказал: BFF (сессия, CSRF) или домен (App). */
+  /** Кто отказал: BFF (сессия, CSRF) или домен (App). Коды у обоих в PascalCase, различает их это поле. */
   source?: "bff" | "app";
   [extension: string]: unknown;
 }
