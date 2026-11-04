@@ -2,5 +2,8 @@ import { createBrowserRouter } from "react-router";
 
 import { routes } from "./routes";
 
-/** Браузерный роутер приложения: история и URL берутся из адресной строки. */
+/**
+ * Браузерный роутер: синхронизирован с History API браузера.
+ * Компоненты читают текущий маршрут через useLocation, код вне React - через router.state.location.
+ */
 export const router = createBrowserRouter(routes);

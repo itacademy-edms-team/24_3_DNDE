@@ -1,5 +1,6 @@
-import { toErrorView } from "../shared/api/errors/errorView";
 import { loginUrl } from "../features/session/model/sessionUrls";
+import { toErrorView } from "../shared/api/errors/errorView";
+import { router } from "./router";
 
 /** Защита от цикла: один раз инициированный переход на вход не повторяем. */
 let redirecting = false;
@@ -14,5 +15,6 @@ export function handleGlobalError(error: unknown): void {
   if (!view.unauthenticated || redirecting) return;
 
   redirecting = true;
-  window.location.assign(loginUrl());
+  const location = router.state.location;
+  window.location.assign(loginUrl(`${location.pathname}${location.search}`));
 }

@@ -1,35 +1,35 @@
+import { Button } from "@mantine/core";
 import { describe, expect, it } from "vitest";
 import { render } from "vitest-browser-react";
 
-import { LoginButton } from "../features/session/ui/LoginButton";
 import "../styles/app.css";
 import { Providers } from "./providers";
 
-// Smoke test связки Mantine + провайдеры в реальном браузере.
+// Дымовая проверка связки Mantine + провайдеры в реальном браузере.
 describe("Providers", () => {
   it("renders a Mantine component inside the app providers", async () => {
     const screen = await render(
       <Providers>
-        <LoginButton />
+        <Button>Начать</Button>
       </Providers>,
     );
 
     await expect
-      .element(screen.getByRole("link", { name: "Войти" }))
+      .element(screen.getByRole("button", { name: "Начать" }))
       .toBeInTheDocument();
   });
 
   it("applies Mantine and Tailwind styles", async () => {
     const screen = await render(
       <Providers>
-        <LoginButton />
+        <Button>Начать</Button>
       </Providers>,
     );
 
-    const link = screen.getByRole("link", { name: "Войти" }).element();
-    const styles = window.getComputedStyle(link);
+    const button = screen.getByRole("button", { name: "Начать" }).element();
+    const styles = window.getComputedStyle(button);
 
-    // Mantine-переменные и заливка кнопки появляются только если CSS действительно подключён.
+    // Mantine-переменные и заливка кнопки появляются только если CSS реально подключён.
     expect(
       window
         .getComputedStyle(document.documentElement)
