@@ -20,7 +20,10 @@ try
     var connectionString = builder.Configuration.GetConnectionString("Database")
         ?? throw new InvalidOperationException("Set ConnectionStrings__Database. See docs.");
 
-    builder.Services.AddProblemDetails();
+    builder.Services.AddProblemDetails(options =>
+        options.CustomizeProblemDetails = ctx =>
+            ctx.ProblemDetails.Extensions["source"] = ProblemSource.App
+    );
     builder.Services.AddSingleton(TimeProvider.System);
 
     // Чтобы изменить общий максимальный пул соединений к БД, который распределяют все модули, явно задайте Max Pool Size к ConnectionStrings__Database.
