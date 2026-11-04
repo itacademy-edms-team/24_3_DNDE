@@ -1,11 +1,10 @@
-/** Состояние серверной сессии BFF: только белый список полей (см. GET /session). */
+/**
+ * Состояние серверной сессии BFF: только проба живости сессии (см. GET /session).
+ */
 export interface SessionState {
   isAuthenticated: boolean;
-  /** Keycloak sub текущего пользователя. */
-  sub?: string;
-  /** Отображаемое имя из токена (claim name). */
+  /** Отображаемое имя из токена (claim name). Fallback, если доменный профиль ещё не загружен. */
   name?: string | null;
+  /** Email из токена. Fallback, если доменный профиль ещё не загружен. */
   email?: string;
-  /** Client-роли приложения RecallApp из access-токена. */
-  roles: string[];
 }

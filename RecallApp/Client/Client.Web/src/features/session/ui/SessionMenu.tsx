@@ -1,23 +1,27 @@
 import { Avatar, Group, Menu, Text, UnstyledButton } from "@mantine/core";
 import { Link } from "react-router";
 
+import { useMyAccount } from "@/features/account/api/useMyAccount";
 import { useSession } from "@/features/session/api/useSession";
 import { LoginButton } from "./LoginButton";
 import { LogoutMenuItem } from "./LogoutMenuItem";
 
 /**
- * Сессия в шапке: гость видит кнопку входа, вошедший — меню под именем
- * (аккаунт, выход). Отдельная панель справа не нужна: два действия не стоят
- * постоянного места на экране, особенно на мобильном.
+ * Компонент меню аккаунта в шапке.
  */
 export function SessionMenu() {
   const { data: session } = useSession();
+  const { data: profile } = useMyAccount();
 
   if (session?.isAuthenticated !== true) {
     return <LoginButton />;
   }
 
-  const displayName = session.name ?? session.email ?? "Пользователь";
+  // Именем владеет домен (ADR 0020), токен - только фоллбэк: пока профиль не загружен
+  // или монолит недоступен, шапка показывает имя из ID-токена.
+  const displayName =
+    profile?.displayName ?? session.name ?? session.email ?? "Пользователь";
+  const email = profile?.email ?? session.email;
 
   return (
     <Menu position="bottom-end" width={220} shadow="md" withinPortal>
@@ -42,9 +46,9 @@ export function SessionMenu() {
           <Text size="sm" fw={500} truncate>
             {displayName}
           </Text>
-          {session.email && (
+          {email && (
             <Text size="xs" c="dimmed" truncate>
-              {session.email}
+              {email}
             </Text>
           )}
         </Menu.Label>
