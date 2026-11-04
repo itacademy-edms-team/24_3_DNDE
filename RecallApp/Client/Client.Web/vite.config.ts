@@ -5,6 +5,9 @@ import react from "@vitejs/plugin-react";
 import { playwright } from "@vitest/browser-playwright";
 import { defineConfig } from "vite";
 
+// В dev-контейнере Vite стоит за edge-proxy.
+const behindProxy = Boolean(process.env.DEV_PROXY);
+
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
@@ -29,5 +32,13 @@ export default defineConfig({
       // Размер окна браузера, в котором будут запускаться тесты. Решение mobile-first, поэтому и параметры должны быть под мобилки.
       viewport: { width: 390, height: 844 },
     },
+  },
+  server: {
+    host: behindProxy ? true : undefined,
+    port: 5173,
+    strictPort: true,
+    // Vite отклоняет запросы с неизвестным заголовком Host (защита от DNS-rebinding).
+    allowedHosts: ["app.localhost"],
+    hmr: behindProxy ? { clientPort: 443 } : undefined,
   },
 });

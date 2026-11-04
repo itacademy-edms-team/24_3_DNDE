@@ -37,6 +37,11 @@ services:
       # YARP: проксирование /api/** -> монолит; в тестах не задаётся
       AppProxy__Destination: http://app:8080
 
+  client-web:
+    environment:
+      # Vite за edge-proxy: бинд на все интерфейсы + HMR через :443
+      DEV_PROXY: "1"
+
   bff-tests:
     environment:
       # Keycloak-тесты: тестовый realm recallapp-test (Iam/README.md).

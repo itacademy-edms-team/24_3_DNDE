@@ -39,6 +39,8 @@ services:
         condition: service_started
       bff:
         condition: service_started
+      client-web:
+        condition: service_started
     volumes:
       - ./EdgeProxy/nginx.conf:/etc/nginx/nginx.conf:ro
       - shared_certs:/etc/nginx/certs:ro
@@ -94,6 +96,27 @@ services:
     volumes:
       - shared_certs:/certs:ro
       - ./Bff/Bff.Web/tests/TestResults:/results
+    networks:
+      - dev_net
+
+  # SPA: Vite dev-сервер (ADR 0030). Наружу не публикуется: браузер заходит через
+  # edge-proxy по https://app.localhost, чтобы оригин совпадал с production-схемой.
+  client-web:
+    build:
+      context: ./Client/Client.Web
+      dockerfile: Dockerfile.development
+    depends_on:
+      - bff
+    volumes:
+      - ./Client/Client.Web:/app
+      # анонимный том: node_modules из образа не перекрываются хост-папкой (Windows-артефакты не мешают)
+      - /app/node_modules
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:5173/"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
     networks:
       - dev_net
 
