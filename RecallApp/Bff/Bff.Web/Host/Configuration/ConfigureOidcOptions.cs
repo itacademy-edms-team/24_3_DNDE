@@ -13,10 +13,11 @@ namespace Host.Configuration;
 /// endpoint-ы и учётные данные клиента, Auth Code + PKCE, сохранение токенов
 /// и события входа (идентификатор BFF-сессии, режим «запомнить меня», единое expires_at).
 /// </summary>
-public sealed class ConfigureOidcOptions(IOptions<OidcOptions> oidc, TimeProvider timeProvider)
+public sealed class ConfigureOidcOptions(IOptions<OidcOptions> oidc, IOptions<SpaOptions> spa, TimeProvider timeProvider)
     : IConfigureNamedOptions<OpenIdConnectOptions>
 {
     private readonly OidcOptions _oidc = oidc.Value;
+    private readonly SpaOptions _spa = spa.Value;
 
     /// <summary>Применяет настройку только к именованной схеме OpenIdConnect; другие имена игнорирует.</summary>
     public void Configure(string? name, OpenIdConnectOptions options)
@@ -117,5 +118,37 @@ public sealed class ConfigureOidcOptions(IOptions<OidcOptions> oidc, TimeProvide
 
             return Task.CompletedTask;
         };
+
+        // Обработка отказа Keycloak (invalid redirect_uri, недоступный OP) и отказа пользователя (access_denied).
+        // Без этих обработчиков ошибка выливается 500 на /signin-oidc - адресе, где пользователь
+        // уже не может ничего сделать. Уводим в SPA с кодом, детали остаются в логе.
+        options.Events.OnRemoteFailure = ctx =>
+        {
+            LogAuthFailure(ctx.HttpContext, ctx.Failure, "remote failure");
+            RedirectToSpa(ctx.Response, "remote_failure");
+            ctx.HandleResponse();
+            return Task.CompletedTask;
+        };
+        options.Events.OnAccessDenied = ctx =>
+        {
+            LogAuthFailure(ctx.HttpContext, null, "access denied");
+            RedirectToSpa(ctx.Response, "access_denied");
+            ctx.HandleResponse();
+            return Task.CompletedTask;
+        };
     }
+
+    private static void LogAuthFailure(HttpContext context, Exception? failure, string reason) =>
+        context
+            .RequestServices.GetRequiredService<ILoggerFactory>()
+            .CreateLogger("Host.Oidc")
+            .LogError(failure, "OIDC sign-in failed: {Reason}", reason);
+
+    /// <summary>
+    /// Перенаправляет пользователя на SPA с кодом ошибки в параметре.
+    /// </summary>
+    /// <param name="response">Текущий запрос <see cref="HttpResponse"/></param>
+    /// <param name="errorCode">Понятный код ошибки: access_denied, remote_failure, ...</param>
+    private void RedirectToSpa(HttpResponse response, string errorCode) =>
+        response.Redirect($"{_spa.BaseUrl}/?authError={errorCode}");
 }

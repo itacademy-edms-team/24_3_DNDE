@@ -1,8 +1,10 @@
 ﻿using System.Text.Json;
+using Host.Configuration;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 
 namespace Host.Controllers;
@@ -12,9 +14,29 @@ namespace Host.Controllers;
 /// инициирует вход/выход редиректами и отдаёт клиенту состояние сессии и client-роли RecallApp.
 /// </summary>
 [ApiController]
-public class AuthController : ControllerBase
+public class AuthController(IOptions<SpaOptions> spa) : ControllerBase
 {
     private const string RolesClientId = "RecallApp";
+
+    private readonly SpaOptions _spa = spa.Value;
+
+    /// <summary>
+    /// Комбинирует SPA-адрес и <paramref name="returnUrl"/>.
+    /// Предусмотрена проверка адреса на нелокальность, если адрес полный, то fallback на "/".
+    /// </summary>
+    /// <param name="returnUrl">Путь, полученный при переходе из SPA.</param>
+    /// <returns>Полный адрес SPA и добавленный локальный путь.</returns>
+    private string ToSpaUrl(string? returnUrl)
+    {
+        var path = returnUrl is not null && Url.IsLocalUrl(returnUrl) ? returnUrl : "/";
+
+        // BaseUrl без хвостового слэша (валидатор), path начинается со слэша (IsLocalUrl).
+        return $"{_spa.BaseUrl}{path}";
+    }
+
+    /// <summary>При попадании на корень выполняем редирект на SPA.</summary>
+    [HttpGet("/")]
+    public IActionResult Root() => Redirect(ToSpaUrl("/"));
 
     /// <summary>
     /// Инициирует вход через Keycloak (redirect на хостовую страницу).
@@ -24,7 +46,7 @@ public class AuthController : ControllerBase
     [HttpGet("/login")]
     public IActionResult Login([FromQuery] string? returnUrl = "/")
     {
-        var target = returnUrl is not null && Url.IsLocalUrl(returnUrl) ? returnUrl : "/";
+        var target = ToSpaUrl(returnUrl);
         if (User.Identity?.IsAuthenticated == true)
             return Redirect(target);
 
@@ -42,11 +64,12 @@ public class AuthController : ControllerBase
     [HttpPost("/logout")]
     public IActionResult Logout()
     {
+        var target = ToSpaUrl("/");
         if (User.Identity?.IsAuthenticated != true)
-            return Redirect("/");
+            return Redirect(target);
 
         return SignOut(
-            new AuthenticationProperties { RedirectUri = "/" },
+            new AuthenticationProperties { RedirectUri = target },
             CookieAuthenticationDefaults.AuthenticationScheme,
             OpenIdConnectDefaults.AuthenticationScheme);
     }
