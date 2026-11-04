@@ -8,7 +8,9 @@
 | `Tests.Integration` (без категории) | конвейер хоста в процессе теста (`WebApplicationFactory<Program>`): анонимный `GET /api/users/me` → 401; бюджет пула соединений (`ConnectionPoolBudget`) | ничего |
 | `Tests.Integration`, `Category=Database` | JIT-провижининг (ADR 0020) против живой app_db: аутентифицированный `GET /api/users/me` создаёт доменную строку (upsert идемпотентен, id стабилен) | app_db (контейнер) |
 
-Конфигурация тестового хоста — в `AppFactory.cs`: тестовая аутентификация (claims по заголовку `X-Test-Auth`, challenge остаётся на JwtBearer), строки подключения берутся из env контейнера, локально подменяются заглушками. `DatabaseFact` пропускает тест, если не задан `ConnectionStrings__AccountsMigrations` (паттерн `KeycloakFact` из BFF).
+Конфигурация тестового хоста — в `AppFactory.cs`: тестовая аутентификация (claims по заголовку `X-Test-Auth`), опциональная подмена claim `sub` заголовком `X-Test-Sub` (проверка 400 `InvalidKeycloakSub`), строки подключения берутся из env контейнера, локально подменяются заглушками. `DatabaseFact` пропускает тест, если не задан `ConnectionStrings__AccountsMigrations` (паттерн `KeycloakFact` из BFF). 
+
+Общие правила тестирования: [docs/testing-conventions.md](../../docs/testing-conventions.md).
 
 ## Запуск в контейнере
 

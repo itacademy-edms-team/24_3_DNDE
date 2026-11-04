@@ -42,6 +42,8 @@ docker compose --profile test run --rm --build bff-tests
 
 Отчёты `trx` складываются в `tests/TestResults/`.
 
+Общие правила тестирования: [docs/testing-conventions.md](../../docs/testing-conventions.md).
+
 ## Запуск из IDE или `dotnet test`
 
 `Tests.Unit` и категория `InProcess` запускаются как обычно. Тесты категории `Keycloak` без переменных окружения `KeycloakTests__*` пропускаются (Skip) с подсказкой про контейнер.
