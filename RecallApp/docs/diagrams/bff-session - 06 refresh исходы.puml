@@ -1,0 +1,56 @@
+@startuml bff-session-06-refresh-исходы
+title Refresh под замком сессии: Success / Rejected / Unavailable
+
+skinparam shadowing false
+autonumber
+
+participant "TokenRefreshMiddleware" as TR
+participant "TokenRefreshService\n(координатор)" as T
+database "TokenRefreshSemaphores" as SM
+participant "KeycloakTokenClient" as KC
+participant "Keycloak" as K
+participant "SessionTokenWriter" as W
+participant "SessionCookieLifetime" as L
+participant "CookieAuthenticationHandler" as CH
+database "ITicketStore" as S
+
+TR -> T : RefreshIfNeededAsync(context)
+note over T : проверки до замка: см. диаграмму 05
+T -> SM : Semaphores[sessionKey].WaitAsync()
+T -> SM : double-check LastRefreshedAt, RetryNotBefore
+T -> KC : RefreshAsync(refresh_token)
+KC -> K : POST /token (refresh_token, client_id, секрет),\nтаймаут KeycloakTimeout (5 с)
+alt 2xx и в JSON есть access_token, expires_in
+  K --> KC : access, refresh (новый, старый отозван),\nid_token, token_type, expires_in
+  KC --> T : Success(RefreshedTokens)
+  T -> W : StoreRefreshedTokensAsync(context, authResult, tokens)
+  W -> W : properties.StoreTokens(сохранённые токены\n+ новые access, refresh, id, token_type,\nexpires_at = now + expires_in − 30 с)
+  W -> L : ResetWindow(properties)\nIssuedUtc = now, ExpiresUtc = now + SSO Idle режима
+  W -> CH : SignInAsync(Cookies, principal, properties)
+  CH -> S : RenewAsync(тот же ключ, тикет)
+  CH -> CH : Set-Cookie recall_bff (тот же ключ)
+  T -> SM : LastRefreshedAt = now, RetryNotBefore удалить
+else 400, error = invalid_grant
+  K --> KC : invalid_grant\n(refresh отозван / истёк, сессия убита)
+  KC --> T : Rejected
+  T -> SM : RejectedSessions[sessionKey] = маркер\n(ждущие замок выйдут без повторного POST)
+  T -> CH : SignOutAsync(Cookies)
+  CH -> S : RemoveAsync(ключ)
+  CH -> CH : Set-Cookie recall_bff удалить
+  note right of T : Items[SessionRejected] сбрасывает User\nв анонима SessionGuardMiddleware ниже по конвейеру
+else 401, 400 с иной ошибкой (invalid_client и пр.)
+  K --> KC : invalid_client / unauthorized_client
+  KC --> T : Unavailable
+  T -> SM : RetryNotBefore = now + 15 с
+  note right of T : сбой конфигурации, а не сессии: LogError,\nсессия, cookie и стор не тронуты;\nLastRefreshedAt не ставится
+else 5xx, 429, таймаут, сеть, битый JSON, нет полей
+  K --> KC : ошибка / нет ответа
+  KC --> T : Unavailable
+  T -> SM : RetryNotBefore = now + 15 с
+  note right of T : сессия, cookie и стор не тронуты;\nLastRefreshedAt не ставится
+end
+T -> SM : Release()
+T --> TR
+TR -> TR : next(context)
+
+@enduml

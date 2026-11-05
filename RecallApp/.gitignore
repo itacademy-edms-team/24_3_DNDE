@@ -1,0 +1,11 @@
+# Локальные секреты/окружение
+.env
+.env.*
+!.env.example
+
+# Локальный dev Root CA / серты (генерятся ca-generator, в прод не едут)
+*.pem
+*.crt
+*.key
+
+.playwright-mcp

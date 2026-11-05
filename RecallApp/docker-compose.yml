@@ -1,0 +1,162 @@
+name: recall_system_dev
+
+networks:
+  dev_net:
+    driver: bridge
+  iam_net:
+    driver: bridge
+  app_net:
+    driver: bridge
+
+volumes:
+  shared_certs:
+  iam_db_data:
+  app_db_data:
+
+services:
+  # Генератор локального Root CA + сертификатов *.localhost для dev-TLS (ADR 0026)
+  ca-generator:
+    image: alpine
+    entrypoint: >
+      sh -c "apk add --no-cache openssl &&
+        mkdir -p /certs &&
+        [ ! -f /certs/rootCA.key ] && openssl genrsa -out /certs/rootCA.key 2048 || true &&
+        [ ! -f /certs/rootCA.pem ] && openssl req -x509 -new -nodes -key /certs/rootCA.key -sha256 -days 1024 -out /certs/rootCA.pem -subj '/CN=RecallApp Local Dev CA' || true &&
+        openssl genrsa -out /certs/server.key 2048 &&
+        openssl req -new -key /certs/server.key -out /certs/server.csr -subj '/CN=*.localhost' &&
+        printf 'subjectAltName=DNS:localhost,DNS:app.recallapp.localhost,DNS:bff.recallapp.localhost,DNS:auth.localhost\nbasicConstraints=CA:FALSE\n' > /certs/san.ext &&
+        openssl x509 -req -in /certs/server.csr -CA /certs/rootCA.pem -CAkey /certs/rootCA.key -CAcreateserial -out /certs/server.crt -days 365 -sha256 -extfile /certs/san.ext"
+    volumes:
+      - shared_certs:/certs
+
+  # Единая точка входа
+  edge-proxy:
+    image: nginx:alpine
+    depends_on:
+      ca-generator:
+        condition: service_completed_successfully
+      iam:
+        condition: service_started
+      bff:
+        condition: service_started
+      client-web:
+        condition: service_started
+    volumes:
+      - ./EdgeProxy/nginx.conf:/etc/nginx/nginx.conf:ro
+      - shared_certs:/etc/nginx/certs:ro
+    networks:
+      dev_net:
+        aliases:
+          - app.recallapp.localhost
+          - bff.recallapp.localhost
+          - auth.localhost
+
+  iam-db:
+    image: postgres:17
+    volumes:
+      - iam_db_data:/var/lib/postgresql/data
+    networks:
+      - iam_net
+
+  iam:
+    image: quay.io/keycloak/keycloak:26.8.1
+    depends_on:
+      - iam-db
+    environment:
+      - KC_DB=postgres
+      - KC_DB_URL=jdbc:postgresql://iam-db:5432/keycloak
+      - KC_HOSTNAME=https://auth.localhost
+      - KC_PROXY_HEADERS=xforwarded
+    networks:
+      - iam_net
+      - dev_net
+
+  bff:
+    build:
+      context: ./Bff/Bff.Web
+      dockerfile: Host/Dockerfile.development
+    depends_on:
+      - iam
+    volumes:
+      - ./Bff/Bff.Web:/src
+      # анонимные тома маскируют host-овые bin/obj (Windows-артефакты не мешают сборке в контейнере)
+      - /src/Host/bin
+      - /src/Host/obj
+      - shared_certs:/certs:ro
+    networks:
+      - dev_net
+
+  # Прогон тестов BFF (Bff/Bff.Web/tests/README.md). Только по профилю test:
+  #   docker compose --profile test run --rm bff-tests
+  bff-tests:
+    build:
+      context: ./Bff/Bff.Web
+      dockerfile: tests/Dockerfile.Testing
+    profiles: [test]
+    volumes:
+      - shared_certs:/certs:ro
+      - ./Bff/Bff.Web/tests/TestResults:/results
+    networks:
+      - dev_net
+
+  # SPA: Vite dev-сервер (ADR 0030). Наружу не публикуется: браузер заходит через
+  # edge-proxy по https://app.localhost, чтобы оригин совпадал с production-схемой.
+  client-web:
+    build:
+      context: ./Client/Client.Web
+      dockerfile: Dockerfile.development
+    depends_on:
+      - bff
+    volumes:
+      - ./Client/Client.Web:/app
+      # анонимный том: node_modules из образа не перекрываются хост-папкой (Windows-артефакты не мешают)
+      - /app/node_modules
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:5173/"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
+    networks:
+      - dev_net
+
+  app-db:
+    image: postgres:17
+    volumes:
+      - app_db_data:/var/lib/postgresql/data
+      - ./App/scripts/01-roles-and-schemas.sh:/docker-entrypoint-initdb.d/01-roles-and-schemas.sh:ro
+    networks:
+      - app_net
+
+  app:
+    build:
+      context: ./App
+      dockerfile: Dockerfile.development
+    depends_on:
+      - iam
+      - app-db
+    volumes:
+      - ./App:/src
+      # анонимные тома маскируют host-овые bin/obj (Windows-артефакты не мешают сборке в контейнере)
+      - /src/src/Api/bin
+      - /src/src/Api/obj
+      - /src/src/Modules/Accounts/Accounts.Infrastructure/bin
+      - /src/src/Modules/Accounts/Accounts.Infrastructure/obj
+      - shared_certs:/certs:ro
+    networks:
+      - dev_net
+      - app_net
+
+  # Прогон тестов App (App/tests). Только по профилю test:
+  #   docker compose --profile test run --rm app-tests
+  app-tests:
+    build:
+      context: ./App
+      dockerfile: tests/Dockerfile.Testing
+    profiles: [test]
+    volumes:
+      - shared_certs:/certs:ro
+      - ./App/tests/TestResults:/results
+    networks:
+      - dev_net
+      - app_net

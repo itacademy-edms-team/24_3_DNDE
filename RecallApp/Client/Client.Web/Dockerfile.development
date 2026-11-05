@@ -1,0 +1,17 @@
+# Dev-образ SPA (Vite dev-сервер).
+# Исходники монтируются bind-ом из compose, node_modules — анонимным томом:
+# зависимости ставятся в образ и не перекрываются хост-папкой.
+FROM node:26-alpine
+
+WORKDIR /app
+
+# Слой зависимостей отдельно от кода: пересборка образа только при изменении lock-файла.
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY . .
+
+EXPOSE 5173
+
+# host/port/strictPort заданы в vite.config.ts, дублировать флагами не нужно.
+CMD ["npm", "run", "dev"]

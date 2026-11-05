@@ -1,0 +1,16 @@
+# Dev-образ BFF
+# Исходники монтируются bind-ом из compose (dev-цикл без пересборки образа).
+# Референс-образ — соседний Dockerfile
+FROM mcr.microsoft.com/dotnet/sdk:8.0
+
+WORKDIR /src/Host
+EXPOSE 8080
+
+# entrypoint: 
+# доверяем Root CA из тома shared_certs
+# затем dotnet watch. update-ca-certificates требует root, поэтому dev-контейнер работает от root.
+ENTRYPOINT ["/bin/sh", "-c", "\
+  if [ -f /certs/rootCA.pem ]; then \
+  cp /certs/rootCA.pem /usr/local/share/ca-certificates/recallapp-dev-ca.crt && update-ca-certificates >/dev/null 2>&1; \
+  fi; \
+  exec dotnet watch run --project /src/Host/Host.csproj --non-interactive --no-launch-profile"]

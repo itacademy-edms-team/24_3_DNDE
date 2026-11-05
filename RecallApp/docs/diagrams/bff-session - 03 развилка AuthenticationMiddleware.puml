@@ -1,0 +1,49 @@
+@startuml bff-session-03-развилка-authmw
+title AuthenticationMiddleware.Invoke (.NET 8): от входа до выхода
+
+skinparam shadowing false
+<style>
+activityDiagram {
+  .pass { BackgroundColor lightgreen }
+  .signout { BackgroundColor pink }
+  .deferred { BackgroundColor lightyellow }
+}
+</style>
+
+start
+:Features.Set(IAuthenticationFeature)\nOriginalPath, OriginalPathBase;
+note right: нужно handler-ам для ReturnUrl
+
+partition "Шаг 1: схемы-обработчики запросов" {
+  :Для каждой схемы, реализующей IAuthenticationRequestHandler\n(у нас только OpenIdConnect);
+  :HandleRequestAsync();
+  if (Path = /signin-oidc\nили /signout-callback-oidc?) then (да)
+    :OpenIdConnectHandler обрабатывает целиком\n(вход: см. диаграмму 02,\nвыход: 302 на SignedOutRedirectUri);
+    :return\n(next() не вызывается); <<signout>>
+    stop
+  else (нет)
+  endif
+}
+
+partition "Шаг 2: схема по умолчанию, Cookies" {
+  :context.AuthenticateAsync("Cookies")\n→ CookieAuthenticationHandler (см. диаграмму 04);
+  if (result.Principal != null?) then (да)
+    :context.User = Principal;
+  else (нет)
+    :User остаётся анонимным;
+  endif
+  if (result.Succeeded?) then (да)
+    :Features.Set(IAuthenticateResultFeature)\nFeatures.Set(IHttpAuthenticationFeature);
+  else (нет)
+  endif
+}
+
+:await next(context)\n→ TokenRefreshMiddleware; <<pass>>
+note right
+  Зарегистрирован Response.OnStarting(FinishResponseAsync)
+  у CookieAuthenticationHandler. При SlidingExpiration = false
+  продление не планируется, и он ничего не делает
+end note
+stop
+
+@enduml

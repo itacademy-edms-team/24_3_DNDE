@@ -1,0 +1,83 @@
+@startuml bff-session-05-дерево-refresh
+title TokenRefreshMiddleware → TokenRefreshService.RefreshIfNeededAsync: дерево решений
+
+skinparam shadowing false
+<style>
+activityDiagram {
+  .pass { BackgroundColor lightgreen }
+  .signout { BackgroundColor pink }
+  .deferred { BackgroundColor lightyellow }
+}
+</style>
+
+start
+if (WebSocket-запрос?) then (да)
+  :next(); <<pass>>
+  stop
+endif
+if (User аутентифицирован?) then (нет)
+  :next(); <<pass>>
+  stop
+endif
+:authResult = AuthenticateAsync(Cookies)
+тот же результат, что получил AuthenticationMiddleware:
+handler создан на этот запрос и запомнил его,
+стор повторно не читается;
+if (bff_session_id в properties?) then (нет)
+  :SignOutAsync(Cookies); <<signout>>
+  :next(); <<pass>>
+  stop
+endif
+:sessionKey = properties[bff_session_id];
+if (expires_at есть и парсится?) then (нет)
+  :warning;
+  :next(); <<pass>>
+  stop
+endif
+if (expires_at - now > RefreshThreshold (1 мин)?) then (да, токен свежий)
+  :next(); <<pass>>
+  stop
+endif
+if (RetryNotBefore[sessionKey] > now?) then (да, пауза после сбоя)
+  :next(); <<pass>>
+  stop
+endif
+:Semaphores.GetOrAdd(sessionKey)\nWaitAsync (ждём замок сессии);
+if (now - LastRefreshedAt[sessionKey] < RefreshThreshold?) then (да, double-check:\nкто-то уже обновил)
+  :Release;
+  :next(); <<pass>>
+  stop
+endif
+if (RetryNotBefore снова в будущем?) then (да, ждавшие\nво время неудачи)
+  :Release;
+  :next(); <<pass>>
+  stop
+endif
+if (RejectedSessions[sessionKey] есть?) then (да, держащий\nуже получил отказ)
+  :SignOutAsync(Cookies); <<signout>>
+  :Release;
+  :next(); <<pass>>
+  stop
+endif
+if (refresh_token в properties?) then (нет)
+  :SignOutAsync(Cookies); <<signout>>
+  :Release;
+  :next(); <<pass>>
+  stop
+endif
+:KeycloakTokenClient.RefreshAsync:\nPOST /token grant_type=refresh_token\n(таймаут KeycloakTimeout, 5 с);
+switch (исход)
+case (Success)
+  :SessionTokenWriter:\nStoreTokens, ResetWindow, SignInAsync;
+  :LastRefreshedAt = now\nRetryNotBefore удалить\nленивый trim при > 10 000;
+case (Rejected: 400 invalid_grant)
+  :RejectedSessions[sessionKey] = маркер\nItems[SessionRejected] = маркер;
+  :SignOutAsync(Cookies); <<signout>>
+case (Unavailable)
+  :RetryNotBefore = now + 15 с\nсессию не трогать; <<deferred>>
+endswitch
+:Release;
+:next(); <<pass>>
+stop
+
+@enduml

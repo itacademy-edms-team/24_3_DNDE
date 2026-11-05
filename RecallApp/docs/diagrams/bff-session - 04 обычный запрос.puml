@@ -1,0 +1,46 @@
+@startuml bff-session-04-обычный-запрос
+title Обычный запрос: cookie → стор → HttpContext.User (SlidingExpiration = false)
+
+skinparam shadowing false
+autonumber
+
+actor "Браузер" as B
+participant "AuthenticationMiddleware" as AM
+participant "IAuthenticationService" as AS
+participant "CookieAuthenticationHandler" as CH
+participant "TicketDataFormat\n(Data Protection)" as DP
+database "ITicketStore" as S
+participant "Конвейер дальше\n(TokenRefresh, контроллер)" as N
+
+B -> AM : GET /session\nCookie: recall_bff=...
+AM -> AS : AuthenticateAsync(Cookies)
+AS -> CH : создать handler на запрос
+CH -> CH : InitializeHandlerAsync:\nResponse.OnStarting(FinishResponseAsync)
+AS -> CH : AuthenticateAsync()
+CH -> CH : ChunkingCookieManager: прочитать recall_bff
+CH -> DP : Unprotect(cookie)
+DP --> CH : мини-тикет: один claim\nCookies-SessionId = bff-session:<guid>
+CH -> S : RetrieveAsync(ключ)
+alt записи нет (рестарт BFF, вытеснение)
+  S --> CH : null
+  CH --> AM : Fail (MissingIdentityInSession)\nUser аноним, cookie в браузере остаётся
+else ExpiresUtc < now
+  CH -> S : RemoveAsync(ключ)
+  CH --> AM : Fail (ExpiredTicket)
+else тикет валиден
+  S --> CH : полный тикет: principal + properties\n(токены, bff_session_id, bff_remember_me,\nIssuedUtc, ExpiresUtc, IsPersistent)
+  CH -> CH : CheckForRefreshAsync пропущен:\nSlidingExpiration = false
+  CH -> CH : событие ValidatePrincipal (у нас пустое)
+  CH --> AS : Success(ticket)
+  note right of CH : результат закэширован в handler-е\nна весь запрос (_authenticateTask)
+  AS --> AM : Success
+  AM -> AM : context.User = principal
+end
+AM -> N : next(context)
+N --> AM : ответ сформирован
+== Начало записи ответа: Response.OnStarting ==
+AM -> CH : FinishResponseAsync()
+CH -> CH : продление не запланировано:\nничего не делает
+note right of CH : стор и cookie в обычном запросе\nне пишутся. Set-Cookie бывает только\nна входе, refresh (диаграмма 06) и выходе
+
+@enduml

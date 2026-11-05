@@ -1,0 +1,28 @@
+@startuml bff-session-07-жизнь-сессии
+title Жизнь BFF-сессии (одна запись стора, один bff_session_id)
+
+skinparam shadowing false
+hide empty description
+
+[*] --> Anonymous
+
+state Anonymous : cookie нет или не принята
+state Authenticated : тикет в сторе, окно cookie открыто\naccess свежий
+state NeedsRefresh : access истекает\n(осталось ≤ RefreshThreshold)
+state Deferred : Keycloak недоступен\nRetryNotBefore в будущем\nсессия жива
+state SignedOut : запись стора удалена\ncookie удалена
+
+Anonymous --> Authenticated : /signin-oidc\nStoreAsync + Set-Cookie
+Authenticated --> NeedsRefresh : время идёт
+NeedsRefresh --> Authenticated : Success\nResetWindow + SignIn
+NeedsRefresh --> Deferred : Unavailable
+Deferred --> NeedsRefresh : прошло 15 с,\nследующий запрос
+NeedsRefresh --> SignedOut : Rejected 400/401\nили нет refresh_token
+Authenticated --> SignedOut : /logout
+Authenticated --> Anonymous : ExpiresUtc прошёл\n(ExpiredTicket, стор чистится)
+Deferred --> Anonymous : ExpiresUtc прошёл\n(окно в Deferred не двигается)
+note right of Authenticated : окно cookie сдвигает только\nSuccess refresh (ResetWindow)
+Authenticated --> Anonymous : запись стора пропала\n(рестарт BFF)
+SignedOut --> Anonymous
+
+@enduml

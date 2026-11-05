@@ -1,7 +1,8 @@
 # ADR 0007. Доставка email
 
-- **Status:** accepted
+- **Status:** superseded
 - **Date:** 2026-10-16
+- **Superseded-by:** [ADR 0019](./0019-доставка-email.md) (2026-10-22)
 - **Decision-maker(s):** Aleksandr
 - **Owner:** Aleksandr
 - **Scope:** Платформа (общее)
@@ -40,6 +41,7 @@
 
 ## Связанные документы
 
+- [ADR 0019](./0019-доставка-email.md) - переопределяет канал и отправителя для auth-писем.
 - [ADR 0006](0006-доставка-push.md) - доставка push (тот же вендор на текущий момент).
 - [План платформы §3.1/§4](https://github.com/itacademy-edms-team/24_3_DNDE/wiki/RecallApp-План-платформы) - аккаунт, архитектурные ставки.
 - [C4-Context](../diagrams/c4%20-%20context.puml) - внешняя система «Email-провайдер».

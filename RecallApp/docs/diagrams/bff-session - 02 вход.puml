@@ -1,0 +1,59 @@
+@startuml bff-session-02-вход
+title Вход: три HTTP-запроса (/login → Keycloak → /signin-oidc)
+
+skinparam shadowing false
+autonumber
+
+actor "Браузер" as B
+participant "AuthenticationMiddleware" as AM
+participant "TokenRefreshMiddleware" as TR
+participant "AuthController" as C
+participant "OpenIdConnectHandler" as O
+participant "ConfigureOidcOptions\nOnTokenValidated,\nOnTicketReceived" as E
+participant "SessionCookieLifetime" as L
+participant "CookieAuthenticationHandler" as CH
+database "ITicketStore" as S
+participant "Keycloak" as K
+
+== Запрос 1: GET /login ==
+B -> AM : GET /login?returnUrl=/
+AM -> CH : AuthenticateAsync(Cookies)
+CH --> AM : обычно NoResult (cookie нет, аноним)
+note right of AM : если пользователь уже вошёл,\nконтроллер делает 302 на returnUrl:\nChallenge не вызывается, вторая\nсессия в сторе не появляется
+AM -> TR : next()
+TR -> TR : аноним: пропуск;\nвошедший: дерево решений (диаграмма 05)
+TR -> C : next()
+C -> O : Challenge(OpenIdConnect,\nRedirectUri = returnUrl)
+O -> O : в AuthenticationProperties:\nRedirectUri, PKCE code_verifier, correlation id
+O -> O : nonce: только в nonce-cookie
+O -> O : properties → state (Data Protection)
+O --> B : 302 на Keycloak /auth\n+ Set-Cookie: .AspNetCore.Correlation.*,\n.AspNetCore.OpenIdConnect.Nonce.*
+
+== Вне BFF ==
+B -> K : страница входа, логин/пароль, Remember Me
+K --> B : 302 /signin-oidc?code&state
+
+== Запрос 3: GET /signin-oidc ==
+B -> AM : GET /signin-oidc?code&state
+AM -> O : HandleRequestAsync: путь = CallbackPath
+O -> O : state → properties, проверка correlation
+O -> K : POST /token (code + code_verifier + секрет)
+K --> O : access, id, refresh,\nexpires_in, refresh_expires_in
+O -> O : проверка id_token (nonce, подпись)
+O -> E : TokenValidated(properties, TokenEndpointResponse)
+E -> E : properties[bff_session_id] = новый GUID
+E -> E : rememberMe = refresh_expires_in > RememberMeThreshold
+E -> L : Apply(properties, rememberMe)
+L -> L : IsPersistent, bff_remember_me,\nIssuedUtc = now, ExpiresUtc = now + SSO Idle режима
+O -> O : SaveTokens: access, id, refresh,\ntoken_type, expires_at = now + expires_in
+O -> K : userinfo → claims
+O -> O : RemoteAuthenticationHandler вынимает\nRedirectUri из properties
+O -> E : событие TicketReceived
+E -> E : expires_at = expires_at − ClockSkewBuffer (30 с)\n(AccessTokenExpiry, как на refresh)
+O -> CH : SignInAsync(Cookies, principal, properties)
+CH -> S : StoreAsync(ticket) → ключ bff-session:<guid>
+CH --> B : Set-Cookie recall_bff = Protect(ключ)\nExpires только при IsPersistent
+O --> B : 302 returnUrl
+note over AM, TR : Запрос 3 из AuthenticationMiddleware не выходит:\nTokenRefreshMiddleware и контроллер не вызываются.
+
+@enduml

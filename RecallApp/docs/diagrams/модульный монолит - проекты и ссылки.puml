@@ -1,0 +1,43 @@
+@startuml recallapp-monolith-projects
+title Модульный монолит: проекты и зависимости (C1, ADR 0029)
+
+skinparam shadowing false
+skinparam packageStyle rectangle
+left to right direction
+
+package "Host (Api)"
+package "Accounts.Domain"
+package "Accounts.Application"
+package "Accounts.Infrastructure"
+package "Accounts.Contracts"
+package "Common.Application"
+package "Common.Infrastructure"
+
+note bottom of "Host (Api)" : Program.cs, JwtBearer (ADR 0028),\nAddAccounts()/MapAccounts(), health, --migrate
+note bottom of "Accounts.Domain" : сущности, VO, инварианты;\nни на кого не ссылается
+note bottom of "Accounts.Application" : commands/queries, handlers, DTO,\nинтерфейсы репозиториев
+note bottom of "Accounts.Infrastructure" : DbContext (schema accounts), репозитории,\nмиграции, фасад, регистрация DI/MediatR
+note bottom of "Accounts.Contracts" : IAccountsModule, DTO, события;\nабстрактные типы для других модулей
+note bottom of "Common.Application" : Result, маркеры событий\n(без бизнес-логики)
+note bottom of "Common.Infrastructure" : общая инфра (EF-перехватчики, шина);\nсоздаётся по мере появления содержимого
+
+"Host (Api)" --> "Accounts.Infrastructure" : project reference
+"Accounts.Infrastructure" --> "Accounts.Application" : ссылается на
+"Accounts.Infrastructure" --> "Accounts.Contracts" : ссылается на и реализует\n(публичный API AccountsModule)
+"Accounts.Infrastructure" ..> "Common.Infrastructure"
+"Accounts.Application" --> "Accounts.Domain" : ссылается на
+"Accounts.Application" --> "Common.Application" : ссылается на
+"Accounts.Contracts" --> "Common.Application" : ссылается на
+
+note as Legend
+  Транзитивно:
+  Host ..> Accounts.Application ..> Accounts.Domain
+
+  Чужой модуль (при появлении):
+  <Модуль>.Application --> Accounts.Contracts
+
+  Данные: app_db (PostgreSQL),
+  schema accounts - только Accounts.Infrastructure
+end note
+
+@enduml
