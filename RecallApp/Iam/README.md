@@ -136,3 +136,34 @@ BFF_TEST_USER_PASSWORD=<ПАРОЛЬ_TESTUSER_ИЗ_RECALLAPP_TEST>
 ```powershell
 ./Iam/export-realm.ps1 -OutDir D:\backups\recallapp -Realm recallapp-test
 ```
+
+## Настройка Яндекса как IdP в Keycloak
+
+1. Создать клиент в Яндекс: https://oauth.yandex.ru/client/new/auth
+
+RedirectUri: `https://auth.localhost/realms/recallapp/broker/yandex/endpoint`
+Разрешения ставить минимальные: почта, имя пользователя.
+
+1. Запомнить ClientId и ClientSecret.
+2. Перейти в админку Keycloak -> realm recallapp -> IdentityProviders -> OAuthV2
+3. Authorization URL: `https://oauth.yandex.ru/authorize`
+4. Token URL: `https://oauth.yandex.ru/token`
+5. User Info URL: `https://login.yandex.ru/info?format=json`
+6. Client Authentication: `Client secret sent in the request body`
+7. Client Id: из созданного клиента
+8. Client Secret: из созданного клиента
+9. ID Claim: `id`
+10. Username Claim: `login`
+11. Email Claim: `default_email`
+12. Name Claim: `display_name`
+13. Given name Claim: `first_name`
+14. Family name Claim: `last_name`
+15. Add (создаём IdP)
+16. Trust Email: `True`
+17. Forward Parameters: `Prompt` -> `Select Account`
+18. Save (сохранить IdP)
+
+Теперь при входе через Keycloak можно будет войти через Яндекс.
+
+**Поведение Keycloak на вход по почте с уже существующим аккаунтом:**
+Keycloak показывает окна, что пользователь уже есть в системе и предлагает ему объединить и актуализировать данные. Для подтверждения слияния вводится пароль. Работает, если не включён `Duplicate Email`.
