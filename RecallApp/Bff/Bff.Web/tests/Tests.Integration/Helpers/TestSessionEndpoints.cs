@@ -90,9 +90,13 @@ public sealed class TestSessionEndpoints : IStartupFilter
         properties.StoreTokens(tokens);
 
         var identity = new ClaimsIdentity(
-            [new Claim("sub", "user-1"), new Claim("preferred_username", "testuser")],
+            [
+                new Claim("sub", "user-1"),
+                new Claim("preferred_username", "testuser"),
+                new Claim("name", "Test User"),
+            ],
             "Test",
-            "preferred_username",
+            "name",
             "roles"
         );
         await context
