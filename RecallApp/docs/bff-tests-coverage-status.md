@@ -1,15 +1,15 @@
 # BFF: статус тестового покрытия
 
-**Дата:** 2026-11-04 (обновлено после C3: узкий контракт `/session`, диагностика `/debug/session`, CORS из конфигурации, унифицированный формат ошибок). Документ отслеживает, что из поведения BFF ещё не проверено. Согласованные доработки взяты из п.1 дополнения C0 (номера вида 3.1, 1.8 совпадают с таблицей слабых мест).
+**Дата:** 2026-11-10 (обновлено после ADR 0035: роли приходят плоским claim'ом `roles` с префиксом клиента и читаются из principal, диагностика больше не разбирает `resource_access`). Документ отслеживает, что из поведения BFF ещё не проверено. Согласованные доработки взяты из п.1 дополнения C0 (номера вида 3.1, 1.8 совпадают с таблицей слабых мест).
 
 Как запускать тесты: [Bff/Bff.Web/tests/README.md](../Bff/Bff.Web/tests/README.md). Ручные сценарии: [bff-manual-tests.md](bff-manual-tests.md).
 
-## Актуальные цифры (2026-11-04)
+## Актуальные цифры (2026-11-10)
 
 | Проект | Количество |
 |---|---|
-| `Tests.Unit` | 90 |
-| `Tests.Integration` без Keycloak и Database | 43 |
+| `Tests.Unit` | 92 |
+| `Tests.Integration` без Keycloak и Database | 44 |
 | `Tests.Integration`, `Keycloak` | 3 |
 
 Тесты монолита ведутся отдельно: [App/tests/README.md](../App/tests/README.md) (интеграционные, в т.ч. контейнерные с БД).
@@ -18,8 +18,8 @@
 
 | Слой | Количество | Что проверяет |
 |---|---|---|
-| `Tests.Unit` | 90 | клиент token endpoint (включая классификацию `invalid_grant` vs прочих ошибок), правило `expires_at`, окно cookie, ticket store (включая детект тихого отказа записи), замки и уборщик, события входа OIDC, валидация опций на старте, валидатор CORS-политик, формат кодов в `ApiProblem` |
-| `Tests.Integration`, `InProcess` | 43 | refresh у порога, ротация, `token_type`, параллельные запросы после простоя, Keycloak недоступен и backoff, отказ Keycloak, нет refresh-токена, нет `bff_session_id`, обрыв клиента у замка, окно истекло, Remember Me после refresh; API-контракт: 401 problem+json (аноним/Rejected) и `source=bff`, CSRF, login/logout, узкий контракт `/session` (`isAuthenticated, name, email`), `/debug/session` под флагом и 404 при выключенном, `no-store`, problem+json для исключений, CORS preflight, нестартует при невалидных опциях |
+| `Tests.Unit` | 92 | клиент token endpoint (включая классификацию `invalid_grant` vs прочих ошибок), правило `expires_at`, окно cookie, ticket store (включая детект тихого отказа записи), замки и уборщик, события входа OIDC, типы claim'ов OIDC (`name`, `roles`), валидация опций на старте, валидатор CORS-политик, формат кодов в `ApiProblem` |
+| `Tests.Integration`, `InProcess` | 44 | refresh у порога, ротация, `token_type`, параллельные запросы после простоя, Keycloak недоступен и backoff, отказ Keycloak, нет refresh-токена, нет `bff_session_id`, обрыв клиента у замка, окно истекло, Remember Me после refresh; API-контракт: 401 problem+json (аноним/Rejected) и `source=bff`, CSRF, login/logout, узкий контракт `/session` (`isAuthenticated, name, email`), `/debug/session` под флагом и 404 при выключенном, роли из principal (с ролями и без), `no-store`, problem+json для исключений, CORS preflight, нестартует при невалидных опциях |
 | `Tests.Integration`, `Keycloak` | 3 | форма ответа настоящего Keycloak и роли, повторно использованный refresh-токен, неверный секрет клиента (сессия выживает: `invalid_client` ≠ `invalid_grant`) |
 | Ручные сценарии | 9 | вход и выход, Remember Me при перезапуске браузера (7A, 7B), остальное продублировано автотестами |
 
@@ -38,8 +38,8 @@
 | А7 | Атрибуты cookie | `recall_bff`, `HttpOnly`, `Secure`, `SameSite=Lax`, `path=/` | IP | С | не покрыто |
 | А8 | `/login?returnUrl=https://evil` | Challenge с `RedirectUri = "/"`, open redirect закрыт | IP (OIDC `Configuration` без discovery) | В | не покрыто |
 | А9 | Выход | Запись стора удалена, cookie удаляется, 302 на end_session с `id_token_hint` | IP, как А8 | С | не покрыто |
-| А10 | `/debug/session`: нет `resource_access` или роли не массив | `roles: []`, 200 | U | Н | не покрыто |
-| А11 | `/debug/session`: access-токен не JWT | Сейчас 500 из `ReadJsonWebToken`. Keycloak всегда выдаёт JWT, кейс теоретический | U | Н | не покрыто |
+| А10 | `/debug/session`: в principal нет claim'а `roles` | `roles: []`, 200 | IP | Н | покрыто (`DiagnosticsInProcessTests`) |
+| А11 | `/debug/session`: access-токен не JWT | Сейчас 500 из разбора claim `exp` (роли идут из principal и от разбора не зависят). Keycloak всегда выдаёт JWT, кейс теоретический | U | Н | не покрыто |
 | А12 | Ленивый trim при > 10 000 замков из сервиса | После успешного refresh снимаются 100 самых старых | U | Н | не покрыто |
 | А13 | Истёк SSO Session Max | Keycloak отклоняет refresh, BFF выходит. Нужен короткий Max в тестовом realm | KC или Р | Н | не покрыто |
 | А14 | Remember Me на настоящем входе | Режим по `refresh_expires_in` | Р (сценарий 7) | — | покрыто вручную |

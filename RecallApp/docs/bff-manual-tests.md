@@ -101,7 +101,7 @@ Oidc__TokenRefresh__RefreshThreshold: "00:10:00"
 **Ожидаем.**
 - Шаг 1: `isAuthenticated: false`.
 - После входа в браузере появляется cookie `recall_bff`.
-- Шаг 3: `isAuthenticated: true`, `name` заполнен. Роли проверяются по `GET /debug/session` (в dev включён): `roles` содержит `app-user`.
+- Шаг 3: `isAuthenticated: true`, `name` заполнен. Роли проверяются по `GET /debug/session` (в dev включён): `roles` содержит `RecallApp:app-user` (префикс = clientId роль-холдера, ADR 0035).
 - Шаг 5: `isAuthenticated: false`.
 
 ---
@@ -407,7 +407,7 @@ Oidc__TokenRefresh__RefreshThreshold: "00:10:00"
 - Шаг 4 в 11:53:30: `timeUntilExpiry=0:02:53`, в сторе новый `expires_at`. Refresh не понадобился, `true`. Шаг 5: `true`.
 
 Наблюдения за 2026-10-28 (сценарии 1 и 7 после разбиения refresh по ролям):
-- 1: `false`, вход на странице Keycloak без галочки, `true` с `name: testuser1` и `roles: [app-user]`, выход, `false`. После выхода `/login` снова показывает форму: SSO-сессия Keycloak тоже завершена. В логе BFF ошибок нет.
+- 1: `false`, вход на странице Keycloak без галочки, `true` с `name: testuser1` и `roles: [RecallApp:app-user]`, выход, `false`. После выхода `/login` снова показывает форму: SSO-сессия Keycloak тоже завершена. В логе BFF ошибок нет.
 - 7A: Expires = `Session`; после перезапуска браузера `isAuthenticated: false`.
 - 7B: Expires = вход + 30 дней; после перезапуска браузера сессия та же (`sid` не изменился), `isAuthenticated: true`.
 

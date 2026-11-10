@@ -74,7 +74,7 @@ BFF_WEB_OIDC_CLIENT_SECRET=<ВАШ_CLIENT_SECRET_ИЗ_BFF_WEB>
    5. Claim JSON Type: `String`
    6. Client Role prefix: `RecallApp:` - префикс равен Client ID: за счёт этого одинаковые роли разных клиентов не сливаются в одном плоском claim'е
    7. Add to access token: ON
-   8. Add to ID token: ON - без этого роли не попадут в `ClaimsPrincipal` BFF (он строится из ID-токена)
+   8. Add to ID token: ON
    9. Add to lightweight access token / userinfo / introspection: OFF
 
 3. Add mapper -> By configuration -> `Audience` (не `Audience Resolve`: тот вычисляет audience из разрешённых ролей и растёт вместе с realm):
