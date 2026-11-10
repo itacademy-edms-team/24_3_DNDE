@@ -48,6 +48,7 @@ try
             options.MapInboundClaims = false; // сырые имена claim'ов (sub, email, ...), без маппинга в ClaimTypes
             options.TokenValidationParameters.ValidateAudience = false; // ADR 0028: aud = account in Keycloak
             options.TokenValidationParameters.NameClaimType = "name";
+            options.TokenValidationParameters.RoleClaimType = "roles";
         });
     builder.Services.AddAuthorization();
 
