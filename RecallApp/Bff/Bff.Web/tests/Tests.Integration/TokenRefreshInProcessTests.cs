@@ -20,7 +20,7 @@ public sealed class TokenRefreshInProcessTests : IAsyncLifetime
     public async Task InitializeAsync()
     {
         _browser = _app.CreateBrowser();
-        await BffApp.SignInAsync(_browser, new TestSession(TestJwt.Create("initial-role")));
+        await BffApp.SignInAsync(_browser, new TestSession(TestJwt.Create()));
     }
 
     public async Task DisposeAsync()
@@ -50,9 +50,14 @@ public sealed class TokenRefreshInProcessTests : IAsyncLifetime
         Assert.Contains("refresh_token=initial-refresh", _app.Keycloak.RequestBodies.Single());
         Assert.Single(BffApp.SessionCookies(response));
 
-        // Контроллер в том же запросе видит новый access (GetTokenAsync после refresh).
+        // Контроллер в том же запросе видит новый access (GetTokenAsync после refresh): exp сменился.
+        // Роли при этом остаются снимком на входе: principal живёт в cookie и refresh его не пересобирает.
         var (_, debug) = await BffApp.GetAppSessionAsync(_browser, "/debug/session");
-        Assert.Equal("refreshed-role", debug.GetProperty("roles")[0].GetString());
+        Assert.Equal(
+            DateTimeOffset.FromUnixTimeSeconds(TestJwt.DefaultExp + 86_400),
+            debug.GetProperty("accessTokenExpiresAt").GetDateTimeOffset()
+        );
+        Assert.Empty(debug.GetProperty("roles").EnumerateArray());
     }
 
     [Fact]
@@ -108,7 +113,7 @@ public sealed class TokenRefreshInProcessTests : IAsyncLifetime
         // Встроенное продление cookie сработало бы на каждом запросе и записало бы в стор старые токены.
         await using var app = new BffApp { SessionIdle = TimeSpan.FromMinutes(6) };
         using var browser = app.CreateBrowser();
-        await BffApp.SignInAsync(browser, new TestSession(TestJwt.Create("initial-role")));
+        await BffApp.SignInAsync(browser, new TestSession(TestJwt.Create()));
 
         var release = new TaskCompletionSource();
         app.Keycloak.Respond = async _ =>
@@ -265,7 +270,7 @@ public sealed class TokenRefreshInProcessTests : IAsyncLifetime
     public async Task Session_NoRefreshTokenInSession_SignsOutWithoutCallingKeycloak()
     {
         using var browser = _app.CreateBrowser();
-        await BffApp.SignInAsync(browser, new TestSession(TestJwt.Create("initial-role"), RefreshToken: null));
+        await BffApp.SignInAsync(browser, new TestSession(TestJwt.Create(), RefreshToken: null));
         _app.Time.Advance(IntoRefreshZone);
 
         await BffApp.GetAppSessionAsync(browser);
@@ -281,7 +286,7 @@ public sealed class TokenRefreshInProcessTests : IAsyncLifetime
         using var browser = _app.CreateBrowser();
         await BffApp.SignInAsync(
             browser,
-            new TestSession(TestJwt.Create("initial-role"), WithoutSessionId: true)
+            new TestSession(TestJwt.Create(), WithoutSessionId: true)
         );
         _app.Time.Advance(IntoRefreshZone);
 
@@ -307,7 +312,7 @@ public sealed class TokenRefreshInProcessTests : IAsyncLifetime
     public async Task Session_RememberMeRefresh_KeepsPersistentCookieWithLongWindow()
     {
         using var browser = _app.CreateBrowser();
-        await BffApp.SignInAsync(browser, new TestSession(TestJwt.Create("initial-role"), RememberMe: true));
+        await BffApp.SignInAsync(browser, new TestSession(TestJwt.Create(), RememberMe: true));
         _app.Time.Advance(IntoRefreshZone);
         var refreshedAt = _app.Time.GetUtcNow();
 

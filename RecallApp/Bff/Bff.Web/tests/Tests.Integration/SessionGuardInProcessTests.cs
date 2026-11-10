@@ -61,7 +61,7 @@ public sealed class SessionGuardInProcessTests : IAsyncLifetime
     [Fact]
     public async Task ApiEndpoint_AfterKeycloakRejection_Returns401SessionExpiredAndDropsCookie()
     {
-        await BffApp.SignInAsync(_browser, new TestSession(TestJwt.Create("initial-role")));
+        await BffApp.SignInAsync(_browser, new TestSession(TestJwt.Create()));
         _app.Keycloak.Respond = _ =>
             Task.FromResult(FakeKeycloak.Json(HttpStatusCode.BadRequest, """{"error":"invalid_grant"}"""));
         _app.Time.Advance(IntoRefreshZone);
@@ -84,7 +84,7 @@ public sealed class SessionGuardInProcessTests : IAsyncLifetime
     [Fact]
     public async Task ApiMutation_WithoutCsrfHeader_Returns403()
     {
-        await BffApp.SignInAsync(_browser, new TestSession(TestJwt.Create("initial-role")));
+        await BffApp.SignInAsync(_browser, new TestSession(TestJwt.Create()));
 
         var response = await _browser.PostAsync(TestSessionEndpoints.ApiEchoPath, content: null);
 
@@ -97,7 +97,7 @@ public sealed class SessionGuardInProcessTests : IAsyncLifetime
     [Fact]
     public async Task ApiMutation_WithCsrfHeader_Passes()
     {
-        await BffApp.SignInAsync(_browser, new TestSession(TestJwt.Create("initial-role")));
+        await BffApp.SignInAsync(_browser, new TestSession(TestJwt.Create()));
         _browser.DefaultRequestHeaders.Add("X-CSRF", "1");
 
         var response = await _browser.PostAsync(TestSessionEndpoints.ApiEchoPath, content: null);
@@ -108,7 +108,7 @@ public sealed class SessionGuardInProcessTests : IAsyncLifetime
     [Fact]
     public async Task ApiRead_WithoutCsrfHeader_Passes()
     {
-        await BffApp.SignInAsync(_browser, new TestSession(TestJwt.Create("initial-role")));
+        await BffApp.SignInAsync(_browser, new TestSession(TestJwt.Create()));
 
         var response = await _browser.GetAsync(TestSessionEndpoints.ApiEchoPath);
 
@@ -118,7 +118,7 @@ public sealed class SessionGuardInProcessTests : IAsyncLifetime
     [Fact]
     public async Task Session_AfterKeycloakRejection_ReturnsAnonymousInSameResponse()
     {
-        await BffApp.SignInAsync(_browser, new TestSession(TestJwt.Create("initial-role")));
+        await BffApp.SignInAsync(_browser, new TestSession(TestJwt.Create()));
         _app.Keycloak.Respond = _ =>
             Task.FromResult(FakeKeycloak.Json(HttpStatusCode.BadRequest, """{"error":"invalid_grant"}"""));
         _app.Time.Advance(IntoRefreshZone);

@@ -29,7 +29,7 @@ public sealed class LoginLogoutInProcessTests : IAsyncLifetime
     [Fact]
     public async Task Login_WithOpenSession_RedirectsToReturnUrlWithoutNewSession()
     {
-        await BffApp.SignInAsync(_browser, new TestSession(TestJwt.Create("initial-role")));
+        await BffApp.SignInAsync(_browser, new TestSession(TestJwt.Create()));
 
         var response = await _browser.GetAsync("/login?returnUrl=/dashboard");
 
@@ -42,7 +42,7 @@ public sealed class LoginLogoutInProcessTests : IAsyncLifetime
     [Fact]
     public async Task Logout_Get_DoesNotSignOut()
     {
-        await BffApp.SignInAsync(_browser, new TestSession(TestJwt.Create("initial-role")));
+        await BffApp.SignInAsync(_browser, new TestSession(TestJwt.Create()));
 
         var response = await _browser.GetAsync("/logout");
 
@@ -55,7 +55,7 @@ public sealed class LoginLogoutInProcessTests : IAsyncLifetime
     [Fact]
     public async Task Logout_Post_SignsOut()
     {
-        await BffApp.SignInAsync(_browser, new TestSession(TestJwt.Create("initial-role")));
+        await BffApp.SignInAsync(_browser, new TestSession(TestJwt.Create()));
 
         var response = await _browser.PostAsync("/logout", content: null);
 
