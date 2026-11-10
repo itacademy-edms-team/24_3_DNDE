@@ -50,6 +50,60 @@ public class DiagnosticsController(IOptions<DiagnosticsOptions> diagnostics) : C
         );
     }
 
+    /// <summary>
+    /// Текущие значения для access, refresh, id токенов,
+    /// полученные после входа в keycloak,
+    /// расшифрованные из base64 представления.
+    /// </summary>
+    /// <returns>
+    /// Человекочитаемый список из json-списков для каждого jwt-токена для первых 2-х его частей
+    /// в порядке: access, refresh, id.
+    /// </returns>
+    [HttpGet("/debug/keycloak/tokens")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<IActionResult> KeycloakTokens()
+    {
+        var accessToken = await HttpContext.GetTokenAsync("access_token");
+        var refreshToken = await HttpContext.GetTokenAsync("refresh_token");
+        var idToken = await HttpContext.GetTokenAsync("id_token");
+
+        if (accessToken is null)
+        {
+            return NotFound("access_token is null");
+        }
+
+        if (refreshToken is null)
+        {
+            return NotFound("refresh_token is null");
+        }
+
+        if (idToken is null)
+        {
+            return NotFound("id_token is null");
+        }
+
+        return Ok(new []
+        {
+            accessToken.Split(".")
+                .Take(2)
+                .Select(Base64UrlTextEncoder.Decode)
+                .Select(System.Text.Encoding.UTF8.GetString)
+                .Select(jsonString => JsonDocument.Parse(jsonString).RootElement),
+            refreshToken.Split(".")
+                .Take(2)
+                .Select(Base64UrlTextEncoder.Decode)
+                .Select(System.Text.Encoding.UTF8.GetString)
+                .Select(jsonString => JsonDocument.Parse(jsonString).RootElement),
+            idToken.Split(".")
+                .Take(2)
+                .Select(Base64UrlTextEncoder.Decode)
+                .Select(System.Text.Encoding.UTF8.GetString)
+                .Select(jsonString => JsonDocument.Parse(jsonString).RootElement),
+        });
+    }
+
     /// <summary>Client-роли RecallApp из access-токена (resource_access, ADR 0024). В principal их нет.</summary>
     private static string[] ExtractRecallAppRoles(string? accessToken)
     {
