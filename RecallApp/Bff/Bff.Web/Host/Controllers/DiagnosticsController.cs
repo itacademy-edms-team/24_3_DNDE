@@ -13,8 +13,6 @@ namespace Host.Controllers;
 [ApiController]
 public class DiagnosticsController(IOptions<DiagnosticsOptions> diagnostics) : ControllerBase
 {
-    private const string RolesClientId = "RecallApp";
-
     private readonly DiagnosticsOptions _diagnostics = diagnostics.Value;
 
     /// <summary>
@@ -44,7 +42,8 @@ public class DiagnosticsController(IOptions<DiagnosticsOptions> diagnostics) : C
                 sub = User.FindFirst("sub")?.Value,
                 name = User.Identity.Name,
                 email = User.FindFirst("email")?.Value,
-                roles = ExtractRecallAppRoles(accessToken),
+                // Теперь в id-токене есть плоский roles, по которому можно собрать роли пользователя.
+                roles = User.FindAll("roles").Select(c => c.Value).ToArray(),
                 accessTokenExpiresAt = ExtractExpiry(accessToken),
             }
         );
@@ -102,27 +101,6 @@ public class DiagnosticsController(IOptions<DiagnosticsOptions> diagnostics) : C
                 .Select(System.Text.Encoding.UTF8.GetString)
                 .Select(jsonString => JsonDocument.Parse(jsonString).RootElement),
         });
-    }
-
-    /// <summary>Client-роли RecallApp из access-токена (resource_access, ADR 0024). В principal их нет.</summary>
-    private static string[] ExtractRecallAppRoles(string? accessToken)
-    {
-        if (string.IsNullOrEmpty(accessToken))
-            return [];
-
-        var jwt = new JsonWebTokenHandler().ReadJsonWebToken(accessToken);
-        if (!jwt.TryGetPayloadValue<JsonElement>("resource_access", out var resourceAccess)
-            || !resourceAccess.TryGetProperty(RolesClientId, out var client)
-            || !client.TryGetProperty("roles", out var rolesElement)
-            || rolesElement.ValueKind != JsonValueKind.Array)
-        {
-            return [];
-        }
-
-        return rolesElement.EnumerateArray()
-            .Select(e => e.GetString())
-            .Where(r => r is not null)
-            .ToArray()!;
     }
 
     /// <summary>Момент истечения access-токена (claim exp) или null, если claim отсутствует.</summary>

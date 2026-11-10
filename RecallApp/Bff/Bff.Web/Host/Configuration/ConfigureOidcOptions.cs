@@ -58,8 +58,7 @@ public sealed class ConfigureOidcOptions(IOptions<OidcOptions> oidc, IOptions<Sp
             // Человеческое имя ("Иван Иванов"), а не логин: /session отдаёт User.Identity.Name
             // как fallback для шапки, и он должен совпадать с displayName из домена (ADR 0032).
             NameClaimType = "name",
-            // Клиентские роли RecallApp лежат в resource_access (ADR 0024);
-            // плоского claim "roles" без маппера Keycloak нет - маппинг ролей в Этапе C.
+            // Клиентские роли RecallApp приходят плоским claim'ом roles.
             RoleClaimType = "roles",
         };
 
