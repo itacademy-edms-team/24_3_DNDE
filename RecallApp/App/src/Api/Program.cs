@@ -43,10 +43,13 @@ try
         {
             var authority = builder.Configuration["Oidc:Authority"]
                 ?? throw new InvalidOperationException("Set Oidc__Authority (Keycloak realm URL).");
+            var audience = builder.Configuration["Oidc:Audience"]
+                ?? throw new InvalidOperationException("Set Oidc__Audience (Keycloak client ID issued for this API).");
             options.Authority = authority;
             options.RequireHttpsMetadata = builder.Configuration.GetValue("Oidc:RequireHttpsMetadata", !builder.Environment.IsDevelopment());
             options.MapInboundClaims = false; // сырые имена claim'ов (sub, email, ...), без маппинга в ClaimTypes
-            options.TokenValidationParameters.ValidateAudience = false; // ADR 0028: aud = account in Keycloak
+            options.TokenValidationParameters.ValidateAudience = true;
+            options.TokenValidationParameters.ValidAudience = audience;
             options.TokenValidationParameters.NameClaimType = "name";
             options.TokenValidationParameters.RoleClaimType = "roles";
         });
