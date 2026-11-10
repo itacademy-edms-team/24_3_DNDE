@@ -40,8 +40,9 @@ public sealed class ConfigureOidcOptions(IOptions<OidcOptions> oidc, IOptions<Sp
 
         // Токены хранятся в серверном тикете (ADR 0021), а не отдаются клиенту.
         options.SaveTokens = true;
-        options.GetClaimsFromUserInfoEndpoint = true;
-        // Не переименовывать входящие claim-типы; нужен исходный sub, resource_access и т.д.
+        // Claims берём из ID-токена
+        options.GetClaimsFromUserInfoEndpoint = false;
+        // Не переименовывать входящие claim-типы; нужны исходные sub, name, roles и т.д.
         options.MapInboundClaims = false;
 
         options.Scope.Clear();
