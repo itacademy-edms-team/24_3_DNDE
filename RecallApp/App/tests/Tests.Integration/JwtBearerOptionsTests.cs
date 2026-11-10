@@ -42,16 +42,24 @@ public sealed class JwtBearerOptionsTests : IDisposable
     }
 
     [Fact]
-    public void ValidateToken_TokenWithPrefixedRole_PopulatesNameAndRole()
+    public void Options_DefaultConfiguration_ValidatesApiAudience()
+    {
+        Assert.True(Options.TokenValidationParameters.ValidateAudience);
+        Assert.Equal("RecallApp", Options.TokenValidationParameters.ValidAudience);
+    }
+
+    [Fact]
+    public async Task ValidateToken_TokenWithPrefixedRole_PopulatesNameAndRole()
     {
         using var rsa = RSA.Create(2048);
         var token = CreateToken(
             rsa,
+            "RecallApp",
             new Claim("name", "test user"),
             new Claim("roles", "RecallApp:app-user")
         );
 
-        var principal = Validate(token, rsa);
+        var principal = await ValidateAsync(token, rsa);
 
         Assert.True(principal.Identity?.IsAuthenticated);
         Assert.Equal("test user", principal.Identity?.Name);
@@ -59,15 +67,38 @@ public sealed class JwtBearerOptionsTests : IDisposable
     }
 
     [Fact]
-    public void ValidateToken_UnprefixedRole_DoesNotSatisfyPrefixedCheck()
+    public async Task ValidateToken_UnprefixedRole_DoesNotSatisfyPrefixedCheck()
     {
         using var rsa = RSA.Create(2048);
-        var token = CreateToken(rsa, new Claim("roles", "RecallApp:app-user"));
+        var token = CreateToken(rsa, "RecallApp", new Claim("roles", "RecallApp:app-user"));
 
-        var principal = Validate(token, rsa);
+        var principal = await ValidateAsync(token, rsa);
 
         // Контракт ролей включает префикс клиента: [Authorize(Roles = "app-user")] не должен срабатывать.
         Assert.False(principal.IsInRole("app-user"));
+    }
+
+    [Fact]
+    public async Task ValidateToken_TokenWithAdditionalAudience_Accepted()
+    {
+        using var rsa = RSA.Create(2048);
+        var token = CreateToken(rsa, new[] { "RecallApp", "account" }, new Claim("sub", "user-1"));
+        
+        var result = await new JsonWebTokenHandler().ValidateTokenAsync(token, ValidationParameters(rsa));
+
+        // aud - множество: достаточно присутствия нашего идентификатора.
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
+    public async Task ValidateToken_TokenWithoutApiAudience_Rejected()
+    {
+        using var rsa = RSA.Create(2048);
+        var token = CreateToken(rsa, new[] { "account" }, new Claim("sub", "user-1"));
+        
+        var result = await new JsonWebTokenHandler().ValidateTokenAsync(token, ValidationParameters(rsa));
+
+        Assert.False(result.IsValid);
     }
 
     /// <summary>
@@ -81,27 +112,30 @@ public sealed class JwtBearerOptionsTests : IDisposable
         {
             NameClaimType = configured.NameClaimType,
             RoleClaimType = configured.RoleClaimType,
+            ValidateAudience = configured.ValidateAudience,
+            ValidAudience = configured.ValidAudience,
             ValidateIssuer = false,
-            ValidateAudience = false,
             ValidateLifetime = false,
             IssuerSigningKey = new RsaSecurityKey(rsa),
         };
     }
 
-    private ClaimsPrincipal Validate(string token, RSA rsa)
+    private async Task<ClaimsPrincipal> ValidateAsync(string token, RSA rsa)
     {
-        var result = new JsonWebTokenHandler().ValidateToken(token, ValidationParameters(rsa));
+        var result = await new JsonWebTokenHandler().ValidateTokenAsync(token, ValidationParameters(rsa));
 
         Assert.True(result.IsValid);
         return new ClaimsPrincipal(result.ClaimsIdentity);
     }
 
-    private static string CreateToken(RSA rsa, params Claim[] claims) =>
+    private static string CreateToken(RSA rsa, object audience, params Claim[] claims) =>
         new JsonWebTokenHandler().CreateToken(
             new SecurityTokenDescriptor
             {
                 Issuer = "https://auth.localhost/realms/recallapp",
                 Subject = new ClaimsIdentity(claims, "Test"),
+                // aud задаётся явно: в Keycloak это строка, но по RFC 7519 допускается и множество.
+                Claims = new Dictionary<string, object> { ["aud"] = audience },
                 SigningCredentials = new SigningCredentials(new RsaSecurityKey(rsa), SecurityAlgorithms.RsaSha256),
             }
         );

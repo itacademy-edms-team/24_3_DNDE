@@ -77,6 +77,8 @@ services:
       # bind-mount на Windows/WSL: события файлов не всегда доходят — polling для dotnet watch
       DOTNET_USE_POLLING_FILE_WATCHER: "true"
       Oidc__Authority: https://auth.localhost/realms/recallapp
+      # audience access-токена = клиент-роль-холдер, который выпускает токены для этого API
+      Oidc__Audience: RecallApp
       # runtime-подключение (app_runtime: только DML в accounts, без DDL)
       ConnectionStrings__Database: Host=app-db:5432;Database=app;Username=app_runtime;Password=${APP_DB_RUNTIME_PASSWORD}
       ConnectionStrings__AccountsMigrations: Host=app-db:5432;Database=app;Username=accounts_owner;Password=${APP_DB_ACCOUNTS_OWNER_PASSWORD}
@@ -89,5 +91,6 @@ services:
       ConnectionStrings__Database: Host=app-db:5432;Database=app;Username=app_runtime;Password=${APP_DB_RUNTIME_PASSWORD}
       ConnectionStrings__AccountsMigrations: Host=app-db:5432;Database=app;Username=accounts_owner;Password=${APP_DB_ACCOUNTS_OWNER_PASSWORD}
       Oidc__Authority: https://auth.localhost/realms/recallapp
+      Oidc__Audience: RecallApp
       # Пусто - все тесты.
       TEST_FILTER: ${APP_TEST_FILTER:-}
