@@ -9,5 +9,15 @@ namespace Common.Application.Provisioning;
 /// </summary>
 public interface IDomainProvisioner
 {
-    Task EnsureProvisionedAsync(ClaimsPrincipal user, CancellationToken cancellationToken);
+    /// <summary>
+    /// Гарантирует существование доменных строк модуля для текущей личности.
+    /// </summary>
+    /// <param name="user">Аутентифицированный пользователь (claims из токена).</param>
+    /// <param name="cancellationToken">Токен отмены.</param>
+    /// <returns>
+    /// Id доменного пользователя, если модуль владеет строками пользователей (Accounts);
+    /// null, если модуль провижинит только собственные сущности (Media и т.п.).
+    /// Первый ненулевой результат кладётся в <see cref="ICurrentUser"/>.
+    /// </returns>
+    Task<Guid?> EnsureProvisionedAsync(ClaimsPrincipal user, CancellationToken cancellationToken);
 }

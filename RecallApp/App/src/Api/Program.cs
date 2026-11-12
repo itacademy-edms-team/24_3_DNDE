@@ -1,9 +1,11 @@
 using Accounts.Infrastructure;
 using Api;
+using Common.Application.Provisioning;
 using Common.Infrastructure.Data;
 using NLog;
 using NLog.Web;
 using Npgsql;
+using Sets.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,11 +34,19 @@ try
     var poolBudget = new ConnectionPoolBudget(dataSource);
     var accountsPoolLease = poolBudget.GetPools(
         builder.Configuration.GetValue("AppDb:AccountsPoolQuota", 20));
+    var setsPoolLease = poolBudget.GetPools(
+        builder.Configuration.GetValue("AppDb:SetsPoolQuota", 20));
     builder.Services.AddSingleton(dataSource);
     builder.Services.AddSingleton(poolBudget);
     builder.Services.AddSingleton(new PoolLeaseHolder(accountsPoolLease));
+    builder.Services.AddSingleton(new PoolLeaseHolder(setsPoolLease));
+
+    // Идентичность доменного пользователя для модулей: заполняется ступенью JIT-провижининга
+    builder.Services.AddScoped<CurrentUser>();
+    builder.Services.AddScoped<ICurrentUser>(services => services.GetRequiredService<CurrentUser>());
 
     builder.Services.AddAccounts(dataSource);
+    builder.Services.AddSets(dataSource);
 
     builder.Services.AddAuthentication()
         .AddJwtBearer(options =>
@@ -63,11 +73,18 @@ try
     app.UseDomainProvisioning();
 
     app.MapAccounts();
+    app.MapSets();
     app.MapGet("/health/live", () => Results.Ok(new { Status = "alive" }));
     app.MapGet("/health/ready", async (IServiceProvider services, CancellationToken cancellationToken) =>
-        await services.CanConnectAccounts(cancellationToken)
+    {
+        var accounts = services.CanConnectAccounts(cancellationToken);
+        var sets = services.CanConnectSets(cancellationToken);
+        await Task.WhenAll(accounts, sets);
+
+        return accounts.Result && sets.Result
             ? Results.Ok(new { Status = "ready" })
-            : Results.StatusCode(503));
+            : Results.StatusCode(503);
+    });
 
     var migrateOnly = args.Contains("--migrate");
     if (migrateOnly || builder.Configuration.GetValue("Database:ApplyMigrations", false))
@@ -76,6 +93,9 @@ try
         var migrationsConnectionString = builder.Configuration.GetConnectionString("AccountsMigrations")
             ?? throw new InvalidOperationException("Set ConnectionStrings__AccountsMigrations (schema owner).");
         await AccountsModule.MigrateAccounts(migrationsConnectionString);
+        var setsMigrationsConnectionString = builder.Configuration.GetConnectionString("SetsMigrations")
+            ?? throw new InvalidOperationException("Set ConnectionStrings__SetsMigrations (schema owner).");
+        await SetsModule.MigrateSets(setsMigrationsConnectionString);
         if (migrateOnly) return;
     }
 
