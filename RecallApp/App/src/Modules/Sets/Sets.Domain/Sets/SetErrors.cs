@@ -45,4 +45,20 @@ public static class SetErrors
             ["target"] = "set.description",
             ["max"] = SetConstraints.DescriptionMaxLength,
         });
+
+    /// <summary>Курсор пагинации не разбирается.</summary>
+    public static readonly Error CursorInvalid = Error.Validation(
+        code: "Set.CursorInvalid",
+        description: "Cursor is malformed or has an unknown format.",
+        metadata: new Dictionary<string, object> { ["target"] = "query.cursor" });
+
+    public static Error PageSizeInvalid(int pageSize) => Error.Validation(
+        code: "Set.PageSizeInvalid",
+        description: $"Page size {pageSize} is outside the allowed range {SetListConstraints.MinPageSize}..{SetListConstraints.MaxPageSize}.",
+        metadata: new Dictionary<string, object>
+        {
+            ["target"] = "query.pageSize",
+            ["min"] = SetListConstraints.MinPageSize,
+            ["max"] = SetListConstraints.MaxPageSize,
+        });
 }

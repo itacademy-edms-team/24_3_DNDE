@@ -40,9 +40,9 @@ public static class SetsModule
     {
         var group = endpoints.MapGroup(SetRoute.Group).WithTags("Sets").RequireAuthorization();
 
-        group.MapGet("/", async (ISender sender, CancellationToken cancellationToken) =>
+        group.MapGet("/", async (string? cursor, int? pageSize, ISender sender, CancellationToken cancellationToken) =>
         {
-            var result = await sender.Send(new ListSetsQuery(), cancellationToken);
+            var result = await sender.Send(new ListSetsQuery(cursor, pageSize), cancellationToken);
             return result.IsError ? result.Errors.ToProblem() : Results.Ok(result.Value);
         });
 

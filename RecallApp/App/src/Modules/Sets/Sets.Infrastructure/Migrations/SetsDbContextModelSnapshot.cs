@@ -59,8 +59,9 @@ namespace Sets.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("OwnerId", "UpdatedAt")
-                        .HasDatabaseName("ix_sets_owner_id_updated_at")
+                    b.HasIndex("OwnerId", "CreatedAt", "Id")
+                        .IsDescending(false, true, true)
+                        .HasDatabaseName("ix_sets_owner_id_created_at_id")
                         .HasFilter("deleted_at IS NULL");
 
                     b.ToTable("sets", "sets");
