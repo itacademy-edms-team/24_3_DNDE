@@ -28,7 +28,7 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
         using var client = CreateClientForNewUser();
         var setId = await CreateSetAsync(client);
 
-        var response = await client.PostAsJsonAsync(
+        var response = await PostElementAsync(client, 
             ElementsUrl(setId),
             new { type = "flashcard", payload = new { term = "  serendipity  ", definition = "  счастливая случайность  " } });
 
@@ -65,7 +65,7 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
         using var client = CreateClientForNewUser();
         var setId = await CreateSetAsync(client);
 
-        var response = await client.PostAsJsonAsync(
+        var response = await PostElementAsync(client, 
             ElementsUrl(setId),
             new { type = "multiple-choice", payload = new { question = "a" } });
 
@@ -81,7 +81,7 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
         using var client = CreateClientForNewUser();
         var setId = await CreateSetAsync(client);
 
-        var response = await client.PostAsJsonAsync(
+        var response = await PostElementAsync(client, 
             ElementsUrl(setId),
             new { type = "flashcard", payload = new { term = "   ", definition = "определение" } });
 
@@ -98,7 +98,7 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
         using var stranger = CreateClientForNewUser();
         var setId = await CreateSetAsync(owner);
 
-        var response = await stranger.PostAsJsonAsync(
+        var response = await PostElementAsync(stranger, 
             ElementsUrl(setId),
             new { type = "flashcard", payload = new { term = "a", definition = "b" } });
 
@@ -267,7 +267,7 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
         using var client = CreateClientForNewUser();
         var setId = await CreateSetAsync(client);
 
-        var response = await client.PostAsJsonAsync(ElementsUrl(setId), new { type = "flashcard" });
+        var response = await PostElementAsync(client, ElementsUrl(setId), new { type = "flashcard" });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var problem = await ReadProblemAsync(response);
@@ -281,7 +281,7 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
         using var client = CreateClientForNewUser();
         var setId = await CreateSetAsync(client);
 
-        var response = await client.PostAsJsonAsync(
+        var response = await PostElementAsync(client, 
             ElementsUrl(setId),
             new { type = "flashcard", payload = "term and definition as text" });
 
@@ -296,7 +296,7 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
         using var client = CreateClientForNewUser();
         var setId = await CreateSetAsync(client);
 
-        var response = await client.PostAsJsonAsync(
+        var response = await PostElementAsync(client, 
             ElementsUrl(setId),
             new { type = "", payload = new { term = "a", definition = "b" } });
 
@@ -360,7 +360,7 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
         var setId = await CreateSetAsync(client);
         await CreateElementAsync(client, setId, "Первый", "1");
 
-        var response = await client.PostAsJsonAsync(
+        var response = await PostElementAsync(client, 
             ElementsUrl(setId),
             new { type = "flashcard", payload = new { term = "a", definition = "b" }, position = 5 });
 
@@ -376,7 +376,7 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
         using var client = CreateClientForNewUser();
         var setId = await CreateSetAsync(client);
 
-        var response = await client.PostAsJsonAsync(
+        var response = await PostElementAsync(client, 
             ElementsUrl(setId),
             new { type = "flashcard", payload = new { term = "a", definition = "b" }, position = -1 });
 
@@ -391,7 +391,7 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
         using var client = CreateClientForNewUser();
         var setId = await CreateSetAsync(client);
 
-        var requests = Enumerable.Range(0, 2).Select(index => client.PostAsJsonAsync(
+        var requests = Enumerable.Range(0, 2).Select(index => PostElementAsync(client, 
             ElementsUrl(setId),
             new { type = "flashcard", payload = new { term = $"Параллельный {index}", definition = "d" } }));
 
@@ -401,6 +401,17 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
         var positions = await Task.WhenAll(responses.Select(async response =>
             (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("position").GetInt32()));
         Assert.Equal(new[] { 0, 1 }, positions.Order());
+    }
+
+    /// <summary>POST элемента с обязательным Idempotency-Key: каждый вызов получает свой ключ.</summary>
+    private static Task<HttpResponseMessage> PostElementAsync(HttpClient client, string url, object body)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, url)
+        {
+            Content = JsonContent.Create(body),
+        };
+        request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString());
+        return client.SendAsync(request);
     }
 
     private HttpClient CreateClientForNewUser()
@@ -435,7 +446,7 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
         string definition,
         int? position = null)
     {
-        var response = await client.PostAsJsonAsync(
+        var response = await PostElementAsync(client, 
             ElementsUrl(setId),
             new { type = "flashcard", payload = new { term, definition }, position });
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
