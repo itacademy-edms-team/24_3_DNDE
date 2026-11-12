@@ -305,6 +305,104 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
         Assert.Equal("Element.TypeRequired", problem.GetProperty("title").GetString());
     }
 
+    [DatabaseFact]
+    public async Task CreateElement_PositionZero_InsertsAtFrontAndShiftsOthers()
+    {
+        using var client = CreateClientForNewUser();
+        var setId = await CreateSetAsync(client);
+        var first = await CreateElementAsync(client, setId, "Первый", "1");
+        var second = await CreateElementAsync(client, setId, "Второй", "2");
+
+        var inserted = await CreateElementAsync(client, setId, "Нулевой", "0", position: 0);
+
+        Assert.Equal(0, inserted.Position);
+        var page = await ReadPageAsync(client, setId);
+        Assert.Equal(
+            new[] { inserted.Id, first.Id, second.Id },
+            page.Items.Select(item => item.GetProperty("id").GetGuid()));
+        Assert.Equal(new[] { 0, 1, 2 }, page.Items.Select(item => item.GetProperty("position").GetInt32()));
+    }
+
+    [DatabaseFact]
+    public async Task CreateElement_PositionMiddle_InsertsBetweenElements()
+    {
+        using var client = CreateClientForNewUser();
+        var setId = await CreateSetAsync(client);
+        var first = await CreateElementAsync(client, setId, "Первый", "1");
+        var second = await CreateElementAsync(client, setId, "Второй", "2");
+
+        var inserted = await CreateElementAsync(client, setId, "Между", "1.5", position: 1);
+
+        Assert.Equal(1, inserted.Position);
+        var page = await ReadPageAsync(client, setId);
+        Assert.Equal(
+            new[] { first.Id, inserted.Id, second.Id },
+            page.Items.Select(item => item.GetProperty("id").GetGuid()));
+    }
+
+    [DatabaseFact]
+    public async Task CreateElement_PositionEqualsCount_AppendsToEnd()
+    {
+        using var client = CreateClientForNewUser();
+        var setId = await CreateSetAsync(client);
+        await CreateElementAsync(client, setId, "Первый", "1");
+        await CreateElementAsync(client, setId, "Второй", "2");
+
+        var inserted = await CreateElementAsync(client, setId, "Третий", "3", position: 2);
+
+        Assert.Equal(2, inserted.Position);
+    }
+
+    [DatabaseFact]
+    public async Task CreateElement_PositionBeyondCount_Returns400WithPositionOutOfRangeCode()
+    {
+        using var client = CreateClientForNewUser();
+        var setId = await CreateSetAsync(client);
+        await CreateElementAsync(client, setId, "Первый", "1");
+
+        var response = await client.PostAsJsonAsync(
+            ElementsUrl(setId),
+            new { type = "flashcard", payload = new { term = "a", definition = "b" }, position = 5 });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await ReadProblemAsync(response);
+        Assert.Equal("Element.PositionOutOfRange", problem.GetProperty("title").GetString());
+        Assert.Equal("element.position", problem.GetProperty("target").GetString());
+    }
+
+    [DatabaseFact]
+    public async Task CreateElement_NegativePosition_Returns400WithPositionInvalidCode()
+    {
+        using var client = CreateClientForNewUser();
+        var setId = await CreateSetAsync(client);
+
+        var response = await client.PostAsJsonAsync(
+            ElementsUrl(setId),
+            new { type = "flashcard", payload = new { term = "a", definition = "b" }, position = -1 });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await ReadProblemAsync(response);
+        Assert.Equal("Element.PositionInvalid", problem.GetProperty("title").GetString());
+    }
+
+    [DatabaseFact]
+    public async Task CreateElement_TwoParallelAppends_GetDistinctDensePositions()
+    {
+        using var client = CreateClientForNewUser();
+        var setId = await CreateSetAsync(client);
+
+        var requests = Enumerable.Range(0, 2).Select(index => client.PostAsJsonAsync(
+            ElementsUrl(setId),
+            new { type = "flashcard", payload = new { term = $"Параллельный {index}", definition = "d" } }));
+
+        var responses = await Task.WhenAll(requests);
+
+        Assert.All(responses, response => Assert.Equal(HttpStatusCode.Created, response.StatusCode));
+        var positions = await Task.WhenAll(responses.Select(async response =>
+            (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("position").GetInt32()));
+        Assert.Equal(new[] { 0, 1 }, positions.Order());
+    }
+
     private HttpClient CreateClientForNewUser()
     {
         var client = _factory.CreateClient();
@@ -324,11 +422,16 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
         return set.GetProperty("id").GetGuid();
     }
 
-    private static async Task<Element> CreateElementAsync(HttpClient client, Guid setId, string term, string definition)
+    private static async Task<Element> CreateElementAsync(
+        HttpClient client,
+        Guid setId,
+        string term,
+        string definition,
+        int? position = null)
     {
         var response = await client.PostAsJsonAsync(
             ElementsUrl(setId),
-            new { type = "flashcard", payload = new { term, definition } });
+            new { type = "flashcard", payload = new { term, definition }, position });
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
         var element = await response.Content.ReadFromJsonAsync<JsonElement>();
