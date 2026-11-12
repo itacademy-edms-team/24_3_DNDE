@@ -7,7 +7,8 @@ namespace Sets.Application.Elements;
 /// </summary>
 /// <param name="Type">Тип элемента; в CREATE-01 поддерживается только <c>flashcard</c>.</param>
 /// <param name="Payload">Схема полей зависит от типа; разбор и проверка происходит в домене по контрактному типу.</param>
-public sealed record CreateElementRequest(string? Type, JsonElement? Payload);
+/// <param name="Position">Куда вставить: 0..число существующих элементов; null - вставка в конец.</param>
+public sealed record CreateElementRequest(string? Type, JsonElement? Payload, int? Position);
 
 /// <summary>
 /// Тело PUT /api/sets/{setId}/elements/{id}: полная замена содержимого.

@@ -6,12 +6,13 @@ using Sets.Domain.Sets;
 
 namespace Sets.Application.Sets;
 
-/// <param name="Id">Id набора</param>
 public sealed record DeleteSetCommand(Guid Id) : IRequest<ErrorOr<Deleted>>;
 
 /// <summary>
-/// Мягкое удаление набора и всех его элементов в одной операции:
-/// набор скрывается, строки остаются до фоновой чистки.
+/// Мягкое удаление набора и всех его элементов в одной операции: набор скрывается,
+/// строки остаются до фоновой чистки (онтология §6.6, ступень 1; ADR 0036).
+/// Пометить набор и его элементы нужно под локом набора: иначе параллельная вставка
+/// успеет добавить элемент в уже удаляемый набор.
 /// </summary>
 public sealed class DeleteSetHandler(
     ISetRepository sets,
@@ -30,10 +31,16 @@ public sealed class DeleteSetHandler(
             return SetErrors.NotFound;
 
         var now = clock.GetUtcNow().UtcDateTime;
-        set.MarkDeleted(now);
-        await elements.MarkAllDeletedAsync(set.Id, now, cancellationToken);
-        await sets.SaveChangesAsync(cancellationToken);
 
-        return Result.Deleted;
+        return await elements.ExecuteLockedAsync<ErrorOr<Deleted>>(
+            set.Id,
+            async (_, token) =>
+            {
+                set.MarkDeleted(now);
+                await elements.MarkAllDeletedAsync(set.Id, now, token);
+                await sets.SaveChangesAsync(token);
+                return Result.Deleted;
+            },
+            cancellationToken);
     }
 }

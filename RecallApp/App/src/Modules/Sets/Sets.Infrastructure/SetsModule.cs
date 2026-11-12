@@ -96,7 +96,7 @@ public static class SetsModule
         group.MapPost("/", async (Guid setId, CreateElementRequest request, ISender sender, CancellationToken cancellationToken) =>
         {
             var result = await sender.Send(
-                new CreateElementCommand(setId, request.Type, request.Payload),
+                new CreateElementCommand(setId, request.Type, request.Payload, request.Position),
                 cancellationToken);
 
             return result.IsError

@@ -7,11 +7,17 @@ using Sets.Domain.Sets;
 
 namespace Sets.Application.Elements;
 
-public sealed record CreateElementCommand(Guid SetId, string? Type, System.Text.Json.JsonElement? Payload)
+public sealed record CreateElementCommand(
+    Guid SetId,
+    string? Type,
+    System.Text.Json.JsonElement? Payload,
+    int? Position)
     : IRequest<ErrorOr<ElementResponse>>;
 
 /// <summary>
-/// Создание элемента набора и добавление его в конец.
+/// Создаёт элемент и ставит его в указанную позицию.
+/// Счётчик активных элементов, сдвиг позиций и вставка идут в одной транзакции 
+/// под блокировкой строки набора на уровне БД: иначе параллельное изменение даст рассинхрон по позициям.
 /// </summary>
 public sealed class CreateElementHandler(
     ISetRepository sets,
@@ -40,22 +46,35 @@ public sealed class CreateElementHandler(
         if (command.Payload is not { } payloadJson)
             return ElementErrors.PayloadRequired;
 
+        if (command.Position is < 0)
+            return ElementErrors.PositionInvalid(command.Position.Value);
+
         // Схема payload определяется типом: новый формат - правка ElementPayloadJson
         var payload = ElementPayloadJson.Create(type, payloadJson);
         if (payload.IsError)
             return payload.Errors;
 
         var now = clock.GetUtcNow().UtcDateTime;
-        var position = await elements.NextPositionAsync(command.SetId, cancellationToken);
 
-        var created = Element.Create(command.SetId, payload.Value, position, now);
-        if (created.IsError)
-            return created.Errors;
+        return await elements.ExecuteLockedAsync<ErrorOr<ElementResponse>>(
+            command.SetId,
+            async (activeCount, token) =>
+            {
+                var position = command.Position ?? activeCount;
+                if (position > activeCount)
+                    return ElementErrors.PositionOutOfRange(position, activeCount);
 
-        elements.Add(created.Value);
-        set.MarkContentChanged(now);
-        await elements.SaveChangesAsync(cancellationToken);
+                var created = Element.Create(command.SetId, payload.Value, position, now);
+                if (created.IsError)
+                    return created.Errors;
 
-        return ElementResponse.From(created.Value);
+                await elements.ShiftPositionsFromAsync(command.SetId, position, token);
+                elements.Add(created.Value);
+                set.MarkContentChanged(now);
+                await elements.SaveChangesAsync(token);
+
+                return ElementResponse.From(created.Value);
+            },
+            cancellationToken);
     }
 }

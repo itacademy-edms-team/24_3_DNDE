@@ -8,10 +8,10 @@ namespace Sets.Infrastructure.Data;
 internal sealed class ElementRepository(SetsDbContext context) : IElementRepository
 {
     /// <summary>
-    /// Временный сдвиг позиций при перестановке: частичный уникальный индекс
-    /// не позволяет поменять две строки местами «на месте».
+    /// Временный сдвиг позиций при вставке и перестановке: частичный уникальный индекс
+    /// не позволяет двигать строки «на месте».
     /// </summary>
-    private const int ReorderOffset = 1_000_000;
+    private const int ShiftOffset = 1_000_000;
 
     public async Task<IReadOnlyList<Element>> ListBySetAsync(
         Guid setId,
@@ -25,6 +25,7 @@ internal sealed class ElementRepository(SetsDbContext context) : IElementReposit
 
         if (after is not null)
         {
+            // Сравнение кортежа (position, id) > курсора - Npgsql транслирует в row comparison (ADR 0039).
             var cursorPosition = after.Position;
             var cursorId = after.Id;
 
@@ -53,17 +54,51 @@ internal sealed class ElementRepository(SetsDbContext context) : IElementReposit
             .Select(element => element.Id)
             .ToListAsync(cancellationToken);
 
-    public async Task<int> NextPositionAsync(Guid setId, CancellationToken cancellationToken)
+    public async Task<TResult> ExecuteLockedAsync<TResult>(
+        Guid setId,
+        Func<int, CancellationToken, Task<TResult>> action,
+        CancellationToken cancellationToken)
     {
-        var max = await context.Elements
-            .AsNoTracking()
-            .Where(element => element.SetId == setId && element.DeletedAt == null)
-            .MaxAsync(element => (int?)element.Position, cancellationToken);
+        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+        await LockSetAsync(setId, cancellationToken);
 
-        return (max ?? -1) + 1;
+        var activeCount = await context.Elements
+            .CountAsync(element => element.SetId == setId && element.DeletedAt == null, cancellationToken);
+
+        var result = await action(activeCount, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return result;
     }
 
     public void Add(Element element) => context.Elements.Add(element);
+
+    public async Task<int> ShiftPositionsFromAsync(
+        Guid setId,
+        int fromPosition,
+        CancellationToken cancellationToken)
+    {
+        // Фаза 1: уводим затрагиваемые строки за пределы диапазона.
+        // pos = pos + ShiftOffset
+        var shifted = await context.Elements
+            .Where(element => element.SetId == setId
+                && element.DeletedAt == null
+                && element.Position >= fromPosition)
+            .ExecuteUpdateAsync(
+                update => update.SetProperty(element => element.Position, element => element.Position + ShiftOffset),
+                cancellationToken);
+
+        // Фаза 2: возвращаем в диапазон со сдвигом +1.
+        // pos = pos - ShiftOffset + 1
+        await context.Elements
+            .Where(element => element.SetId == setId
+                && element.DeletedAt == null
+                && element.Position >= fromPosition + ShiftOffset)
+            .ExecuteUpdateAsync(
+                update => update.SetProperty(element => element.Position, element => element.Position - ShiftOffset + 1),
+                cancellationToken);
+
+        return shifted;
+    }
 
     public Task<int> MarkAllDeletedAsync(Guid setId, DateTime utcNow, CancellationToken cancellationToken) =>
         context.Elements
@@ -78,8 +113,6 @@ internal sealed class ElementRepository(SetsDbContext context) : IElementReposit
         DateTime utcNow,
         CancellationToken cancellationToken)
     {
-        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
-
         var element = await context.Elements.SingleOrDefaultAsync(
             candidate => candidate.Id == elementId && candidate.SetId == setId && candidate.DeletedAt == null,
             cancellationToken);
@@ -90,7 +123,7 @@ internal sealed class ElementRepository(SetsDbContext context) : IElementReposit
         var removedPosition = element.Position;
         element.MarkDeleted(utcNow);
 
-        // Фиксируем удаление внутри транзакции до сдвига: иначе сосед упрётся в частичный уникальный индекс.
+        // Фиксируем удаление до сдвига: иначе сосед упрётся в частичный уникальный индекс.
         await context.SaveChangesAsync(cancellationToken);
 
         await context.Elements
@@ -101,7 +134,6 @@ internal sealed class ElementRepository(SetsDbContext context) : IElementReposit
                 update => update.SetProperty(candidate => candidate.Position, candidate => candidate.Position - 1),
                 cancellationToken);
 
-        await transaction.CommitAsync(cancellationToken);
         return true;
     }
 
@@ -111,13 +143,11 @@ internal sealed class ElementRepository(SetsDbContext context) : IElementReposit
         DateTime utcNow,
         CancellationToken cancellationToken)
     {
-        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
-
         // Фаза 1: уводим активные позиции за пределы целевого диапазона, чтобы снять коллизии индекса.
         await context.Elements
             .Where(element => element.SetId == setId && element.DeletedAt == null)
             .ExecuteUpdateAsync(
-                update => update.SetProperty(element => element.Position, element => element.Position + ReorderOffset),
+                update => update.SetProperty(element => element.Position, element => element.Position + ShiftOffset),
                 cancellationToken);
 
         // Фаза 2: присваиваем позиции 0..n-1 в присланном порядке.
@@ -134,9 +164,17 @@ internal sealed class ElementRepository(SetsDbContext context) : IElementReposit
                         .SetProperty(element => element.UpdatedAt, utcNow),
                     cancellationToken);
         }
-
-        await transaction.CommitAsync(cancellationToken);
     }
 
     public Task SaveChangesAsync(CancellationToken cancellationToken) => context.SaveChangesAsync(cancellationToken);
+
+    /// <summary>
+    /// Блокирует набор на уровне БД для обновления.
+    /// </summary>
+    private Task LockSetAsync(Guid setId, CancellationToken cancellationToken) =>
+        context.Sets
+            .FromSqlInterpolated(
+                $"SELECT id, owner_id, title, description, created_at, updated_at, deleted_at FROM sets.sets WHERE id = {setId} FOR UPDATE")
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
 }

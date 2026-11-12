@@ -78,6 +78,16 @@ public static class ElementErrors
         description: $"Position {position} must be non-negative.",
         metadata: new Dictionary<string, object> { ["target"] = "element.position" });
 
+    /// <summary>Позиция за пределами текущего состава набора: вставка допустима в 0..count.</summary>
+    public static Error PositionOutOfRange(int position, int maxPosition) => Error.Validation(
+        code: "Element.PositionOutOfRange",
+        description: $"Position {position} is outside the allowed range 0..{maxPosition}.",
+        metadata: new Dictionary<string, object>
+        {
+            ["target"] = "element.position",
+            ["max"] = maxPosition,
+        });
+
     /// <summary>Набор элементов изменился между чтением клиента и перестановкой: порядок не применён.</summary>
     public static readonly Error OrderMismatch = Error.Conflict(
         code: "Element.OrderMismatch",

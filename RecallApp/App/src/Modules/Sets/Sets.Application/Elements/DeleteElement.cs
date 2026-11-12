@@ -10,11 +10,13 @@ namespace Sets.Application.Elements;
 public sealed record DeleteElementCommand(Guid SetId, Guid ElementId) : IRequest<ErrorOr<Deleted>>;
 
 /// <summary>
-/// Мягкое удаление элемента набора и пересчёт позиций в этом же процессе.
+/// Мягкое удаление элемента с уплотнением позиций: набор остаётся плотным `0..n-1`
+/// (онтология §6.5), а сам набор живёт дальше. Проверка существования, удаление и сдвиг
+/// идут под блокировкой набора - тот же лок, что у вставки и перестановки.
 /// </summary>
 public sealed class DeleteElementHandler(
     ISetRepository sets,
-    IElementRepository repo,
+    IElementRepository elements,
     ICurrentUser currentUser,
     TimeProvider clock)
     : IRequestHandler<DeleteElementCommand, ErrorOr<Deleted>>
@@ -29,13 +31,19 @@ public sealed class DeleteElementHandler(
             return SetErrors.NotFound;
 
         var now = clock.GetUtcNow().UtcDateTime;
-        var deleted = await repo.DeleteAndCompactAsync(command.SetId, command.ElementId, now, cancellationToken);
-        if (!deleted)
-            return ElementErrors.NotFound;
 
-        set.MarkContentChanged(now);
-        await sets.SaveChangesAsync(cancellationToken);
+        return await elements.ExecuteLockedAsync<ErrorOr<Deleted>>(
+            command.SetId,
+            async (_, token) =>
+            {
+                var deleted = await elements.DeleteAndCompactAsync(command.SetId, command.ElementId, now, token);
+                if (!deleted)
+                    return ElementErrors.NotFound;
 
-        return Result.Deleted;
+                set.MarkContentChanged(now);
+                await sets.SaveChangesAsync(token);
+                return Result.Deleted;
+            },
+            cancellationToken);
     }
 }
