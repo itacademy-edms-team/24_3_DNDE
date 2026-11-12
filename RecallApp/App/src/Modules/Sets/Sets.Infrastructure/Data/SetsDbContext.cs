@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Sets.Domain.Elements;
 using Sets.Domain.Sets;
+using Sets.Infrastructure.Data.Idempotency;
 
 namespace Sets.Infrastructure.Data;
 
@@ -12,6 +13,8 @@ internal sealed class SetsDbContext(DbContextOptions<SetsDbContext> options) : D
     public DbSet<Set> Sets => Set<Set>();
 
     public DbSet<Element> Elements => Set<Element>();
+
+    public DbSet<IdempotencyKeyRecord> IdempotencyKeys => Set<IdempotencyKeyRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

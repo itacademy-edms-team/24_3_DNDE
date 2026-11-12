@@ -1,4 +1,5 @@
 using Common.Application.Behaviors;
+using Common.Application.Idempotency;
 using Common.Infrastructure.Http;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
@@ -11,6 +12,8 @@ using Sets.Application.Abstractions;
 using Sets.Application.Elements;
 using Sets.Application.Sets;
 using Sets.Infrastructure.Data;
+using Sets.Infrastructure.Data.Idempotency;
+using Sets.Infrastructure.Http;
 
 namespace Sets.Infrastructure;
 
@@ -34,6 +37,11 @@ public static class SetsModule
         services.AddCommandValidators(typeof(ISetRepository));
         services.AddScoped<ISetRepository, SetRepository>();
         services.AddScoped<IElementRepository, ElementRepository>();
+        services.AddScoped<IIdempotencyStore, IdempotencyStore>();
+
+        // Фоновая чистка истёкших ключей.
+        services.AddOptions<IdempotencyCleanupOptions>().BindConfiguration("Sets:Idempotency");
+        services.AddHostedService<IdempotencyCleanupService>();
 
         return services;
     }
@@ -62,13 +70,16 @@ public static class SetsModule
             return result.IsError ? result.Errors.ToProblem() : Results.Ok(result.Value);
         });
 
-        group.MapPost("/", async (CreateSetRequest request, ISender sender, CancellationToken cancellationToken) =>
+        group.MapPost("/", async (CreateSetRequest request, HttpContext http, ISender sender, CancellationToken cancellationToken) =>
         {
-            var result = await sender.Send(new CreateSetCommand(request.Title, request.Description), cancellationToken);
+            var result = await sender.Send(
+                new CreateSetCommand(request.Title, request.Description, IdempotencyKeyFilter.GetCanonicalKey(http)),
+                cancellationToken);
+
             return result.IsError
                 ? result.Errors.ToProblem()
                 : Results.Created($"{SetRoute.Group}/{result.Value.Id}", result.Value);
-        });
+        }).AddEndpointFilter<IdempotencyKeyFilter>();
 
         group.MapPut("/{id:guid}", async (Guid id, UpdateSetRequest request, ISender sender, CancellationToken cancellationToken) =>
         {
