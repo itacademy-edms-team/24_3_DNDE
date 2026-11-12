@@ -23,6 +23,58 @@ namespace Sets.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Sets.Domain.Elements.Element", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("payload");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("integer")
+                        .HasColumnName("position");
+
+                    b.Property<Guid>("SetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("set_id");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("type");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SetId", "Position")
+                        .IsUnique()
+                        .HasDatabaseName("ux_elements_set_id_position")
+                        .HasFilter("deleted_at IS NULL");
+
+                    b.HasIndex("SetId", "Position", "Id")
+                        .HasDatabaseName("ix_elements_set_id_position_id")
+                        .HasFilter("deleted_at IS NULL");
+
+                    b.ToTable("elements", "sets");
+                });
+
             modelBuilder.Entity("Sets.Domain.Sets.Set", b =>
                 {
                     b.Property<Guid>("Id")
@@ -65,6 +117,16 @@ namespace Sets.Infrastructure.Migrations
                         .HasFilter("deleted_at IS NULL");
 
                     b.ToTable("sets", "sets");
+                });
+
+            modelBuilder.Entity("Sets.Domain.Elements.Element", b =>
+                {
+                    b.HasOne("Sets.Domain.Sets.Set", null)
+                        .WithMany()
+                        .HasForeignKey("SetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_elements_sets_set_id");
                 });
 #pragma warning restore 612, 618
         }

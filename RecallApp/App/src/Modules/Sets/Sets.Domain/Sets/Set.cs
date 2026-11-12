@@ -92,6 +92,12 @@ public sealed class Set
         UpdatedAt = utcNow;
     }
 
+    /// <summary>
+    /// Обновляет временную метку последнего изменения на utcNow.
+    /// Изменение контента (элементов) набора считается редактированием самого набора.
+    /// </summary>
+    public void MarkContentChanged(DateTime utcNow) => UpdatedAt = utcNow;
+
     private static ErrorOr<SetDescription?> ParseDescription(string? description)
     {
         if (string.IsNullOrWhiteSpace(description))

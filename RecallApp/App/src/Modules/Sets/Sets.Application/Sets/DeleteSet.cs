@@ -9,8 +9,15 @@ namespace Sets.Application.Sets;
 /// <param name="Id">Id набора</param>
 public sealed record DeleteSetCommand(Guid Id) : IRequest<ErrorOr<Deleted>>;
 
-/// <summary>Мягкое удаление: набор скрывается, строка и элементы остаются до фоновой чистки.</summary>
-public sealed class DeleteSetHandler(ISetRepository repository, ICurrentUser currentUser, TimeProvider clock)
+/// <summary>
+/// Мягкое удаление набора и всех его элементов в одной операции:
+/// набор скрывается, строки остаются до фоновой чистки.
+/// </summary>
+public sealed class DeleteSetHandler(
+    ISetRepository sets,
+    IElementRepository elements,
+    ICurrentUser currentUser,
+    TimeProvider clock)
     : IRequestHandler<DeleteSetCommand, ErrorOr<Deleted>>
 {
     public async Task<ErrorOr<Deleted>> Handle(DeleteSetCommand command, CancellationToken cancellationToken)
@@ -18,12 +25,15 @@ public sealed class DeleteSetHandler(ISetRepository repository, ICurrentUser cur
         if (currentUser.UserId is not { } ownerId)
             return SetErrors.UserUnresolved;
 
-        var set = await repository.FindOwnedAsync(command.Id, ownerId, cancellationToken);
+        var set = await sets.FindOwnedAsync(command.Id, ownerId, cancellationToken);
         if (set is null)
             return SetErrors.NotFound;
 
-        set.MarkDeleted(clock.GetUtcNow().UtcDateTime);
-        await repository.SaveChangesAsync(cancellationToken);
+        var now = clock.GetUtcNow().UtcDateTime;
+        set.MarkDeleted(now);
+        await elements.MarkAllDeletedAsync(set.Id, now, cancellationToken);
+        await sets.SaveChangesAsync(cancellationToken);
+
         return Result.Deleted;
     }
 }

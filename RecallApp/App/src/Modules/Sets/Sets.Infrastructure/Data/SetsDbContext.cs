@@ -1,14 +1,17 @@
 using Microsoft.EntityFrameworkCore;
+using Sets.Domain.Elements;
 using Sets.Domain.Sets;
 
 namespace Sets.Infrastructure.Data;
 
 /// <summary>
-/// DbContext модуля Sets.
+/// Контекст модуля Sets. Все таблицы живут в схеме sets и принадлежат владельцу модуля (ADR 0029).
 /// </summary>
 internal sealed class SetsDbContext(DbContextOptions<SetsDbContext> options) : DbContext(options)
 {
     public DbSet<Set> Sets => Set<Set>();
+
+    public DbSet<Element> Elements => Set<Element>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

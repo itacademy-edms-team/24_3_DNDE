@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using Sets.Application.Abstractions;
+using Sets.Application.Elements;
 using Sets.Application.Sets;
 using Sets.Infrastructure.Data;
 
@@ -32,11 +33,19 @@ public static class SetsModule
         });
         services.AddCommandValidators(typeof(ISetRepository));
         services.AddScoped<ISetRepository, SetRepository>();
+        services.AddScoped<IElementRepository, ElementRepository>();
 
         return services;
     }
 
     public static IEndpointRouteBuilder MapSets(this IEndpointRouteBuilder endpoints)
+    {
+        MapSetEndpoints(endpoints);
+        MapElementEndpoints(endpoints);
+        return endpoints;
+    }
+
+    private static void MapSetEndpoints(IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup(SetRoute.Group).WithTags("Sets").RequireAuthorization();
 
@@ -72,8 +81,55 @@ public static class SetsModule
             var result = await sender.Send(new DeleteSetCommand(id), cancellationToken);
             return result.IsError ? result.Errors.ToProblem() : Results.NoContent();
         });
+    }
 
-        return endpoints;
+    private static void MapElementEndpoints(IEndpointRouteBuilder endpoints)
+    {
+        var group = endpoints.MapGroup(ElementRoute.Group).WithTags("Elements").RequireAuthorization();
+
+        group.MapGet("/", async (Guid setId, string? cursor, int? pageSize, ISender sender, CancellationToken cancellationToken) =>
+        {
+            var result = await sender.Send(new ListElementsQuery(setId, cursor, pageSize), cancellationToken);
+            return result.IsError ? result.Errors.ToProblem() : Results.Ok(result.Value);
+        });
+
+        group.MapPost("/", async (Guid setId, CreateElementRequest request, ISender sender, CancellationToken cancellationToken) =>
+        {
+            var result = await sender.Send(
+                new CreateElementCommand(setId, request.Type, request.Payload),
+                cancellationToken);
+
+            return result.IsError
+                ? result.Errors.ToProblem()
+                : Results.Created($"{SetRoute.Group}/{setId}/elements/{result.Value.Id}", result.Value);
+        });
+
+        group.MapPut("/{elementId:guid}", async (
+            Guid setId,
+            Guid elementId,
+            UpdateElementRequest request,
+            ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await sender.Send(
+                new UpdateElementCommand(setId, elementId, request.Payload),
+                cancellationToken);
+
+            return result.IsError ? result.Errors.ToProblem() : Results.Ok(result.Value);
+        });
+
+        group.MapDelete("/{elementId:guid}", async (Guid setId, Guid elementId, ISender sender, CancellationToken cancellationToken) =>
+        {
+            var result = await sender.Send(new DeleteElementCommand(setId, elementId), cancellationToken);
+            return result.IsError ? result.Errors.ToProblem() : Results.NoContent();
+        });
+
+        // Полная перестановка: маршрут с фиксированным сегментом не конфликтует с {elementId:guid}.
+        group.MapPut("/order", async (Guid setId, ReorderElementsRequest request, ISender sender, CancellationToken cancellationToken) =>
+        {
+            var result = await sender.Send(new ReorderElementsCommand(setId, request.ElementIds), cancellationToken);
+            return result.IsError ? result.Errors.ToProblem() : Results.NoContent();
+        });
     }
 
     /// <summary>Применяет миграции модуля.</summary>

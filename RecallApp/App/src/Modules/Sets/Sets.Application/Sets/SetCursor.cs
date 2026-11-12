@@ -3,9 +3,9 @@ using Common.Application.Pagination;
 namespace Sets.Application.Sets;
 
 /// <summary>
-/// Позиция в списке наборов: сортировка <c>created_at DESC, id DESC</c>,
-/// id - tie-breaker для наборов, созданных в одну микросекунду.
-/// Передаётся клиенту в непрозрачном виде, разбор - на сервере.
+/// Курсор постраничной выдачи списка наборов (ADR 0039).
+/// Хранит ключ сортировки <c>created_at DESC, id DESC</c>: id - tie-breaker
+/// для наборов, созданных в одну микросекунду. Клиент возвращает его непрозрачно.
 /// </summary>
 public sealed record SetCursor(DateTime CreatedAt, Guid Id)
 {
