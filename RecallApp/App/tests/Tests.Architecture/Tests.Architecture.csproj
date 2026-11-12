@@ -23,6 +23,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Modules\Accounts\Accounts.Infrastructure\Accounts.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Sets\Sets.Domain\Sets.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Sets\Sets.Infrastructure\Sets.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

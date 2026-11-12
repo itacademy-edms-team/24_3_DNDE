@@ -1,62 +1,121 @@
+using System.Reflection;
 using System.Xml.Linq;
 using Accounts.Infrastructure;
 using Accounts.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Sets.Domain.Sets;
+using Sets.Infrastructure;
+using Sets.Infrastructure.Data;
 
 namespace Tests.Architecture;
 
+/// <summary>
+/// Тесты проверки границ модулей.
+/// </summary>
 public sealed class ModuleBoundariesTests
 {
-    [Fact]
-    public void AccountsProjectReferences_ForbiddenReferences_OnlyAllowedProjectsReferenced()
-    {
-        var allowed = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["Accounts.Domain"] = [],
-            ["Accounts.Contracts"] = ["Common.Application"],
-            ["Accounts.Application"] = ["Accounts.Domain", "Common.Application"],
-            ["Accounts.Infrastructure"] = ["Accounts.Application", "Accounts.Contracts", "Common.Application", "Common.Infrastructure"],
-            ["Api"] = ["Accounts.Infrastructure", "Common.Infrastructure"],
-        };
+    private const string AccountsModule = "Accounts";
+    private const string SetsModuleName = "Sets";
 
-        foreach (var (project, allowedRefs) in allowed)
+    private static readonly Dictionary<string, ProjectRule> Rules = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Accounts.Domain"] = new(AccountsModule, []),
+        ["Accounts.Contracts"] = new(AccountsModule, ["Common.Application"]),
+        ["Accounts.Application"] = new(AccountsModule, ["Accounts.Domain", "Common.Application"]),
+        ["Accounts.Infrastructure"] = new(AccountsModule,
+            ["Accounts.Application", "Accounts.Contracts", "Common.Application", "Common.Infrastructure"]),
+        ["Sets.Domain"] = new(SetsModuleName, []),
+        ["Sets.Contracts"] = new(SetsModuleName, ["Common.Application"]),
+        ["Sets.Application"] = new(SetsModuleName, ["Sets.Domain", "Common.Application"]),
+        ["Sets.Infrastructure"] = new(SetsModuleName,
+            ["Sets.Application", "Sets.Contracts", "Common.Application", "Common.Infrastructure"]),
+        ["Api"] = new(null, ["Accounts.Infrastructure", "Sets.Infrastructure", "Common.Infrastructure"]),
+    };
+
+    [Fact]
+    public void ModuleProjects_ForbiddenReferences_OnlyAllowedProjectsReferenced()
+    {
+        foreach (var (project, rule) in Rules)
         {
-            var document = XDocument.Load(ProjectPath(project));
+            var document = XDocument.Load(ProjectPath(project, rule.Module));
             var references = document.Descendants("ProjectReference")
                 .Select(x => Path.GetFileNameWithoutExtension(x.Attribute("Include")!.Value.Replace('\\', '/')))
                 .ToArray();
-            Assert.All(references, name => Assert.Contains(name, allowedRefs));
+
+            Assert.All(references, name => Assert.Contains(name, rule.AllowedReferences));
         }
     }
 
     [Fact]
-    public void AccountsInfrastructure_ExportedTypes_OnlyModuleCompositionIsPublic()
+    public void ModuleAssemblies_ExportedTypes_OnlyModuleCompositionIsPublic()
     {
-        var exported = typeof(AccountsModule).Assembly.GetExportedTypes()
-            .Where(t => !typeof(Migration).IsAssignableFrom(t))
+        Assert.Equal([typeof(AccountsModule)], ExportedTypes(typeof(AccountsModule).Assembly));
+        Assert.Equal([typeof(SetsModule)], ExportedTypes(typeof(SetsModule).Assembly));
+    }
+
+    [Fact]
+    public void AccountsDbContext_Model_AllEntitiesAndForeignKeysInAccountsSchema() =>
+        AssertAllEntitiesInSchema(
+            () => new AccountsDbContext(
+                new DbContextOptionsBuilder<AccountsDbContext>().UseNpgsql("Host=localhost;Database=unused").Options),
+            "accounts");
+
+    [Fact]
+    public void SetsDbContext_Model_AllEntitiesAndForeignKeysInSetsSchema() =>
+        AssertAllEntitiesInSchema(
+            () => new SetsDbContext(
+                new DbContextOptionsBuilder<SetsDbContext>().UseNpgsql("Host=localhost;Database=unused").Options),
+            "sets");
+
+    [Fact]
+    public void SetsDbContext_Model_OwnerHasNoForeignKey_ModulesDoNotShareSchemas()
+    {
+        using var context = new SetsDbContext(
+            new DbContextOptionsBuilder<SetsDbContext>().UseNpgsql("Host=localhost;Database=unused").Options);
+
+        var set = context.Model.FindEntityType(typeof(Set))!;
+
+        // Владелец — uuid без FK на accounts.users: межсхемных связей нет (ADR 0036).
+        Assert.Empty(set.GetForeignKeys());
+        Assert.Equal("owner_id", set.FindProperty(nameof(Set.OwnerId))!.GetColumnName());
+    }
+
+    /// <summary>
+    /// Якорь значений из ontology/sets.md: изменение лимита — осознанное решение,
+    /// а не случайная правка константы (ADR 0038).
+    /// </summary>
+    [Fact]
+    public void SetConstraints_Values_MatchOntology()
+    {
+        Assert.Equal(120, SetConstraints.TitleMaxLength);
+        Assert.Equal(2000, SetConstraints.DescriptionMaxLength);
+    }
+
+    private static Type[] ExportedTypes(Assembly assembly) =>
+        assembly.GetExportedTypes()
+            .Where(type => !typeof(Migration).IsAssignableFrom(type))
             .ToArray();
-        Assert.Equal([typeof(AccountsModule)], exported);
-    }
 
-    [Fact]
-    public void AccountsDbContext_Model_AllEntitiesAndForeignKeysInAccountsSchema()
+    private static void AssertAllEntitiesInSchema(Func<DbContext> createContext, string schema)
     {
-        using var context = new AccountsDbContext(
-            new DbContextOptionsBuilder<AccountsDbContext>().UseNpgsql("Host=localhost;Database=unused").Options);
+        using var context = createContext();
+        var entities = context.Model.GetEntityTypes().ToArray();
 
-        foreach (var entity in context.Model.GetEntityTypes())
+        Assert.NotEmpty(entities);
+        foreach (var entity in entities)
         {
-            Assert.Equal("accounts", entity.GetSchema());
-            Assert.All(entity.GetForeignKeys(), fk => Assert.Equal("accounts", fk.PrincipalEntityType.GetSchema()));
+            Assert.Equal(schema, entity.GetSchema());
+            Assert.All(entity.GetForeignKeys(), fk => Assert.Equal(schema, fk.PrincipalEntityType.GetSchema()));
         }
     }
 
-    private static string ProjectPath(string projectName)
+    private static string ProjectPath(string projectName, string? moduleName)
     {
-        var relative = projectName == "Api"
-            ? Path.Combine("src", "Api")
-            : Path.Combine("src", "Modules", "Accounts", projectName);
+        var relative = moduleName is null
+            ? Path.Combine("src", projectName)
+            : Path.Combine("src", "Modules", moduleName, projectName);
+
         return Path.Combine(FindRoot(), relative, $"{projectName}.csproj");
     }
 
@@ -64,6 +123,9 @@ public sealed class ModuleBoundariesTests
     {
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
             if (File.Exists(Path.Combine(directory.FullName, "App.sln"))) return directory.FullName;
+
         throw new DirectoryNotFoundException("Run architecture tests from the App checkout.");
     }
+
+    private sealed record ProjectRule(string? Module, string[] AllowedReferences);
 }

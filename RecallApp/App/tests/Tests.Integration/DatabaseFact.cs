@@ -11,7 +11,8 @@ public sealed class DatabaseFactAttribute : FactAttribute
 {
     public DatabaseFactAttribute()
     {
-        if (Environment.GetEnvironmentVariable("ConnectionStrings__AccountsMigrations") is null)
-            Skip = "Требует живую app_db: docker compose --profile test run --rm app-tests.";
+        if (Environment.GetEnvironmentVariable("ConnectionStrings__AccountsMigrations") is null
+            || Environment.GetEnvironmentVariable("ConnectionStrings__SetsMigrations") is null)
+            Skip = "Требует живую app_db (схемы accounts и sets): docker compose --profile test run --rm app-tests.";
     }
 }

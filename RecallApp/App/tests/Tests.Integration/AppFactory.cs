@@ -30,6 +30,7 @@ public sealed class AppFactory : WebApplicationFactory<Program>
             builder = builder
                 .UseSetting("ConnectionStrings:Database", "Host=localhost;Database=unused")
                 .UseSetting("ConnectionStrings:AccountsMigrations", "Host=localhost;Database=unused")
+                .UseSetting("ConnectionStrings:SetsMigrations", "Host=localhost;Database=unused")
                 .UseSetting("Oidc:Authority", "http://localhost/realms/recallapp")
                 .UseSetting("Oidc:Audience", "RecallApp")
                 .UseSetting("Oidc:RequireHttpsMetadata", "false");
