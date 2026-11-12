@@ -11,6 +11,20 @@ public sealed record SetCursor(DateTime CreatedAt, Guid Id)
 {
     public string Encode() => CursorCodec.Encode(this);
 
-    public static SetCursor? TryDecode(string? cursor) =>
-        CursorCodec.TryDecode<SetCursor>(cursor, out var decoded) ? decoded : null;
+    /// <summary>
+    /// Разбирает курсор и проверяет содержимое: битый JSON, отсутствующие поля или
+    /// время без UTC-метки дают null, а не пустую страницу с «данных больше нет».
+    /// </summary>
+    public static SetCursor? TryDecode(string? cursor)
+    {
+        if (!CursorCodec.TryDecode<SetCursor>(cursor, out var decoded) || decoded is null)
+            return null;
+
+        return decoded.IsValid ? decoded : null;
+    }
+
+    private bool IsValid =>
+        Id != Guid.Empty
+        && CreatedAt != default
+        && CreatedAt.Kind == DateTimeKind.Utc;
 }
