@@ -84,6 +84,12 @@ services:
       ConnectionStrings__AccountsMigrations: Host=app-db:5432;Database=app;Username=accounts_owner;Password=${APP_DB_ACCOUNTS_OWNER_PASSWORD}
       # миграции модулей применяются при старте dev-контейнера
       Database__ApplyMigrations: "true"
+      # объектное хранилище медиа
+      Media__S3__Endpoint: ${Media__S3__Endpoint}
+      Media__S3__Region: ${Media__S3__Region}
+      Media__S3__Bucket: ${Media__S3__Bucket}
+      Media__S3__AccessKeyId: ${Media__S3__AccessKeyId}
+      Media__S3__SecretKey: ${Media__S3__SecretKey}
 
   app-tests:
     environment:
@@ -92,5 +98,11 @@ services:
       ConnectionStrings__AccountsMigrations: Host=app-db:5432;Database=app;Username=accounts_owner;Password=${APP_DB_ACCOUNTS_OWNER_PASSWORD}
       Oidc__Authority: https://auth.localhost/realms/recallapp
       Oidc__Audience: RecallApp
+      # объектное хранилище (тесты медиа идут на реальном cloud.ru, ADR 0037)
+      Media__S3__Endpoint: ${Media__S3__Endpoint}
+      Media__S3__Region: ${Media__S3__Region}
+      Media__S3__Bucket: ${Media__S3__Bucket}
+      Media__S3__AccessKeyId: ${Media__S3__AccessKeyId}
+      Media__S3__SecretKey: ${Media__S3__SecretKey}
       # Пусто - все тесты.
       TEST_FILTER: ${APP_TEST_FILTER:-}
