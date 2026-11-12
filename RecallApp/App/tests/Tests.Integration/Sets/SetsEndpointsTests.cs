@@ -206,6 +206,161 @@ public sealed class SetsEndpointsTests : IClassFixture<AppFactory>
         }
     }
 
+    [DatabaseFact]
+    public async Task ListSets_NoSets_ReturnsEmptyPageWithNullCursor()
+    {
+        using var client = CreateClientForNewUser();
+
+        var page = await ReadPageAsync(client);
+
+        Assert.Empty(page.Items);
+        Assert.Null(page.NextCursor);
+    }
+
+    [DatabaseFact]
+    public async Task ListSets_ExactPageSize_ReturnsNullCursor()
+    {
+        using var client = CreateClientForNewUser();
+        await CreateSetAsync(client, "Первый");
+        await CreateSetAsync(client, "Второй");
+
+        // Ровно страница без остатка: лишней строки не пришло и следующей страницы нет.
+        var page = await ReadPageAsync(client, pageSize: 2);
+
+        Assert.Equal(2, page.Items.Length);
+        Assert.Null(page.NextCursor);
+    }
+
+    [DatabaseFact]
+    public async Task ListSets_MinAndMaxPageSize_Returns200()
+    {
+        using var client = CreateClientForNewUser();
+        await CreateSetAsync(client, "Набор");
+
+        foreach (var pageSize in new[] { 1, 100 })
+        {
+            var page = await ReadPageAsync(client, pageSize: pageSize);
+            Assert.Single(page.Items);
+            Assert.Null(page.NextCursor);
+        }
+    }
+
+    [DatabaseFact]
+    public async Task ListSets_NoPageSize_ReturnsDefaultTwenty()
+    {
+        using var client = CreateClientForNewUser();
+        for (var index = 0; index < 21; index++)
+            await CreateSetAsync(client, $"Набор {index}");
+
+        var firstPage = await ReadPageAsync(client);
+        var secondPage = await ReadPageAsync(client, cursor: firstPage.NextCursor);
+
+        Assert.Equal(20, firstPage.Items.Length);
+        Assert.NotNull(firstPage.NextCursor);
+        Assert.Single(secondPage.Items);
+        Assert.Null(secondPage.NextCursor);
+    }
+
+    [DatabaseFact]
+    public async Task ListSets_CursorWithEmptyPayload_Returns400WithCursorCode()
+    {
+        using var client = CreateClientForNewUser();
+
+        // Валидный base64url и валидный JSON, но без полей: десериализуется в default-значения,
+        // а такой курсор отдал бы пустую страницу вместо ошибки.
+        var cursor = ToBase64Url("{}");
+
+        var response = await client.GetAsync($"/api/sets?cursor={Uri.EscapeDataString(cursor)}");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await ReadProblemAsync(response);
+        Assert.Equal("Set.CursorInvalid", problem.GetProperty("title").GetString());
+    }
+
+    [DatabaseFact]
+    public async Task ListSets_RenameBetweenPages_KeepsCreatedAtOrder()
+    {
+        using var client = CreateClientForNewUser();
+        var older = await CreateSetAsync(client, "Старый");
+        var newer = await CreateSetAsync(client, "Новый");
+
+        // Сортировка по created_at: правка не перетаскивает набор через курсор.
+        await client.PutAsJsonAsync($"/api/sets/{older}", new { title = "Старый, но переименован", description = "" });
+
+        var firstPage = await ReadPageAsync(client, pageSize: 1);
+        var secondPage = await ReadPageAsync(client, pageSize: 1, cursor: firstPage.NextCursor);
+
+        Assert.Equal(newer, firstPage.Items.Single().GetProperty("id").GetGuid());
+        Assert.Equal(older, secondPage.Items.Single().GetProperty("id").GetGuid());
+    }
+
+    [DatabaseFact]
+    public async Task ListSets_DeleteShownItem_NextPageHasNoGapsOrDuplicates()
+    {
+        using var client = CreateClientForNewUser();
+        var oldest = await CreateSetAsync(client, "Первый");
+        var second = await CreateSetAsync(client, "Второй");
+        var third = await CreateSetAsync(client, "Третий");
+        var newest = await CreateSetAsync(client, "Четвёртый");
+
+        var firstPage = await ReadPageAsync(client, pageSize: 2);
+        Assert.Equal(new[] { newest, third }, firstPage.Items.Select(item => item.GetProperty("id").GetGuid()));
+
+        // Удаляем уже показанную строку: offset-версия «съела» бы следующую, keyset - нет.
+        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"/api/sets/{newest}")).StatusCode);
+
+        var secondPage = await ReadPageAsync(client, pageSize: 2, cursor: firstPage.NextCursor);
+
+        Assert.Equal(new[] { second, oldest }, secondPage.Items.Select(item => item.GetProperty("id").GetGuid()));
+        Assert.Null(secondPage.NextCursor);
+    }
+
+    [DatabaseFact]
+    public async Task ListSets_ForeignCursor_ReturnsOnlyOwnRows()
+    {
+        using var stranger = CreateClientForNewUser();
+        using var owner = CreateClientForNewUser();
+
+        // Свой набор создаётся раньше чужих: тогда он попадает в диапазон «старше чужого курсора»
+        // и тест доказывает именно фильтрацию по владельцу, а не пустую выдачу.
+        var ownerSet = await CreateSetAsync(owner, "Свой");
+        var strangerOlder = await CreateSetAsync(stranger, "Чужой старый");
+        var strangerNewer = await CreateSetAsync(stranger, "Чужой новый");
+
+        var strangerPage = await ReadPageAsync(stranger, pageSize: 1);
+        Assert.Equal(strangerNewer, strangerPage.Items.Single().GetProperty("id").GetGuid());
+
+        // Чужой курсор не раскрывает данные: фильтр по владельцу применяется до сравнения.
+        var ownerPage = await ReadPageAsync(owner, cursor: strangerPage.NextCursor);
+
+        Assert.Single(ownerPage.Items);
+        var returned = ownerPage.Items.Select(item => item.GetProperty("id").GetGuid()).ToArray();
+        Assert.Equal(ownerSet, Assert.Single(returned));
+        Assert.DoesNotContain(strangerOlder, returned);
+        Assert.DoesNotContain(strangerNewer, returned);
+    }
+
+    [DatabaseFact]
+    public async Task ListSets_CursorWithoutUtcMark_Returns400WithCursorCode()
+    {
+        using var client = CreateClientForNewUser();
+
+        // Время без UTC-метки: ToUniversalTime сдвинул бы его по часовому поясу сервера.
+        var cursor = ToBase64Url($$"""{"CreatedAt":"2026-01-01T00:00:00","Id":"{{Guid.NewGuid()}}"}""");
+
+        var response = await client.GetAsync($"/api/sets?cursor={Uri.EscapeDataString(cursor)}");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await ReadProblemAsync(response);
+        Assert.Equal("Set.CursorInvalid", problem.GetProperty("title").GetString());
+    }
+
+    private static string ToBase64Url(string value) =>
+        Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(value))
+            .TrimEnd('=')
+            .Replace('+', '-')
+            .Replace('/', '_');
+
     private HttpClient CreateClientForNewUser()
     {
         var client = _factory.CreateClient();
