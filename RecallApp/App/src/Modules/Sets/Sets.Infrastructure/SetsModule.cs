@@ -104,16 +104,17 @@ public static class SetsModule
             return result.IsError ? result.Errors.ToProblem() : Results.Ok(result.Value);
         });
 
-        group.MapPost("/", async (Guid setId, CreateElementRequest request, ISender sender, CancellationToken cancellationToken) =>
+        group.MapPost("/", async (Guid setId, CreateElementRequest request, HttpContext http, ISender sender, CancellationToken cancellationToken) =>
         {
             var result = await sender.Send(
-                new CreateElementCommand(setId, request.Type, request.Payload, request.Position),
+                new CreateElementCommand(setId, request.Type, request.Payload, request.Position,
+                    IdempotencyKeyFilter.GetCanonicalKey(http)),
                 cancellationToken);
 
             return result.IsError
                 ? result.Errors.ToProblem()
                 : Results.Created($"{SetRoute.Group}/{setId}/elements/{result.Value.Id}", result.Value);
-        });
+        }).AddEndpointFilter<IdempotencyKeyFilter>();
 
         group.MapPut("/{elementId:guid}", async (
             Guid setId,

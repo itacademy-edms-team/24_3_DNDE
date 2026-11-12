@@ -1,3 +1,4 @@
+using ErrorOr;
 using Microsoft.EntityFrameworkCore;
 using Sets.Application.Abstractions;
 using Sets.Application.Elements;
@@ -66,6 +67,15 @@ internal sealed class ElementRepository(SetsDbContext context) : IElementReposit
             .CountAsync(element => element.SetId == setId && element.DeletedAt == null, cancellationToken);
 
         var result = await action(activeCount, cancellationToken);
+
+        // Ошибка внутри лока — откат: иначе частичные записи (например, зарезервированный ключ
+        // идемпотентности) уедут в БД вместе с пустым коммитом.
+        if (result is IErrorOr { IsError: true })
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return result;
+        }
+
         await transaction.CommitAsync(cancellationToken);
         return result;
     }

@@ -7,8 +7,10 @@ using Npgsql;
 namespace Sets.Infrastructure.Data.Idempotency;
 
 /// <summary>
-/// Реализация идемпотентности для схемы sets:
-/// ключ и бизнес-запись коммитятся вместе в этой реализации, поэтому состояния в БД не остаётся.
+/// Реализация идемпотентности для схемы sets: ключ и бизнес-запись коммитятся вместе,
+/// поэтому состояния «в процессе» в БД не остаётся.
+/// Если вызывающий код уже открыл транзакцию (например, под локом набора), стор в неё встраивается
+/// и не управляет коммитом/откатом - это делает владелец транзакции.
 /// </summary>
 internal sealed class IdempotencyStore(SetsDbContext context, TimeProvider clock) : IIdempotencyStore
 {
@@ -27,7 +29,13 @@ internal sealed class IdempotencyStore(SetsDbContext context, TimeProvider clock
         where TResponse : class
     {
         var now = clock.GetUtcNow().UtcDateTime;
-        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+
+        // Ambient-режим: если транзакция уже открыта вызывающим кодом, ключ и бизнес-запись
+        // станут частью его транзакции, а коммит/откат останется на стороне начавшего транзакцию.
+        var ownsTransaction = context.Database.CurrentTransaction is null;
+        await using var transaction = ownsTransaction
+            ? await context.Database.BeginTransactionAsync(cancellationToken)
+            : null;
 
         var (reserved, existing) = await ReserveAsync(ownerId, key, operation, requestHash, now, cancellationToken);
 
@@ -51,7 +59,9 @@ internal sealed class IdempotencyStore(SetsDbContext context, TimeProvider clock
         await CompleteAsync(ownerId, key, statusCode: 201,
             JsonSerializer.Serialize(result.Value, JsonOptions), cancellationToken);
 
-        await transaction.CommitAsync(cancellationToken);
+        if (ownsTransaction)
+            await transaction!.CommitAsync(cancellationToken);
+
         return result;
     }
 
@@ -97,8 +107,8 @@ internal sealed class IdempotencyStore(SetsDbContext context, TimeProvider clock
 
     /// <summary>
     /// Вставка нового ключа. Единственный raw-запрос: у EF Core нет upsert.
-    /// Поймать 23505 через SaveChanges нельзя - ошибка абортит транзакцию Postgres, и продолжить в ней уже не получится.
-    /// ON CONFLICT DO NOTHING заодно сериализует конкурентов:
+    /// Поймать 23505 через SaveChanges нельзя - ошибка абортит транзакцию Postgres, и продолжить
+    /// в ней уже не получится. ON CONFLICT DO NOTHING заодно сериализует конкурентов:
     /// второй ждёт наш COMMIT на уникальном индексе.
     /// </summary>
     private async Task<bool> TryInsertAsync(
@@ -136,10 +146,10 @@ internal sealed class IdempotencyStore(SetsDbContext context, TimeProvider clock
         string key,
         int statusCode,
         string responseJson,
-        CancellationToken cancellationToken
-    ) => context.IdempotencyKeys
+        CancellationToken cancellationToken) =>
+        context.IdempotencyKeys
             .Where(record => record.OwnerId == ownerId && record.Key == key)
             .ExecuteUpdateAsync(update => update
-                    .SetProperty(record => record.StatusCode, statusCode)
-                    .SetProperty(record => record.Response, responseJson), cancellationToken);
+                .SetProperty(record => record.StatusCode, statusCode)
+                .SetProperty(record => record.Response, responseJson), cancellationToken);
 }

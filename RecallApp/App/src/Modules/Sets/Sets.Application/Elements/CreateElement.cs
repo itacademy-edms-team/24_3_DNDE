@@ -1,3 +1,4 @@
+using Common.Application.Idempotency;
 using Common.Application.Provisioning;
 using ErrorOr;
 using MediatR;
@@ -7,21 +8,30 @@ using Sets.Domain.Sets;
 
 namespace Sets.Application.Elements;
 
+/// <param name="IdempotencyKey">Значение заголовка Idempotency-Key; проверяется на HTTP-слое.</param>
 public sealed record CreateElementCommand(
     Guid SetId,
     string? Type,
     System.Text.Json.JsonElement? Payload,
-    int? Position)
-    : IRequest<ErrorOr<ElementResponse>>;
+    int? Position,
+    string IdempotencyKey)
+    : IRequest<ErrorOr<ElementResponse>>
+{
+    /// <summary>
+    /// Идентификатор операции в журнале идемпотентности.
+    /// </summary>
+    public const string Operation = "elements.create";
+}
 
 /// <summary>
-/// Создаёт элемент и ставит его в указанную позицию.
-/// Счётчик активных элементов, сдвиг позиций и вставка идут в одной транзакции 
-/// под блокировкой строки набора на уровне БД: иначе параллельное изменение даст рассинхрон по позициям.
+/// Создаёт элемент и ставит его в указанную позицию (по умолчанию - в конец).
+/// Внутри лока набора сначала проверяется ключ идемпотентности,
+/// и только для новой операции считается позиция, выполняется сдвиг и вставка.
 /// </summary>
 public sealed class CreateElementHandler(
     ISetRepository sets,
     IElementRepository elements,
+    IIdempotencyStore idempotency,
     ICurrentUser currentUser,
     TimeProvider clock)
     : IRequestHandler<CreateElementCommand, ErrorOr<ElementResponse>>
@@ -54,27 +64,34 @@ public sealed class CreateElementHandler(
         if (payload.IsError)
             return payload.Errors;
 
+        var requestHash = CreateElementRequestHash.Compute(type, payload.Value, command.Position);
         var now = clock.GetUtcNow().UtcDateTime;
 
         return await elements.ExecuteLockedAsync<ErrorOr<ElementResponse>>(
             command.SetId,
-            async (activeCount, token) =>
-            {
-                var position = command.Position ?? activeCount;
-                if (position > activeCount)
-                    return ElementErrors.PositionOutOfRange(position, activeCount);
+            async (activeCount, token) => await idempotency.ExecuteAsync<ElementResponse>(
+                ownerId,
+                command.IdempotencyKey,
+                CreateElementCommand.Operation,
+                requestHash,
+                operationBody: async innerToken =>
+                {
+                    var position = command.Position ?? activeCount;
+                    if (position > activeCount)
+                        return ElementErrors.PositionOutOfRange(position, activeCount);
 
-                var created = Element.Create(command.SetId, payload.Value, position, now);
-                if (created.IsError)
-                    return created.Errors;
+                    var created = Element.Create(command.SetId, payload.Value, position, now);
+                    if (created.IsError)
+                        return created.Errors;
 
-                await elements.ShiftPositionsFromAsync(command.SetId, position, token);
-                elements.Add(created.Value);
-                set.MarkContentChanged(now);
-                await elements.SaveChangesAsync(token);
+                    await elements.ShiftPositionsFromAsync(command.SetId, position, innerToken);
+                    elements.Add(created.Value);
+                    set.MarkContentChanged(now);
+                    await elements.SaveChangesAsync(innerToken);
 
-                return ElementResponse.From(created.Value);
-            },
+                    return ElementResponse.From(created.Value);
+                },
+                token),
             cancellationToken);
     }
 }
