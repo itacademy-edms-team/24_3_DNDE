@@ -5,17 +5,20 @@ using System.Text.Json;
 namespace Tests.Integration.Sets;
 
 /// <summary>
-/// Тесты эндпоинтов набора: контракт ошибок (ADR 0031),
-/// изоляция владельцев (404 вместо 403),
-/// полная замена полей через PUT и мягкое удаление.
+/// Эндпоинты наборов: контракт ошибок (ADR 0031), изоляция владельцев (404 вместо 403),
+/// полная замена полей через PUT, мягкое удаление и курсорная пагинация (ADR 0039).
 /// У каждого теста свой пользователь, чтобы данные не пересекались.
 /// </summary>
-public sealed class SetsEndpointsTests(AppFactory factory) : IClassFixture<AppFactory>
+public sealed class SetsEndpointsTests : IClassFixture<AppFactory>
 {
+    private readonly AppFactory _factory;
+
+    public SetsEndpointsTests(AppFactory factory) => _factory = factory;
+
     [Fact]
     public async Task ListSets_Anonymous_Returns401()
     {
-        var response = await factory.CreateClient().GetAsync("/api/sets");
+        var response = await _factory.CreateClient().GetAsync("/api/sets");
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -105,8 +108,8 @@ public sealed class SetsEndpointsTests(AppFactory factory) : IClassFixture<AppFa
         Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/api/sets/{setId}")).StatusCode);
 
-        var list = await client.GetFromJsonAsync<JsonElement>("/api/sets");
-        Assert.DoesNotContain(list.EnumerateArray(), set => set.GetProperty("id").GetGuid() == setId);
+        var page = await ReadPageAsync(client);
+        Assert.DoesNotContain(page.Items, set => set.GetProperty("id").GetGuid() == setId);
     }
 
     [DatabaseFact]
@@ -117,15 +120,95 @@ public sealed class SetsEndpointsTests(AppFactory factory) : IClassFixture<AppFa
         await CreateSetAsync(first, "Набор первого");
         var secondSetId = await CreateSetAsync(second, "Набор второго");
 
-        var firstList = await first.GetFromJsonAsync<JsonElement>("/api/sets");
+        var page = await ReadPageAsync(first);
 
-        Assert.Single(firstList.EnumerateArray());
-        Assert.DoesNotContain(firstList.EnumerateArray(), set => set.GetProperty("id").GetGuid() == secondSetId);
+        Assert.Single(page.Items);
+        Assert.DoesNotContain(page.Items, set => set.GetProperty("id").GetGuid() == secondSetId);
+    }
+
+    [DatabaseFact]
+    public async Task ListSets_ThreeSetsPageSizeTwo_ReturnsTwoThenOneWithoutOverlap()
+    {
+        using var client = CreateClientForNewUser();
+        var first = await CreateSetAsync(client, "Первый");
+        var second = await CreateSetAsync(client, "Второй");
+        var third = await CreateSetAsync(client, "Третий");
+
+        var firstPage = await ReadPageAsync(client, pageSize: 2);
+
+        Assert.Equal(2, firstPage.Items.Length);
+        Assert.NotNull(firstPage.NextCursor);
+        // Порядок created_at DESC: последний созданный - первым в выдаче.
+        Assert.Equal(third, firstPage.Items[0].GetProperty("id").GetGuid());
+
+        var secondPage = await ReadPageAsync(client, pageSize: 2, cursor: firstPage.NextCursor);
+
+        Assert.Single(secondPage.Items);
+        Assert.Null(secondPage.NextCursor);
+        Assert.Equal(first, secondPage.Items[0].GetProperty("id").GetGuid());
+
+        var returned = firstPage.Items.Concat(secondPage.Items)
+            .Select(item => item.GetProperty("id").GetGuid())
+            .ToArray();
+        Assert.Equal(3, returned.Distinct().Count());
+        Assert.Contains(second, returned);
+    }
+
+    [DatabaseFact]
+    public async Task ListSets_SameCreatedAt_UsesIdAsTieBreaker()
+    {
+        using var client = CreateClientForNewUser();
+        var first = await CreateSetAsync(client, "Один");
+        var second = await CreateSetAsync(client, "Два");
+
+        // Одинаковая метка создания: без tie-breaker наборы могли бы попасть на обе страницы или потеряться.
+        await AlignCreatedAtAsync(first, second);
+        // Postgres сравнивает uuid побайтово, что для канонической записи = ordinal-сравнение hex-строки.
+        // Guid.CompareTo (порядок полей, signed _a) дал бы другой результат на краевых значениях.
+        var expected = new[] { first, second }
+            .OrderByDescending(id => id.ToString("D"), StringComparer.Ordinal)
+            .ToArray();
+
+        var firstPage = await ReadPageAsync(client, pageSize: 1);
+        var secondPage = await ReadPageAsync(client, pageSize: 1, cursor: firstPage.NextCursor);
+
+        Assert.Equal(expected[0], firstPage.Items.Single().GetProperty("id").GetGuid());
+        Assert.Equal(expected[1], secondPage.Items.Single().GetProperty("id").GetGuid());
+        Assert.Null(secondPage.NextCursor);
+    }
+
+    [DatabaseFact]
+    public async Task ListSets_InvalidCursor_Returns400WithCursorCode()
+    {
+        using var client = CreateClientForNewUser();
+
+        var response = await client.GetAsync("/api/sets?cursor=not-a-cursor");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await ReadProblemAsync(response);
+        Assert.Equal("Set.CursorInvalid", problem.GetProperty("title").GetString());
+        Assert.Equal("query.cursor", problem.GetProperty("target").GetString());
+    }
+
+    [DatabaseFact]
+    public async Task ListSets_PageSizeOutOfRange_Returns400WithPageSizeCode()
+    {
+        using var client = CreateClientForNewUser();
+
+        foreach (var pageSize in new[] { 0, 101 })
+        {
+            var response = await client.GetAsync($"/api/sets?pageSize={pageSize}");
+
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            var problem = await ReadProblemAsync(response);
+            Assert.Equal("Set.PageSizeInvalid", problem.GetProperty("title").GetString());
+            Assert.Equal("query.pageSize", problem.GetProperty("target").GetString());
+        }
     }
 
     private HttpClient CreateClientForNewUser()
     {
-        var client = factory.CreateClient();
+        var client = _factory.CreateClient();
         client.DefaultRequestHeaders.Add(AppFactory.TestAuthHeader, "true");
         client.DefaultRequestHeaders.Add(AppFactory.TestSubHeader, Guid.NewGuid().ToString());
         return client;
@@ -145,4 +228,38 @@ public sealed class SetsEndpointsTests(AppFactory factory) : IClassFixture<AppFa
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
         return await response.Content.ReadFromJsonAsync<JsonElement>();
     }
+
+    private static async Task<Page> ReadPageAsync(HttpClient client, int? pageSize = null, string? cursor = null)
+    {
+        var query = new List<string>();
+        if (pageSize is not null) query.Add($"pageSize={pageSize}");
+        if (cursor is not null) query.Add($"cursor={Uri.EscapeDataString(cursor)}");
+
+        var url = query.Count == 0 ? "/api/sets" : $"/api/sets?{string.Join("&", query)}";
+        var response = await client.GetAsync(url);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        return new Page(
+            body.GetProperty("items").EnumerateArray().ToArray(),
+            body.GetProperty("nextCursor").ValueKind == JsonValueKind.Null
+                ? null
+                : body.GetProperty("nextCursor").GetString());
+    }
+
+    private static async Task AlignCreatedAtAsync(Guid firstId, Guid secondId)
+    {
+        var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__SetsMigrations")
+            ?? throw new InvalidOperationException("Set ConnectionStrings__SetsMigrations.");
+
+        await using var connection = new Npgsql.NpgsqlConnection(connectionString);
+        await connection.OpenAsync();
+        await using var command = new Npgsql.NpgsqlCommand(
+            "UPDATE sets.sets SET created_at = '2026-01-01T00:00:00Z' WHERE id = ANY(@ids)",
+            connection);
+        command.Parameters.Add(new Npgsql.NpgsqlParameter<Guid[]>("ids", [firstId, secondId]));
+        await command.ExecuteNonQueryAsync();
+    }
+
+    private sealed record Page(JsonElement[] Items, string? NextCursor);
 }
