@@ -28,7 +28,7 @@ public sealed class SetsEndpointsTests : IClassFixture<AppFactory>
     {
         using var client = CreateClientForNewUser();
 
-        var response = await client.PostAsJsonAsync("/api/sets", new { title = "  Мой набор  ", description = "  описание  " });
+        var response = await PostSetAsync(client, "  Мой набор  ", "  описание  ");
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var set = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -42,7 +42,7 @@ public sealed class SetsEndpointsTests : IClassFixture<AppFactory>
     {
         using var client = CreateClientForNewUser();
 
-        var response = await client.PostAsJsonAsync("/api/sets", new { title = "   ", description = (string?)null });
+        var response = await PostSetAsync(client, "   ", null);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var problem = await ReadProblemAsync(response);
@@ -57,7 +57,7 @@ public sealed class SetsEndpointsTests : IClassFixture<AppFactory>
         using var client = CreateClientForNewUser();
         var tooLong = new string('a', 121);
 
-        var response = await client.PostAsJsonAsync("/api/sets", new { title = tooLong, description = (string?)null });
+        var response = await PostSetAsync(client, tooLong, null);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var problem = await ReadProblemAsync(response);
@@ -371,11 +371,22 @@ public sealed class SetsEndpointsTests : IClassFixture<AppFactory>
 
     private static async Task<Guid> CreateSetAsync(HttpClient client, string title, string? description = null)
     {
-        var response = await client.PostAsJsonAsync("/api/sets", new { title, description });
+        var response = await PostSetAsync(client, title, description);
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
         var set = await response.Content.ReadFromJsonAsync<JsonElement>();
         return set.GetProperty("id").GetGuid();
+    }
+
+    /// <summary>POST с обязательным Idempotency-Key: каждый вызов получает свой ключ.</summary>
+    private static Task<HttpResponseMessage> PostSetAsync(HttpClient client, string? title, string? description)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/sets")
+        {
+            Content = JsonContent.Create(new { title, description }),
+        };
+        request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString());
+        return client.SendAsync(request);
     }
 
     private static async Task<JsonElement> ReadProblemAsync(HttpResponseMessage response)

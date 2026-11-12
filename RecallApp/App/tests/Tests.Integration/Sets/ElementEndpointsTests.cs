@@ -415,7 +415,13 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
 
     private static async Task<Guid> CreateSetAsync(HttpClient client)
     {
-        var response = await client.PostAsJsonAsync("/api/sets", new { title = "Набор", description = (string?)null });
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/sets")
+        {
+            Content = JsonContent.Create(new { title = "Набор", description = (string?)null }),
+        };
+        request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString());
+
+        var response = await client.SendAsync(request);
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
         var set = await response.Content.ReadFromJsonAsync<JsonElement>();
