@@ -1,7 +1,9 @@
 using Common.Application.Provisioning;
 using ErrorOr;
 using MediatR;
+using Media.Contracts;
 using Sets.Application.Abstractions;
+using Sets.Application.Elements;
 using Sets.Domain.Sets;
 
 namespace Sets.Application.Sets;
@@ -17,6 +19,7 @@ public sealed record DeleteSetCommand(Guid Id) : IRequest<ErrorOr<Deleted>>;
 public sealed class DeleteSetHandler(
     ISetRepository sets,
     IElementRepository elements,
+    IOutboxWriter outbox,
     ICurrentUser currentUser,
     TimeProvider clock)
     : IRequestHandler<DeleteSetCommand, ErrorOr<Deleted>>
@@ -38,6 +41,12 @@ public sealed class DeleteSetHandler(
             {
                 set.MarkDeleted(now);
                 await elements.MarkAllDeletedAsync(set.Id, now, token);
+
+                // Снимаем все ссылки набора одной областью: Media удалит всё с этим префиксом (ADR 0040).
+                outbox.Enqueue(
+                    MediaOutboxMessages.ReferencesSync,
+                    new MediaReferencesSyncPayload(ownerId, ElementMediaSlots.SetScope(set.Id), []));
+
                 await sets.SaveChangesAsync(token);
                 return Result.Deleted;
             },

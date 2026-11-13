@@ -2,6 +2,7 @@ using Common.Application.Idempotency;
 using Common.Application.Provisioning;
 using ErrorOr;
 using MediatR;
+using Media.Contracts;
 using Sets.Application.Abstractions;
 using Sets.Domain.Elements;
 using Sets.Domain.Sets;
@@ -32,6 +33,8 @@ public sealed class CreateElementHandler(
     ISetRepository sets,
     IElementRepository elements,
     ISetsIdempotencyStore idempotency,
+    IMediaReadiness mediaReadiness,
+    IOutboxWriter outbox,
     ICurrentUser currentUser,
     TimeProvider clock)
     : IRequestHandler<CreateElementCommand, ErrorOr<ElementResponse>>
@@ -64,6 +67,12 @@ public sealed class CreateElementHandler(
         if (payload.IsError)
             return payload.Errors;
 
+        // Файлы проверяются до записи: иначе плохая ссылка попадёт в БД и всплывёт позже.
+        var ready = await mediaReadiness.EnsureReadyAsync(
+            ownerId, ElementMediaSlots.ImageIds(payload.Value), cancellationToken);
+        if (ready.IsError)
+            return ready.Errors;
+
         var requestHash = CreateElementRequestHash.Compute(type, payload.Value, command.Position);
         var now = clock.GetUtcNow().UtcDateTime;
 
@@ -90,6 +99,13 @@ public sealed class CreateElementHandler(
                     await elements.ApplyPositionsAsync(command.SetId, shifted.Value, innerToken);
                     elements.Add(created.Value);
                     set.MarkContentChanged(now);
+
+                    // Ссылки на медиа и элемент сохраняются одной транзакцией (ADR 0040).
+                    var scope = ElementMediaSlots.ElementScope(command.SetId, created.Value.Id);
+                    outbox.Enqueue(
+                        MediaOutboxMessages.ReferencesSync,
+                        new MediaReferencesSyncPayload(ownerId, scope, ElementMediaSlots.For(payload.Value, scope)));
+
                     await elements.SaveChangesAsync(innerToken);
 
                     return ElementResponse.From(created.Value);

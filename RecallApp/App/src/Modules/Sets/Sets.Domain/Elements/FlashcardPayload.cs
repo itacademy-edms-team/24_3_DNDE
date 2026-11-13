@@ -3,13 +3,22 @@ using ErrorOr;
 namespace Sets.Domain.Elements;
 
 /// <summary>
-/// Документное содержимое флеш-карточки: термин и определение.
+/// Документное содержимое флеш-карточки: термин, определение и необязательные изображения сторон.
+/// Изображения - ссылки на файлы другого модуля (uuid без внешнего ключа, ADR 0036).
 /// </summary>
-public sealed record FlashcardPayload(CardTerm Term, CardDefinition Definition) : ElementPayload
+public sealed record FlashcardPayload(
+    CardTerm Term,
+    CardDefinition Definition,
+    Guid? FrontImageId = null,
+    Guid? BackImageId = null) : ElementPayload
 {
     public override ElementType Type => ElementType.Flashcard;
 
-    public static ErrorOr<FlashcardPayload> Create(string? term, string? definition)
+    public static ErrorOr<FlashcardPayload> Create(
+        string? term,
+        string? definition,
+        Guid? frontImageId = null,
+        Guid? backImageId = null)
     {
         var termResult = CardTerm.Create(term);
         if (termResult.IsError)
@@ -19,6 +28,9 @@ public sealed record FlashcardPayload(CardTerm Term, CardDefinition Definition) 
         if (definitionResult.IsError)
             return definitionResult.Errors;
 
-        return new FlashcardPayload(termResult.Value, definitionResult.Value);
+        if (frontImageId == Guid.Empty || backImageId == Guid.Empty)
+            return ElementErrors.ImageInvalid;
+
+        return new FlashcardPayload(termResult.Value, definitionResult.Value, frontImageId, backImageId);
     }
 }

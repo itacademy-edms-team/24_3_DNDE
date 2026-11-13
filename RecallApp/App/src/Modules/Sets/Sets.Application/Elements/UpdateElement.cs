@@ -2,6 +2,7 @@ using System.Text.Json;
 using Common.Application.Provisioning;
 using ErrorOr;
 using MediatR;
+using Media.Contracts;
 using Sets.Application.Abstractions;
 using Sets.Domain.Elements;
 using Sets.Domain.Sets;
@@ -18,6 +19,8 @@ public sealed record UpdateElementCommand(Guid SetId, Guid ElementId, JsonElemen
 public sealed class UpdateElementHandler(
     ISetRepository sets,
     IElementRepository elements,
+    IMediaReadiness mediaReadiness,
+    IOutboxWriter outbox,
     ICurrentUser currentUser,
     TimeProvider clock)
     : IRequestHandler<UpdateElementCommand, ErrorOr<ElementResponse>>
@@ -44,12 +47,25 @@ public sealed class UpdateElementHandler(
         if (payload.IsError)
             return payload.Errors;
 
+        // Файлы проверяются до записи: иначе плохая ссылка попадёт в БД и всплывёт позже.
+        var ready = await mediaReadiness.EnsureReadyAsync(
+            ownerId, ElementMediaSlots.ImageIds(payload.Value), cancellationToken);
+        if (ready.IsError)
+            return ready.Errors;
+
         var now = clock.GetUtcNow().UtcDateTime;
         var replaced = element.ReplaceContent(payload.Value, now);
         if (replaced.IsError)
             return replaced.Errors;
 
         set.MarkContentChanged(now);
+
+        // Перезапись слота: тот же `reference`, другой файл — старый становится неиспользуемым.
+        var scope = ElementMediaSlots.ElementScope(command.SetId, element.Id);
+        outbox.Enqueue(
+            MediaOutboxMessages.ReferencesSync,
+            new MediaReferencesSyncPayload(ownerId, scope, ElementMediaSlots.For(payload.Value, scope)));
+
         await elements.SaveChangesAsync(cancellationToken);
 
         return ElementResponse.From(element);

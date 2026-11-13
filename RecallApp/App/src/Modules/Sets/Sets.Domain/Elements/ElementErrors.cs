@@ -18,6 +18,12 @@ public static class ElementErrors
         description: "Element must belong to a set.",
         metadata: new Dictionary<string, object> { ["target"] = "element.setId" });
 
+    /// <summary>Ссылка на изображение не является корректным идентификатором файла.</summary>
+    public static Error ImageInvalid => Error.Validation(
+        code: "Element.ImageInvalid",
+        description: "Image reference must be a non-empty file identifier.",
+        metadata: new Dictionary<string, object> { ["target"] = "element.payload" });
+
     public static Error TypeUnsupported => Error.Validation(
         code: "Element.TypeUnsupported",
         description: "Only the flashcard element type is supported in this version.",

@@ -24,6 +24,8 @@ public static class ElementPayloadJson
             type = ElementTypeNames.Flashcard,
             term = flashcard.Term.Value,
             definition = flashcard.Definition.Value,
+            frontImageId = flashcard.FrontImageId,
+            backImageId = flashcard.BackImageId,
         }),
         _ => throw new ArgumentOutOfRangeException(nameof(payload), payload.GetType(), "Unknown payload type."),
     };
@@ -34,6 +36,8 @@ public static class ElementPayloadJson
         {
             term = flashcard.Term.Value,
             definition = flashcard.Definition.Value,
+            frontImageId = flashcard.FrontImageId,
+            backImageId = flashcard.BackImageId,
         }),
         _ => throw new ArgumentOutOfRangeException(nameof(payload), payload.GetType(), "Unknown payload type."),
     };
@@ -77,7 +81,26 @@ public static class ElementPayloadJson
             ? definitionProperty.GetString()
             : null;
 
-        var result = FlashcardPayload.Create(term, definition);
+        var frontImage = ReadImageId(payload, "frontImageId");
+        if (frontImage.IsError)
+            return frontImage.Errors;
+
+        var backImage = ReadImageId(payload, "backImageId");
+        if (backImage.IsError)
+            return backImage.Errors;
+
+        var result = FlashcardPayload.Create(term, definition, frontImage.Value, backImage.Value);
         return result.IsError ? result.Errors : result.Value;
+    }
+
+    /// <summary>Читает необязательный идентификатор изображения: отсутствие поля и null равнозначны.</summary>
+    private static ErrorOr<Guid?> ReadImageId(JsonElement payload, string propertyName)
+    {
+        if (!payload.TryGetProperty(propertyName, out var property) || property.ValueKind == JsonValueKind.Null)
+            return (Guid?)null;
+
+        return property.ValueKind == JsonValueKind.String && property.TryGetGuid(out var mediaId)
+            ? mediaId
+            : ElementErrors.ImageInvalid;
     }
 }

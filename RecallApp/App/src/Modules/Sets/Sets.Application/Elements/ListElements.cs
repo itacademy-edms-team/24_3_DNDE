@@ -2,6 +2,7 @@ using Common.Application.Pagination;
 using Common.Application.Provisioning;
 using ErrorOr;
 using MediatR;
+using Media.Contracts;
 using Sets.Application.Abstractions;
 using Sets.Domain.Elements;
 using Sets.Domain.Sets;
@@ -14,6 +15,7 @@ public sealed record ListElementsQuery(Guid SetId, string? Cursor, int? PageSize
 public sealed class ListElementsHandler(
     ISetRepository sets,
     IElementRepository elements,
+    IMediaLinksQuery mediaLinks,
     ICurrentUser currentUser)
     : IRequestHandler<ListElementsQuery, ErrorOr<KeysetPage<ElementResponse>>>
 {
@@ -46,6 +48,16 @@ public sealed class ListElementsHandler(
         var items = hasMore ? rows.Take(pageSize).ToList() : rows;
         var nextCursor = hasMore ? new ElementCursor(items[^1].Position, items[^1].Id).Encode() : null;
 
-        return new KeysetPage<ElementResponse>(items.Select(ElementResponse.From).ToList(), nextCursor);
+        // Ссылки на изображения подписываются пачкой: один вызов на страницу, не на элемент.
+        var imageIds = items
+            .SelectMany(item => ElementMediaSlots.ImageIds(item.Payload))
+            .Distinct()
+            .ToArray();
+
+        var links = await mediaLinks.GetLinksAsync(ownerId, imageIds, cancellationToken);
+
+        return new KeysetPage<ElementResponse>(
+            items.Select(item => ElementResponse.From(item, links)).ToList(),
+            nextCursor);
     }
 }

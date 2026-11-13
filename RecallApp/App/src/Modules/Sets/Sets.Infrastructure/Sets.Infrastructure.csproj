@@ -5,6 +5,7 @@
     <ProjectReference Include="..\Sets.Contracts\Sets.Contracts.csproj" />
     <ProjectReference Include="..\..\..\Common\Common.Application\Common.Application.csproj" />
     <ProjectReference Include="..\..\..\Common\Common.Infrastructure\Common.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Media\Media.Contracts\Media.Contracts.csproj" />
   </ItemGroup>
 
   <PropertyGroup>
