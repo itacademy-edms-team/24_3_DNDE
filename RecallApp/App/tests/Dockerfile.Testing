@@ -19,6 +19,10 @@ COPY src/Modules/Sets/Sets.Domain/Sets.Domain.csproj src/Modules/Sets/Sets.Domai
 COPY src/Modules/Sets/Sets.Application/Sets.Application.csproj src/Modules/Sets/Sets.Application/
 COPY src/Modules/Sets/Sets.Infrastructure/Sets.Infrastructure.csproj src/Modules/Sets/Sets.Infrastructure/
 COPY src/Modules/Sets/Sets.Contracts/Sets.Contracts.csproj src/Modules/Sets/Sets.Contracts/
+COPY src/Modules/Media/Media.Domain/Media.Domain.csproj src/Modules/Media/Media.Domain/
+COPY src/Modules/Media/Media.Application/Media.Application.csproj src/Modules/Media/Media.Application/
+COPY src/Modules/Media/Media.Infrastructure/Media.Infrastructure.csproj src/Modules/Media/Media.Infrastructure/
+COPY src/Modules/Media/Media.Contracts/Media.Contracts.csproj src/Modules/Media/Media.Contracts/
 COPY tests/Tests.Architecture/Tests.Architecture.csproj tests/Tests.Architecture/
 COPY tests/Tests.Integration/Tests.Integration.csproj tests/Tests.Integration/
 RUN dotnet restore App.sln

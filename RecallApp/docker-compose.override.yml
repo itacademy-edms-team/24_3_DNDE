@@ -84,6 +84,7 @@ services:
       ConnectionStrings__Database: Host=app-db:5432;Database=app;Username=app_runtime;Password=${APP_DB_RUNTIME_PASSWORD}
       ConnectionStrings__AccountsMigrations: Host=app-db:5432;Database=app;Username=accounts_owner;Password=${APP_DB_ACCOUNTS_OWNER_PASSWORD}
       ConnectionStrings__SetsMigrations: Host=app-db:5432;Database=app;Username=sets_owner;Password=${APP_DB_SETS_OWNER_PASSWORD}
+      ConnectionStrings__MediaMigrations: Host=app-db:5432;Database=app;Username=media_owner;Password=${APP_DB_MEDIA_OWNER_PASSWORD}
       # миграции модулей применяются при старте dev-контейнера
       Database__ApplyMigrations: "true"
       # объектное хранилище медиа
@@ -99,6 +100,7 @@ services:
       ConnectionStrings__Database: Host=app-db:5432;Database=app;Username=app_runtime;Password=${APP_DB_RUNTIME_PASSWORD}
       ConnectionStrings__AccountsMigrations: Host=app-db:5432;Database=app;Username=accounts_owner;Password=${APP_DB_ACCOUNTS_OWNER_PASSWORD}
       ConnectionStrings__SetsMigrations: Host=app-db:5432;Database=app;Username=sets_owner;Password=${APP_DB_SETS_OWNER_PASSWORD}
+      ConnectionStrings__MediaMigrations: Host=app-db:5432;Database=app;Username=media_owner;Password=${APP_DB_MEDIA_OWNER_PASSWORD}
       Oidc__Authority: https://auth.localhost/realms/recallapp
       Oidc__Audience: RecallApp
       # объектное хранилище (тесты медиа идут на реальном cloud.ru, ADR 0037)

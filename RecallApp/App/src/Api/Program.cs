@@ -6,6 +6,7 @@ using NLog;
 using NLog.Web;
 using Npgsql;
 using Sets.Infrastructure;
+using Media.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -36,10 +37,13 @@ try
         builder.Configuration.GetValue("AppDb:AccountsPoolQuota", 20));
     var setsPoolLease = poolBudget.GetPools(
         builder.Configuration.GetValue("AppDb:SetsPoolQuota", 20));
+    var mediaPoolLease = poolBudget.GetPools(
+        builder.Configuration.GetValue("AppDb:MediaPoolQuota", 10));
     builder.Services.AddSingleton(dataSource);
     builder.Services.AddSingleton(poolBudget);
     builder.Services.AddSingleton(new PoolLeaseHolder(accountsPoolLease));
     builder.Services.AddSingleton(new PoolLeaseHolder(setsPoolLease));
+    builder.Services.AddSingleton(new PoolLeaseHolder(mediaPoolLease));
 
     // Идентичность доменного пользователя для модулей: заполняется ступенью JIT-провижининга
     builder.Services.AddScoped<CurrentUser>();
@@ -47,6 +51,7 @@ try
 
     builder.Services.AddAccounts(dataSource);
     builder.Services.AddSets(dataSource);
+    builder.Services.AddMedia(dataSource);
 
     builder.Services.AddAuthentication()
         .AddJwtBearer(options =>
@@ -79,9 +84,10 @@ try
     {
         var accounts = services.CanConnectAccounts(cancellationToken);
         var sets = services.CanConnectSets(cancellationToken);
-        await Task.WhenAll(accounts, sets);
+        var media = services.CanConnectMedia(cancellationToken);
+        await Task.WhenAll(accounts, sets, media);
 
-        return accounts.Result && sets.Result
+        return accounts.Result && sets.Result && media.Result
             ? Results.Ok(new { Status = "ready" })
             : Results.StatusCode(503);
     });
@@ -96,6 +102,9 @@ try
         var setsMigrationsConnectionString = builder.Configuration.GetConnectionString("SetsMigrations")
             ?? throw new InvalidOperationException("Set ConnectionStrings__SetsMigrations (schema owner).");
         await SetsModule.MigrateSets(setsMigrationsConnectionString);
+        var mediaMigrationsConnectionString = builder.Configuration.GetConnectionString("MediaMigrations")
+            ?? throw new InvalidOperationException("Set ConnectionStrings__MediaMigrations (schema owner).");
+        await MediaModule.MigrateMedia(mediaMigrationsConnectionString);
         if (migrateOnly) return;
     }
 
