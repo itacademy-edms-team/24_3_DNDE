@@ -8,6 +8,15 @@ namespace Media.Domain.Objects;
 /// </summary>
 public static class MediaErrors
 {
+    /// <summary>Личность не дошла до модуля: провижининг не отработал, запрос нельзя связать с владельцем.</summary>
+    public static Error UserUnresolved =>
+        Error.Unauthorized("Media.UserUnresolved", "Не удалось определить пользователя.");
+
+    /// <summary>У пользователя слишком много незавершённых загрузок: сначала нужно подтвердить имеющиеся или дождаться чистки.</summary>
+    public static Error PendingLimitReached =>
+        Error.Conflict("Media.PendingLimitReached", "Слишком много незавершённых загрузок.",
+            new Dictionary<string, object> { ["maxPending"] = MediaConstraints.MaxPendingPerOwner });
+
     /// <summary>Файла нет, он чужой или удалён - состояния неразличимы, чтобы не выдавать существование.</summary>
     public static Error NotFound => Error.NotFound("Media.NotFound", "Изображение не найдено.");
 

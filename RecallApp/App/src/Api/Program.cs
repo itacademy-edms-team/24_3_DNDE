@@ -79,6 +79,7 @@ try
 
     app.MapAccounts();
     app.MapSets();
+    app.MapMedia();
     app.MapGet("/health/live", () => Results.Ok(new { Status = "alive" }));
     app.MapGet("/health/ready", async (IServiceProvider services, CancellationToken cancellationToken) =>
     {

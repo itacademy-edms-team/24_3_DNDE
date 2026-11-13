@@ -1,8 +1,16 @@
 using Amazon.S3;
+using Common.Application.Behaviors;
+using Common.Infrastructure.Http;
 using MediatR;
+using Media.Application.Abstractions;
+using Media.Application.Objects;
 using Media.Application.Storage;
 using Media.Infrastructure.Data;
+using Media.Infrastructure.Data.Idempotency;
 using Media.Infrastructure.Storage;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -23,7 +31,14 @@ public static class MediaModule
             pg => pg.MigrationsHistoryTable("__EFMigrationsHistory", "media")));
 
         services.AddMediatR(configuration =>
-            configuration.RegisterServicesFromAssembly(typeof(MediaModule).Assembly));
+        {
+            configuration.RegisterServicesFromAssembly(typeof(InitUploadCommand).Assembly);
+            configuration.AddCommandValidation();
+        });
+        services.AddCommandValidators(typeof(InitUploadCommand));
+
+        services.AddScoped<IMediaObjectRepository, MediaObjectRepository>();
+        services.AddScoped<IMediaIdempotencyStore, IdempotencyStore>();
 
         services.AddOptions<S3Options>()
             .BindConfiguration(S3Options.SectionName)
@@ -38,6 +53,26 @@ public static class MediaModule
             provider.GetRequiredService<IOptions<S3Options>>().Value.Bucket));
 
         return services;
+    }
+
+    /// <summary>Регистрирует маршруты модуля.</summary>
+    public static IEndpointRouteBuilder MapMedia(this IEndpointRouteBuilder endpoints)
+    {
+        var group = endpoints.MapGroup(MediaRoute.Group).WithTags("Media").RequireAuthorization();
+
+        group.MapPost("/uploads", async (InitUploadRequest request, HttpContext http, ISender sender, CancellationToken cancellationToken) =>
+        {
+            var result = await sender.Send(
+                new InitUploadCommand(request.ContentType, request.SizeBytes,
+                    IdempotencyKeyFilter.GetCanonicalKey(http)),
+                cancellationToken);
+
+            return result.IsError
+                ? result.Errors.ToProblem()
+                : Results.Created($"{MediaRoute.Group}/{result.Value.MediaId}", result.Value);
+        }).AddEndpointFilter<IdempotencyKeyFilter>();
+
+        return endpoints;
     }
 
     /// <summary>Применяет миграции модуля.</summary>

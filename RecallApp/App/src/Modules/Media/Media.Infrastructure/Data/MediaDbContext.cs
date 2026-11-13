@@ -1,5 +1,6 @@
 using Media.Domain.Objects;
 using Media.Domain.References;
+using Media.Infrastructure.Data.Idempotency;
 using Microsoft.EntityFrameworkCore;
 
 namespace Media.Infrastructure.Data;
@@ -14,6 +15,8 @@ internal sealed class MediaDbContext(DbContextOptions<MediaDbContext> options) :
     public DbSet<MediaVariant> MediaVariants => Set<MediaVariant>();
 
     public DbSet<MediaReference> MediaReferences => Set<MediaReference>();
+
+    public DbSet<IdempotencyKeyRecord> IdempotencyKeys => Set<IdempotencyKeyRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
