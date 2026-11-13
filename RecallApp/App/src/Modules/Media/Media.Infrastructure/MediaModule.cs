@@ -3,10 +3,12 @@ using Common.Application.Behaviors;
 using Common.Infrastructure.Http;
 using MediatR;
 using Media.Application.Abstractions;
+using Media.Application.Images;
 using Media.Application.Objects;
 using Media.Application.Storage;
 using Media.Infrastructure.Data;
 using Media.Infrastructure.Data.Idempotency;
+using Media.Infrastructure.Images;
 using Media.Infrastructure.Storage;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -39,6 +41,7 @@ public static class MediaModule
 
         services.AddScoped<IMediaObjectRepository, MediaObjectRepository>();
         services.AddScoped<IMediaIdempotencyStore, IdempotencyStore>();
+        services.AddSingleton<IImageProcessor, SkiaImageProcessor>();
 
         services.AddOptions<S3Options>()
             .BindConfiguration(S3Options.SectionName)
