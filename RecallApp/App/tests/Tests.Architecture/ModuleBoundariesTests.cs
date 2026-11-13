@@ -2,6 +2,9 @@ using System.Reflection;
 using System.Xml.Linq;
 using Accounts.Infrastructure;
 using Accounts.Infrastructure.Data;
+using Media.Domain.Objects;
+using Media.Infrastructure;
+using Media.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Sets.Domain.Sets;
@@ -17,6 +20,7 @@ public sealed class ModuleBoundariesTests
 {
     private const string AccountsModule = "Accounts";
     private const string SetsModuleName = "Sets";
+    private const string MediaModuleName = "Media";
 
     private static readonly Dictionary<string, ProjectRule> Rules = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -30,7 +34,12 @@ public sealed class ModuleBoundariesTests
         ["Sets.Application"] = new(SetsModuleName, ["Sets.Domain", "Common.Application"]),
         ["Sets.Infrastructure"] = new(SetsModuleName,
             ["Sets.Application", "Sets.Contracts", "Common.Application", "Common.Infrastructure"]),
-        ["Api"] = new(null, ["Accounts.Infrastructure", "Sets.Infrastructure", "Common.Infrastructure"]),
+        ["Media.Domain"] = new(MediaModuleName, []),
+        ["Media.Contracts"] = new(MediaModuleName, ["Common.Application"]),
+        ["Media.Application"] = new(MediaModuleName, ["Media.Domain", "Media.Contracts", "Common.Application"]),
+        ["Media.Infrastructure"] = new(MediaModuleName,
+            ["Media.Application", "Media.Contracts", "Common.Application", "Common.Infrastructure"]),
+        ["Api"] = new(null, ["Accounts.Infrastructure", "Sets.Infrastructure", "Media.Infrastructure", "Common.Infrastructure"]),
     };
 
     [Fact]
@@ -52,6 +61,7 @@ public sealed class ModuleBoundariesTests
     {
         Assert.Equal([typeof(AccountsModule)], ExportedTypes(typeof(AccountsModule).Assembly));
         Assert.Equal([typeof(SetsModule)], ExportedTypes(typeof(SetsModule).Assembly));
+        Assert.Equal([typeof(MediaModule)], ExportedTypes(typeof(MediaModule).Assembly));
     }
 
     [Fact]
@@ -79,6 +89,26 @@ public sealed class ModuleBoundariesTests
         // Владелец — uuid без FK на accounts.users: межсхемных связей нет (ADR 0036).
         Assert.Empty(set.GetForeignKeys());
         Assert.Equal("owner_id", set.FindProperty(nameof(Set.OwnerId))!.GetColumnName());
+    }
+
+    [Fact]
+    public void MediaDbContext_Model_AllEntitiesAndForeignKeysInMediaSchema() =>
+        AssertAllEntitiesInSchema(
+            () => new MediaDbContext(
+                new DbContextOptionsBuilder<MediaDbContext>().UseNpgsql("Host=localhost;Database=unused").Options),
+            "media");
+
+    /// <summary>Якорь значений из ontology/media.md: политика загрузки и ссылки на чтение.</summary>
+    [Fact]
+    public void MediaConstraints_Values_MatchOntology()
+    {
+        Assert.Equal(10L * 1024 * 1024, MediaConstraints.MaxUploadBytes);
+        Assert.Equal(25_000_000, MediaConstraints.MaxPixels);
+        Assert.Equal(8000, MediaConstraints.MaxSide);
+        Assert.Equal(400, MediaConstraints.ThumbMaxSide);
+        Assert.Equal(1600, MediaConstraints.DisplayMaxSide);
+        Assert.Equal(TimeSpan.FromMinutes(10), MediaConstraints.UploadWindow);
+        Assert.Equal(TimeSpan.FromMinutes(15), MediaConstraints.ReadLinkLifetime);
     }
 
     /// <summary>
