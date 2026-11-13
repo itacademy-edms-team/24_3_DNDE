@@ -12,18 +12,49 @@ internal sealed class MediaObjectConfiguration : IEntityTypeConfiguration<MediaO
 
         builder.HasKey(media => media.Id);
 
-        builder.Property(media => media.OwnerId).IsRequired();
+        builder.Property(media => media.Id)
+            .HasColumnName("id");
+        builder.Property(media => media.OwnerId)
+            .HasColumnName("owner_id")
+            .IsRequired();
         builder.Property(media => media.Status)
+            .HasColumnName("status")
             .HasConversion<string>()
             .HasMaxLength(16)
             .IsRequired();
-        builder.Property(media => media.DeclaredContentType).HasMaxLength(64).IsRequired();
-        builder.Property(media => media.SourceFormat).HasConversion<string>().HasMaxLength(16);
-        builder.Property(media => media.FailureCode).HasMaxLength(64);
-        builder.Property(media => media.FailureDescription).HasMaxLength(512);
-        builder.Property(media => media.UploadExpiresAt).IsRequired();
-        builder.Property(media => media.CreatedAt).IsRequired();
-        builder.Property(media => media.UpdatedAt).IsRequired();
+        builder.Property(media => media.DeclaredContentType)
+            .HasColumnName("declared_content_type")
+            .HasMaxLength(64)
+            .IsRequired();
+        builder.Property(media => media.SourceFormat)
+            .HasColumnName("source_format")
+            .HasConversion<string>()
+            .HasMaxLength(16);
+        builder.Property(media => media.SourceSizeBytes)
+            .HasColumnName("source_size_bytes");
+        builder.Property(media => media.Width)
+            .HasColumnName("width");
+        builder.Property(media => media.Height)
+            .HasColumnName("height");
+        builder.Property(media => media.FailureCode)
+            .HasColumnName("failure_code")
+            .HasMaxLength(64);
+        builder.Property(media => media.FailureDescription)
+            .HasColumnName("failure_description")
+            .HasMaxLength(512);
+        builder.Property(media => media.UploadExpiresAt)
+            .HasColumnName("upload_expires_at")
+            .IsRequired();
+        builder.Property(media => media.CreatedAt)
+            .HasColumnName("created_at")
+            .IsRequired();
+        builder.Property(media => media.UpdatedAt)
+            .HasColumnName("updated_at")
+            .IsRequired();
+        builder.Property(media => media.ReadyAt)
+            .HasColumnName("ready_at");
+        builder.Property(media => media.DeletedAt)
+            .HasColumnName("deleted_at");
 
         // Список своих файлов: свежие первыми.
         builder.HasIndex(media => new { media.OwnerId, media.CreatedAt })

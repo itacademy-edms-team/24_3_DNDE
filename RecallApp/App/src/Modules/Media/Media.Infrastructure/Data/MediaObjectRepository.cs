@@ -1,6 +1,7 @@
+using ErrorOr;
 using Media.Application.Abstractions;
 using Media.Domain.Objects;
-using Media.Infrastructure.Data;
+using Media.Domain.References;
 using Microsoft.EntityFrameworkCore;
 
 namespace Media.Infrastructure.Data;
@@ -20,6 +21,32 @@ internal sealed class MediaObjectRepository(MediaDbContext context) : IMediaObje
         context.MediaObjects
             .Include(media => media.Variants)
             .SingleOrDefaultAsync(media => media.Id == mediaId, cancellationToken);
+
+    public Task<int> CountReferencesAsync(Guid mediaId, CancellationToken cancellationToken) =>
+        context.Set<MediaReference>().CountAsync(reference => reference.MediaId == mediaId, cancellationToken);
+
+    public async Task<TResult> ExecuteDeletionAsync<TResult>(
+        MediaObject media,
+        Func<CancellationToken, Task<TResult>> action,
+        CancellationToken cancellationToken)
+    {
+        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+
+        // Блокировка строки файла: синхронизация ссылок, читающая статус, дождётся коммита.
+        await context.Database.ExecuteSqlRawAsync(
+            "SELECT 1 FROM media.media_objects WHERE id = {0} FOR UPDATE",
+            [media.Id],
+            cancellationToken);
+
+        var result = await action(cancellationToken);
+
+        if (result is IErrorOr { IsError: true })
+            await transaction.RollbackAsync(cancellationToken);
+        else
+            await transaction.CommitAsync(cancellationToken);
+
+        return result;
+    }
 
     public void Add(MediaObject media) => context.MediaObjects.Add(media);
 

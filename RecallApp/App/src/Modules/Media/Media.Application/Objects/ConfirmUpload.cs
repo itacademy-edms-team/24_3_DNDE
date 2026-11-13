@@ -24,12 +24,14 @@ public sealed record MediaResponse(
     Guid MediaId,
     MediaStatus Status,
     string? FailureCode,
+    DateTime CreatedAt,
     IReadOnlyList<MediaVariantInfo> Variants)
 {
     public static MediaResponse From(MediaObject media) => new(
         media.Id,
         media.Status,
         media.FailureCode,
+        media.CreatedAt,
         media.Variants
             .OrderBy(variant => variant.Variant)
             .Select(variant => new MediaVariantInfo(variant.Variant, variant.Width, variant.Height, variant.SizeBytes, variant.ObjectKey.Value))

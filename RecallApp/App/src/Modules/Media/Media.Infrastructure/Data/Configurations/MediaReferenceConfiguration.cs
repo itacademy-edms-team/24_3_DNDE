@@ -13,10 +13,21 @@ internal sealed class MediaReferenceConfiguration : IEntityTypeConfiguration<Med
 
         builder.HasKey(reference => reference.Id);
 
-        builder.Property(reference => reference.MediaId).IsRequired();
-        builder.Property(reference => reference.Reference).HasMaxLength(200).IsRequired();
-        builder.Property(reference => reference.CreatedAt).IsRequired();
-        builder.Property(reference => reference.UpdatedAt).IsRequired();
+        builder.Property(reference => reference.Id)
+            .HasColumnName("id");
+        builder.Property(reference => reference.MediaId)
+            .HasColumnName("media_id")
+            .IsRequired();
+        builder.Property(reference => reference.Reference)
+            .HasColumnName("reference")
+            .HasMaxLength(200)
+            .IsRequired();
+        builder.Property(reference => reference.CreatedAt)
+            .HasColumnName("created_at")
+            .IsRequired();
+        builder.Property(reference => reference.UpdatedAt)
+            .HasColumnName("updated_at")
+            .IsRequired();
 
         // Слот существует в одном экземпляре: перезапись вместо накопления дублей.
         builder.HasIndex(reference => reference.Reference)

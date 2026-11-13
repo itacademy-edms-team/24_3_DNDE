@@ -148,7 +148,7 @@ public sealed class MediaConfirmTests : IClassFixture<AppFactory>
         {
             var context = scope.ServiceProvider.GetRequiredService<MediaDbContext>();
             await context.Database.ExecuteSqlRawAsync(
-                "UPDATE media.media_objects SET \"UploadExpiresAt\" = now() - interval '1 minute' WHERE \"Id\" = {0}",
+                "UPDATE media.media_objects SET upload_expires_at = now() - interval '1 minute' WHERE id = {0}",
                 mediaId);
         }
 
