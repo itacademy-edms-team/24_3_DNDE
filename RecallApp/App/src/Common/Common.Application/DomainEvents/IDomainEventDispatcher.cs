@@ -1,3 +1,5 @@
+using ErrorOr;
+
 namespace Common.Application.DomainEvents;
 
 /// <summary>
@@ -6,5 +8,5 @@ namespace Common.Application.DomainEvents;
 /// </summary>
 public interface IDomainEventDispatcher
 {
-    Task DispatchAsync(IReadOnlyCollection<IDomainEvent> events, CancellationToken cancellationToken);
+    Task<ErrorOr<Success>> DispatchAsync(IReadOnlyCollection<IDomainEvent> events, CancellationToken cancellationToken);
 }

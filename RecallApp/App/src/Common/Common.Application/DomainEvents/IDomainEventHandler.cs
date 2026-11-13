@@ -1,3 +1,5 @@
+using ErrorOr;
+
 namespace Common.Application.DomainEvents;
 
 /// <summary>
@@ -8,5 +10,5 @@ namespace Common.Application.DomainEvents;
 /// <typeparam name="TEvent">Тип события.</typeparam>
 public interface IDomainEventHandler<in TEvent> where TEvent : IDomainEvent
 {
-    Task HandleAsync(TEvent domainEvent, CancellationToken cancellationToken);
+    Task<ErrorOr<Success>> HandleAsync(TEvent domainEvent, CancellationToken cancellationToken);
 }
