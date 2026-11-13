@@ -14,7 +14,6 @@ using Media.Infrastructure.Contracts;
 using Media.Infrastructure.Data;
 using Media.Infrastructure.Data.Cleanup;
 using Media.Infrastructure.Data.Idempotency;
-using Media.Infrastructure.DomainEvents;
 using Media.Infrastructure.Http;
 using Media.Infrastructure.Images;
 using Media.Infrastructure.Outbox;
@@ -52,7 +51,7 @@ public static class MediaModule
         services.AddScoped<IMediaIdempotencyStore, IdempotencyStore>();
         services.AddScoped<IUploadIdempotencyStore, LeasedIdempotencyStore>();
         services.AddScoped<IMediaReferenceRepository, MediaReferenceRepository>();
-        services.AddScoped<IDomainEventHandler<MediaReferencesChanged>, MediaReferencesChangedHandler>();
+        services.AddDomainEventHandlers(typeof(MediaModule).Assembly);
         services.AddScoped<IOutboxMessageHandler, MediaReferencesSyncHandler>();
 
         // Контракт для других модулей: проверка готовности и выдача подписанных ссылок.
