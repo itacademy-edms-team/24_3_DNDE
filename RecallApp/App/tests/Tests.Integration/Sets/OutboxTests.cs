@@ -2,7 +2,7 @@ using System.Text.Json;
 using Common.Application.Outbox;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Sets.Application.Abstractions;
+using Sets.Domain.Sets;
 using Sets.Infrastructure.Data;
 using Sets.Infrastructure.Data.Outbox;
 using Tests.Integration.Helpers;
@@ -10,155 +10,143 @@ using Tests.Integration.Helpers;
 namespace Tests.Integration.Sets;
 
 /// <summary>
-/// Transactional outbox модуля Sets (ADR 0040): запись в одной транзакции с бизнес-изменением,
-/// доставка зарегистрированным обработчикам, повторы с паузой и разбор «отравленных» сообщений.
-/// Таблица outbox общая для всего прогона, поэтому каждый тест помечает свои сообщения уникальным
-/// идентификатором - в `type` для проверок записи и по `id` для проверок доставки - а не глобальными счётчиками.
+/// Outbox на доменных событиях: interceptor материализует события в строки, воркер доставляет их
+/// обработчикам и ведёт жизненный цикл pending/processed/retrying/dead (ADR 0040).
+/// Таблица общая для прогона, поэтому тест находит своё сообщение по id (jsonb не ищется LIKE).
 /// </summary>
 public sealed class OutboxTests : IClassFixture<AppFactory>
 {
-    private const string NoHandlerPrefix = "tests.outbox.orphan.";
-
     private readonly AppFactory _factory;
 
     public OutboxTests(AppFactory factory) => _factory = factory;
 
     [DatabaseFact]
-    public async Task Enqueue_InsideRolledBackTransaction_LeavesNoMessage()
+    public async Task RegisterDomainEvent_OnSave_MaterializesOutboxRow()
     {
-        var type = UniqueType();
-
+        var marker = UniqueMarker();
         using var scope = _factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<SetsDbContext>();
-        var writer = scope.ServiceProvider.GetRequiredService<IOutboxWriter>();
 
-        await using (var transaction = await context.Database.BeginTransactionAsync())
-        {
-            writer.Enqueue(type, new { marker = "rolled-back" });
-            await context.SaveChangesAsync();
-            await transaction.RollbackAsync();
-        }
-
-        Assert.False(await TypeExistsAsync(type));
-    }
-
-    [DatabaseFact]
-    public async Task Enqueue_WithBusinessChange_PersistsPendingMessage()
-    {
-        var type = UniqueType();
-
-        using var scope = _factory.Services.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<SetsDbContext>();
-        var writer = scope.ServiceProvider.GetRequiredService<IOutboxWriter>();
-
-        writer.Enqueue(type, new { marker = "persisted" });
+        var set = Set.Create(Guid.NewGuid(), "Набор", null, DateTime.UtcNow).Value;
+        set.RegisterDomainEvent(new OutboxTestEvent(marker));
+        context.Sets.Add(set);
         await context.SaveChangesAsync();
 
-        var message = await FindByTypeAsync(type);
-        Assert.Null(message.ProcessedAt);
-        Assert.Equal(0, message.Attempts);
+        var row = await context.OutboxMessages
+            .Where(message => message.Type == "tests.outbox.record")
+            .OrderByDescending(message => message.Id)
+            .FirstAsync();
+
+        Assert.Equal(OutboxStatus.Pending, row.Status);
+        Assert.Equal(OutboxLanes.Fast, row.Lane);
+        Assert.Equal(1, row.Version);
+
+        using var payload = JsonDocument.Parse(row.Payload);
+        Assert.Equal(marker, payload.RootElement.GetProperty("marker").GetString());
     }
 
     [DatabaseFact]
-    public async Task ProcessBatch_RegisteredHandler_MarksMessageDelivered()
+    public async Task Processor_DeliversMessage_MarksProcessedAndInvokesHandler()
     {
-        var marker = UniqueMarker("delivered");
-        var messageId = await AddMessageAsync(RecordingOutboxHandler.Type, new { marker });
+        var marker = UniqueMarker();
+        var id = await AddMessageAsync("tests.outbox.record", new OutboxTestEvent(marker));
 
-        await ProcessAsync();
+        await DrainAsync(OutboxLanes.Fast);
 
-        var message = await FindByIdAsync(messageId);
-        Assert.NotNull(message.ProcessedAt);
-        Assert.Equal(0, message.Attempts);
+        var row = await FindByIdAsync(id);
+        Assert.Equal(OutboxStatus.Processed, row.Status);
+        Assert.Equal(0, row.Attempts);
 
         var recorder = Recorder();
-        Assert.Contains(recorder.Payloads, payload => payload.Contains(marker));
+        Assert.Contains(recorder.Markers, recorded => recorded == marker);
     }
 
     [DatabaseFact]
-    public async Task ProcessBatch_HandlerFails_SchedulesRetryWithBackoff()
+    public async Task Processor_HandlerFails_RetriesWithBackoff()
     {
-        var messageId = await AddMessageAsync(FailingOutboxHandler.Type, new { marker = "failing" });
+        var id = await AddMessageAsync("tests.outbox.fail", new OutboxFailingEvent(UniqueMarker()));
 
-        await ProcessAsync();
+        await DrainAsync(OutboxLanes.Fast);
 
-        var message = await FindByIdAsync(messageId);
-        Assert.Null(message.ProcessedAt);
-        Assert.Null(message.AbandonedAt);
-        Assert.Equal(1, message.Attempts);
-        Assert.True(message.NextAttemptAt > DateTime.UtcNow);
-        Assert.Contains("Test.OutboxFailed", message.LastError);
+        var row = await FindByIdAsync(id);
+        Assert.Equal(OutboxStatus.Retrying, row.Status);
+        Assert.Equal(1, row.Attempts);
+        Assert.True(row.NextAttemptAt > DateTime.UtcNow);
+        Assert.Contains("Test.OutboxFailed", row.LastError);
     }
 
     [DatabaseFact]
-    public async Task ProcessBatch_AttemptsExhausted_MarksMessageAbandoned()
+    public async Task Processor_AttemptsExhausted_MarksDead()
     {
-        var messageId = await AddMessageAsync(FailingOutboxHandler.Type, new { marker = "abandoned" }, attempts: 9);
+        var id = await AddMessageAsync("tests.outbox.fail", new OutboxFailingEvent(UniqueMarker()), attempts: 9);
 
-        await ProcessAsync();
+        await DrainAsync(OutboxLanes.Fast);
 
-        var message = await FindByIdAsync(messageId);
-        Assert.NotNull(message.AbandonedAt);
-        Assert.Equal(10, message.Attempts);
+        var row = await FindByIdAsync(id);
+        Assert.Equal(OutboxStatus.Dead, row.Status);
+        Assert.Equal(10, row.Attempts);
     }
 
     [DatabaseFact]
-    public async Task ProcessBatch_MessageNotDueYet_IsNotDelivered()
+    public async Task Processor_MessageNotDueYet_IsSkipped()
     {
-        var messageId = await AddMessageAsync(
-            RecordingOutboxHandler.Type,
-            new { marker = "future" },
-            nextAttemptAt: DateTime.UtcNow.AddHours(1));
+        var id = await AddMessageAsync("tests.outbox.record", new OutboxTestEvent(UniqueMarker()), nextAttemptAt: DateTime.UtcNow.AddHours(1));
 
-        await ProcessAsync();
+        await DrainAsync(OutboxLanes.Fast);
 
-        var message = await FindByIdAsync(messageId);
-        Assert.Null(message.ProcessedAt);
-        Assert.Equal(0, message.Attempts);
+        var row = await FindByIdAsync(id);
+        Assert.Equal(OutboxStatus.Pending, row.Status);
+    }
+
+    [DatabaseFact]
+    public async Task Processor_OtherLane_IsSkipped()
+    {
+        var id = await AddMessageAsync("tests.outbox.record", new OutboxTestEvent(UniqueMarker()), lane: OutboxLanes.Slow);
+
+        await DrainAsync(OutboxLanes.Fast);
+
+        var row = await FindByIdAsync(id);
+        Assert.Equal(OutboxStatus.Pending, row.Status);
     }
 
     private RecordingOutboxHandler Recorder()
     {
         using var scope = _factory.Services.CreateScope();
-        return scope.ServiceProvider.GetServices<IOutboxMessageHandler>()
-            .OfType<RecordingOutboxHandler>()
-            .Single();
+        return scope.ServiceProvider.GetRequiredService<RecordingOutboxHandler>();
     }
 
-    /// <summary>
-    /// Опустошает очередь: в общем прогоне таблица накапливает сообщения других тестов,
-    /// поэтому одного батча может не хватить, чтобы дойти до сообщения этого теста.
-    /// Цикл идёт, пока есть готовые к доставке; сообщения без обработчика и отказавшие
-    /// уходят в отложенную попытку и больше не попадают в выборку текущего прохода.
-    /// </summary>
-    private async Task ProcessAsync()
+    /// <summary>Опустошает очередь полосы: таблица общая, одного батча может не хватить до своего сообщения.</summary>
+    private async Task DrainAsync(string lane)
     {
         using var scope = _factory.Services.CreateScope();
         var processor = scope.ServiceProvider.GetRequiredService<OutboxProcessor>();
 
         for (var pass = 0; pass < 100; pass++)
-        {
-            if (await processor.ProcessBatchAsync(batchSize: 50, CancellationToken.None) == 0)
+            if (await processor.ProcessBatchAsync(lane, batchSize: 50, maxAttempts: 10, CancellationToken.None) == 0)
                 return;
-        }
     }
 
     private async Task<long> AddMessageAsync(
         string type,
         object payload,
+        string lane = OutboxLanes.Fast,
         int attempts = 0,
         DateTime? nextAttemptAt = null)
     {
         using var scope = _factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<SetsDbContext>();
+        var now = DateTime.UtcNow;
 
         var message = new OutboxMessage
         {
             Type = type,
+            Version = 1,
+            Lane = lane,
             Payload = JsonSerializer.Serialize(payload, new JsonSerializerOptions(JsonSerializerDefaults.Web)),
-            CreatedAt = DateTime.UtcNow,
-            NextAttemptAt = nextAttemptAt ?? DateTime.UtcNow,
+            Status = OutboxStatus.Pending,
             Attempts = attempts,
+            NextAttemptAt = nextAttemptAt ?? now,
+            CreatedAt = now,
         };
 
         context.OutboxMessages.Add(message);
@@ -173,22 +161,5 @@ public sealed class OutboxTests : IClassFixture<AppFactory>
         return await context.OutboxMessages.SingleAsync(row => row.Id == id);
     }
 
-    private async Task<OutboxMessage> FindByTypeAsync(string type)
-    {
-        using var scope = _factory.Services.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<SetsDbContext>();
-        return await context.OutboxMessages.SingleAsync(row => row.Type == type);
-    }
-
-    private async Task<bool> TypeExistsAsync(string type)
-    {
-        using var scope = _factory.Services.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<SetsDbContext>();
-        return await context.OutboxMessages.AnyAsync(row => row.Type == type);
-    }
-
-    /// <summary>Тип без зарегистрированного обработчика: сообщение никуда не доставится, только проверяется запись.</summary>
-    private static string UniqueType() => NoHandlerPrefix + Guid.NewGuid().ToString("N");
-
-    private static string UniqueMarker(string suffix) => $"outbox-{suffix}-{Guid.NewGuid():N}";
+    private static string UniqueMarker() => $"marker-{Guid.NewGuid():N}";
 }

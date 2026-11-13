@@ -20,7 +20,6 @@ public sealed class UpdateElementHandler(
     ISetRepository sets,
     IElementRepository elements,
     IMediaReadiness mediaReadiness,
-    IOutboxWriter outbox,
     ICurrentUser currentUser,
     TimeProvider clock)
     : IRequestHandler<UpdateElementCommand, ErrorOr<ElementResponse>>
@@ -62,9 +61,8 @@ public sealed class UpdateElementHandler(
 
         // Перезапись слота: тот же `reference`, другой файл — старый становится неиспользуемым.
         var scope = ElementMediaSlots.ElementScope(command.SetId, element.Id);
-        outbox.Enqueue(
-            MediaOutboxMessages.ReferencesSync,
-            new MediaReferencesSyncPayload(ownerId, scope, ElementMediaSlots.For(payload.Value, scope)));
+        element.RegisterDomainEvent(new MediaReferencesChanged(
+            ownerId, scope, ElementMediaSlots.For(payload.Value, scope)));
 
         await elements.SaveChangesAsync(cancellationToken);
 

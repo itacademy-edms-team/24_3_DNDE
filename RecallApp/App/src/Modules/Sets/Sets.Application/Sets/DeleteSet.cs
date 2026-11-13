@@ -19,7 +19,6 @@ public sealed record DeleteSetCommand(Guid Id) : IRequest<ErrorOr<Deleted>>;
 public sealed class DeleteSetHandler(
     ISetRepository sets,
     IElementRepository elements,
-    IOutboxWriter outbox,
     ICurrentUser currentUser,
     TimeProvider clock)
     : IRequestHandler<DeleteSetCommand, ErrorOr<Deleted>>
@@ -43,9 +42,8 @@ public sealed class DeleteSetHandler(
                 await elements.MarkAllDeletedAsync(set.Id, now, token);
 
                 // Снимаем все ссылки набора одной областью: Media удалит всё с этим префиксом (ADR 0040).
-                outbox.Enqueue(
-                    MediaOutboxMessages.ReferencesSync,
-                    new MediaReferencesSyncPayload(ownerId, ElementMediaSlots.SetScope(set.Id), []));
+                set.RegisterDomainEvent(new MediaReferencesChanged(
+                    ownerId, ElementMediaSlots.SetScope(set.Id), []));
 
                 await sets.SaveChangesAsync(token);
                 return Result.Deleted;

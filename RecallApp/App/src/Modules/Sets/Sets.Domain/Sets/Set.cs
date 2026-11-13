@@ -1,3 +1,4 @@
+using Common.Domain.DomainEvents;
 using ErrorOr;
 
 namespace Sets.Domain.Sets;
@@ -5,7 +6,7 @@ namespace Sets.Domain.Sets;
 /// <summary>
 /// Набор - коллекция элементов, принадлежащая одному пользователю (владельцу).
 /// </summary>
-public sealed class Set
+public sealed class Set : HasDomainEventsBase
 {
     private Set() { }
 

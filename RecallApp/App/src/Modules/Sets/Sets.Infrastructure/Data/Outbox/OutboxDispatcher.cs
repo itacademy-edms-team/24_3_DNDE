@@ -6,10 +6,12 @@ using Microsoft.Extensions.Options;
 namespace Sets.Infrastructure.Data.Outbox;
 
 /// <summary>
-/// Фоновый диспетчер outbox: периодически доставляет сообщения зарегистрированным обработчикам.
+/// Фоновый воркер одной полосы outbox: периодически доставляет готовые сообщения своей полосы.
+/// Регистрируется по экземпляру на полосу (fast и slow), чтобы медленная полоса не блокировала быструю.
 /// </summary>
 internal sealed class OutboxDispatcher(
     IServiceScopeFactory scopeFactory,
+    string lane,
     IOptions<OutboxOptions> options,
     ILogger<OutboxDispatcher> logger)
     : BackgroundService
@@ -18,7 +20,7 @@ internal sealed class OutboxDispatcher(
     {
         var settings = options.Value;
 
-        // В тестах диспетчер выключен: прогон вызывает обработку явно, без гонки с фоновым циклом.
+        // В тестах воркер выключен: прогон вызывает обработку явно, без гонки с фоновым циклом.
         if (!settings.Enabled)
             return;
 
@@ -30,10 +32,11 @@ internal sealed class OutboxDispatcher(
             {
                 using var scope = scopeFactory.CreateScope();
                 var processor = scope.ServiceProvider.GetRequiredService<OutboxProcessor>();
-                var delivered = await processor.ProcessBatchAsync(settings.BatchSize, stoppingToken);
+                var delivered = await processor.ProcessBatchAsync(
+                    lane, settings.BatchSize, settings.MaxAttempts, stoppingToken);
 
                 if (delivered > 0)
-                    logger.LogInformation("Outbox delivered {Count} messages", delivered);
+                    logger.LogInformation("Outbox lane {Lane} delivered {Count} messages", lane, delivered);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -41,7 +44,7 @@ internal sealed class OutboxDispatcher(
             }
             catch (Exception exception)
             {
-                logger.LogError(exception, "Outbox dispatch failed");
+                logger.LogError(exception, "Outbox lane {Lane} dispatch failed", lane);
             }
 
             try

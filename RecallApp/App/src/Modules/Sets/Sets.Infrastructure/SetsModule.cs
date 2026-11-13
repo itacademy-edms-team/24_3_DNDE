@@ -1,5 +1,6 @@
 using Common.Application.Behaviors;
-using Common.Application.Idempotency;
+using Common.Application.Outbox;
+using Common.Infrastructure.DomainEvents;
 using Common.Infrastructure.Http;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
@@ -27,8 +28,10 @@ public static class SetsModule
     /// <summary>Регистрирует модуль на общем runtime-пуле соединений (квота выдаётся хостом).</summary>
     public static IServiceCollection AddSets(this IServiceCollection services, NpgsqlDataSource dataSource)
     {
-        services.AddDbContext<SetsDbContext>(options => options.UseNpgsql(dataSource,
-            pg => pg.MigrationsHistoryTable("__EFMigrationsHistory", "sets")));
+        services.AddSingleton<DomainEventsToOutboxInterceptor>();
+        services.AddDbContext<SetsDbContext>((serviceProvider, options) => options
+            .UseNpgsql(dataSource, pg => pg.MigrationsHistoryTable("__EFMigrationsHistory", "sets"))
+            .AddInterceptors(serviceProvider.GetRequiredService<DomainEventsToOutboxInterceptor>()));
 
         services.AddMediatR(configuration =>
         {
@@ -39,12 +42,17 @@ public static class SetsModule
         services.AddScoped<ISetRepository, SetRepository>();
         services.AddScoped<IElementRepository, ElementRepository>();
         services.AddScoped<ISetsIdempotencyStore, IdempotencyStore>();
-        services.AddScoped<IOutboxWriter, OutboxWriter>();
         services.AddScoped<OutboxProcessor>();
 
-        // Доставка межмодульных сообщений: обработчики регистрируются модулями-потребителями (ADR 0040).
+        // Доменные события -> MediatR: диспетчер и open-generic обработчик - единственные точки знания MediatR.
+        services.AddDomainEventDispatch();
+
+        // Доставка outbox по полосам: fast и slow раздельно, чтобы медленная не блокировала быструю (ADR 0040).
         services.AddOptions<OutboxOptions>().BindConfiguration("Sets:Outbox");
-        services.AddHostedService<OutboxDispatcher>();
+        services.AddHostedService(serviceProvider =>
+            ActivatorUtilities.CreateInstance<OutboxDispatcher>(serviceProvider, OutboxLanes.Fast));
+        services.AddHostedService(serviceProvider =>
+            ActivatorUtilities.CreateInstance<OutboxDispatcher>(serviceProvider, OutboxLanes.Slow));
 
         // Фоновая чистка истёкших ключей.
         services.AddOptions<IdempotencyCleanupOptions>().BindConfiguration("Sets:Idempotency");

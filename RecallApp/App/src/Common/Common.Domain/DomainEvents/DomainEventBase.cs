@@ -7,9 +7,9 @@ namespace Common.Domain.DomainEvents;
 /// </summary>
 public abstract record DomainEventBase : IDomainEvent
 {
-    public Guid EventId { get; } = Guid.NewGuid();
+    public Guid EventId { get; init; } = Guid.NewGuid();
 
-    public DateTime DateOccurred { get; } = DateTime.UtcNow;
+    public DateTime DateOccurred { get; init; } = DateTime.UtcNow;
 
     public abstract string EventType { get; }
 }

@@ -1,4 +1,4 @@
-using Common.Application.Outbox;
+using Common.Application.DomainEvents;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -25,6 +25,9 @@ public sealed class AppFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        // Типы тестовых событий нужны воркеру для десериализации; регистрация идемпотентна.
+        DomainEventTypeRegistry.Register("tests.outbox.record", typeof(OutboxTestEvent));
+        DomainEventTypeRegistry.Register("tests.outbox.fail", typeof(OutboxFailingEvent));
         // Env-first: в контейнере (app-tests) строки подключения и authority приходят из compose,
         // локально подменяем заглушками, чтобы хост стартовал без БД.
         if (Environment.GetEnvironmentVariable("ConnectionStrings__Database") is null)
@@ -48,8 +51,9 @@ public sealed class AppFactory : WebApplicationFactory<Program>
             .UseEnvironment("Development")
             .UseSetting("Sets:Outbox:Enabled", "false")
             .ConfigureServices(services => services
-                .AddSingleton<IOutboxMessageHandler, RecordingOutboxHandler>()
-                .AddSingleton<IOutboxMessageHandler, FailingOutboxHandler>()
+                .AddSingleton<RecordingOutboxHandler>()
+                .AddSingleton<IDomainEventHandler<OutboxTestEvent>>(sp => sp.GetRequiredService<RecordingOutboxHandler>())
+                .AddSingleton<IDomainEventHandler<OutboxFailingEvent>, FailingOutboxHandler>()
                 .AddAuthentication(options =>
                 {
                     options.DefaultAuthenticateScheme = TestAuthScheme;

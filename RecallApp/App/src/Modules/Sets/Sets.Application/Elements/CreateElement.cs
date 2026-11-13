@@ -34,7 +34,6 @@ public sealed class CreateElementHandler(
     IElementRepository elements,
     ISetsIdempotencyStore idempotency,
     IMediaReadiness mediaReadiness,
-    IOutboxWriter outbox,
     ICurrentUser currentUser,
     TimeProvider clock)
     : IRequestHandler<CreateElementCommand, ErrorOr<ElementResponse>>
@@ -100,11 +99,10 @@ public sealed class CreateElementHandler(
                     elements.Add(created.Value);
                     set.MarkContentChanged(now);
 
-                    // Ссылки на медиа и элемент сохраняются одной транзакцией (ADR 0040).
+                    // Событие регистрируется на сущность, а в outbox его превратит interceptor (ADR 0040).
                     var scope = ElementMediaSlots.ElementScope(command.SetId, created.Value.Id);
-                    outbox.Enqueue(
-                        MediaOutboxMessages.ReferencesSync,
-                        new MediaReferencesSyncPayload(ownerId, scope, ElementMediaSlots.For(payload.Value, scope)));
+                    created.Value.RegisterDomainEvent(new MediaReferencesChanged(
+                        ownerId, scope, ElementMediaSlots.For(payload.Value, scope)));
 
                     await elements.SaveChangesAsync(innerToken);
 

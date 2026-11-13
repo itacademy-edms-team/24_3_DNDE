@@ -175,22 +175,44 @@ namespace Sets.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("Id"));
 
-                    b.Property<DateTime?>("AbandonedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("abandoned_at");
-
                     b.Property<int>("Attempts")
                         .HasColumnType("integer")
                         .HasColumnName("attempts");
+
+                    b.Property<string>("Checkpoint")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("checkpoint");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<DateTime?>("FinishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("finished_at");
+
+                    b.Property<string>("Lane")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("lane");
+
                     b.Property<string>("LastError")
                         .HasMaxLength(1024)
                         .HasColumnType("character varying(1024)")
                         .HasColumnName("last_error");
+
+                    b.Property<DateTime?>("LastProcessedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_processed_at");
+
+                    b.Property<Guid?>("LeaseOwner")
+                        .HasColumnType("uuid")
+                        .HasColumnName("lease_owner");
+
+                    b.Property<DateTime?>("LeaseUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("lease_until");
 
                     b.Property<DateTime>("NextAttemptAt")
                         .HasColumnType("timestamp with time zone")
@@ -201,9 +223,11 @@ namespace Sets.Infrastructure.Migrations
                         .HasColumnType("jsonb")
                         .HasColumnName("payload");
 
-                    b.Property<DateTime?>("ProcessedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("processed_at");
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("status");
 
                     b.Property<string>("Type")
                         .IsRequired()
@@ -211,11 +235,15 @@ namespace Sets.Infrastructure.Migrations
                         .HasColumnType("character varying(128)")
                         .HasColumnName("type");
 
+                    b.Property<int>("Version")
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("NextAttemptAt", "Id")
+                    b.HasIndex("Lane", "NextAttemptAt", "Id")
                         .HasDatabaseName("ix_outbox_messages_pending")
-                        .HasFilter("processed_at IS NULL AND abandoned_at IS NULL");
+                        .HasFilter("status IN ('pending', 'retrying')");
 
                     b.ToTable("outbox_messages", "sets");
                 });

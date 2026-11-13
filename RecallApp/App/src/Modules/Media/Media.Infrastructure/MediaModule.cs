@@ -1,7 +1,6 @@
 using Amazon.S3;
 using Common.Application.Behaviors;
 using Common.Application.DomainEvents;
-using Common.Application.Outbox;
 using Common.Infrastructure.Http;
 using MediatR;
 using Media.Application.Abstractions;
@@ -9,14 +8,12 @@ using Media.Application.Images;
 using Media.Application.Objects;
 using Media.Application.Storage;
 using Media.Contracts;
-using Media.Domain.Objects;
 using Media.Infrastructure.Contracts;
 using Media.Infrastructure.Data;
 using Media.Infrastructure.Data.Cleanup;
 using Media.Infrastructure.Data.Idempotency;
 using Media.Infrastructure.Http;
 using Media.Infrastructure.Images;
-using Media.Infrastructure.Outbox;
 using Media.Infrastructure.Storage;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -52,7 +49,6 @@ public static class MediaModule
         services.AddScoped<IUploadIdempotencyStore, LeasedIdempotencyStore>();
         services.AddScoped<IMediaReferenceRepository, MediaReferenceRepository>();
         services.AddDomainEventHandlers(typeof(MediaModule).Assembly);
-        services.AddScoped<IOutboxMessageHandler, MediaReferencesSyncHandler>();
 
         // Контракт для других модулей: проверка готовности и выдача подписанных ссылок.
         services.AddScoped<IMediaReadiness, MediaReadiness>();

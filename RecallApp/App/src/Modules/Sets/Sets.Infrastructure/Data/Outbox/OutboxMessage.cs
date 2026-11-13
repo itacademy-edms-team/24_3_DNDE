@@ -1,29 +1,43 @@
 namespace Sets.Infrastructure.Data.Outbox;
 
 /// <summary>
-/// Сообщение outbox: факт, который нужно доставить другому модулю, записанный в той же транзакции,
-/// что и бизнес-изменение (ADR 0040). Состояние строки показывает, доставлено ли сообщение.
+/// Outbox-сообщение: доменное событие, материализованное в строку таблицы и ожидающее доставки.
+/// Жизненный цикл ведёт воркер; payload хранит сериализованное событие (ADR 0040).
 /// </summary>
 internal sealed class OutboxMessage
 {
     public long Id { get; set; }
 
+    /// <summary>Стабильное имя события - ключ маршрутизации и десериализации.</summary>
     public string Type { get; set; } = null!;
 
-    /// <summary>Тело сообщения в jsonb: форму знает обработчик, продюсер её не интерпретирует.</summary>
+    /// <summary>Версия схемы payload; существующие строки по умолчанию v1.</summary>
+    public int Version { get; set; }
+
+    /// <summary>Полоса доставки: fast | slow.</summary>
+    public string Lane { get; set; } = null!;
+
+    /// <summary>Сериализованное доменное событие (jsonb).</summary>
     public string Payload { get; set; } = null!;
 
-    public DateTime CreatedAt { get; set; }
+    public string Status { get; set; } = OutboxStatus.Pending;
 
-    /// <summary>Когда сообщение можно взять в работу: сдвигается назад при повторах.</summary>
-    public DateTime NextAttemptAt { get; set; }
+    /// <summary>Чекпоинт обработчика: непрозрачное jsonb, воркер его не интерпретирует.</summary>
+    public string? Checkpoint { get; set; }
 
     public int Attempts { get; set; }
 
-    public DateTime? ProcessedAt { get; set; }
+    public DateTime NextAttemptAt { get; set; }
 
-    /// <summary>Заполняется, когда попытки исчерпаны: сообщение требует ручного разбора.</summary>
-    public DateTime? AbandonedAt { get; set; }
+    public Guid? LeaseOwner { get; set; }
+
+    public DateTime? LeaseUntil { get; set; }
 
     public string? LastError { get; set; }
+
+    public DateTime CreatedAt { get; set; }
+
+    public DateTime? LastProcessedAt { get; set; }
+
+    public DateTime? FinishedAt { get; set; }
 }

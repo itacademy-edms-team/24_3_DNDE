@@ -18,7 +18,6 @@ public sealed record DeleteElementCommand(Guid SetId, Guid ElementId) : IRequest
 public sealed class DeleteElementHandler(
     ISetRepository sets,
     IElementRepository elements,
-    IOutboxWriter outbox,
     ICurrentUser currentUser,
     TimeProvider clock)
     : IRequestHandler<DeleteElementCommand, ErrorOr<Deleted>>
@@ -45,10 +44,8 @@ public sealed class DeleteElementHandler(
                 element.MarkDeleted(now);
 
                 // Элемент исчезает - его слоты надо снять: пустой набор означает «отвязать всё».
-                outbox.Enqueue(
-                    MediaOutboxMessages.ReferencesSync,
-                    new MediaReferencesSyncPayload(ownerId,
-                        ElementMediaSlots.ElementScope(command.SetId, element.Id), []));
+                element.RegisterDomainEvent(new MediaReferencesChanged(
+                    ownerId, ElementMediaSlots.ElementScope(command.SetId, element.Id), []));
 
                 // Удаление фиксируется до сдвига: частичный уникальный индекс 
                 // не пустит соседа на ещё занятую позицию.

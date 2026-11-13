@@ -1,11 +1,14 @@
 using System.Reflection;
+using System.Runtime.CompilerServices;
+using Common.Domain.DomainEvents;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Common.Application.DomainEvents;
 
 /// <summary>
 /// Регистрация обработчиков доменных событий: сканирует сборку на реализации
-/// <see cref="IDomainEventHandler{TEvent}"/> и регистрирует их по нашему маркеру.
+/// <see cref="IDomainEventHandler{TEvent}"/> и регистрирует их по нашему маркеру,
+/// а заодно связывает стабильное имя события с его CLR-типом (для десериализации воркером).
 /// </summary>
 public static class DomainEventRegistration
 {
@@ -19,9 +22,23 @@ public static class DomainEventRegistration
                                    && contract.GetGenericTypeDefinition() == typeof(IDomainEventHandler<>));
 
             foreach (var contract in contracts)
+            {
+                var eventType = contract.GetGenericArguments()[0];
                 services.AddScoped(contract, handler);
+                DomainEventTypeRegistry.Register(EventNameOf(eventType), eventType);
+            }
         }
 
         return services;
+    }
+
+    /// <summary>
+    /// Стабильное имя события читается с неинициализированного экземпляра: <see cref="IDomainEvent.EventType"/>
+    /// - константа на тип и не зависит от состояния, поэтому конструктор вызывать не требуется.
+    /// </summary>
+    private static string EventNameOf(Type eventType)
+    {
+        var instance = (IDomainEvent)RuntimeHelpers.GetUninitializedObject(eventType);
+        return instance.EventType;
     }
 }

@@ -29,7 +29,7 @@ public sealed class ModuleBoundariesTests
         ["Accounts.Application"] = new(AccountsModule, ["Accounts.Domain", "Common.Application"]),
         ["Accounts.Infrastructure"] = new(AccountsModule,
             ["Accounts.Application", "Accounts.Contracts", "Common.Application", "Common.Infrastructure"]),
-        ["Sets.Domain"] = new(SetsModuleName, []),
+        ["Sets.Domain"] = new(SetsModuleName, ["Common.Domain"]),
         ["Sets.Contracts"] = new(SetsModuleName, ["Common.Application"]),
         ["Sets.Application"] = new(SetsModuleName, ["Sets.Domain", "Common.Application", "Media.Contracts"]),
         ["Sets.Infrastructure"] = new(SetsModuleName,

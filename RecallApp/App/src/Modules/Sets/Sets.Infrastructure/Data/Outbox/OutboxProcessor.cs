@@ -1,27 +1,24 @@
-using System.Data.Common;
 using System.Text.Json;
-using Common.Application.Outbox;
+using Common.Application.DomainEvents;
+using Common.Domain.DomainEvents;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Sets.Infrastructure.Data.Outbox;
 
 /// <summary>
-/// Доставка сообщений outbox зарегистрированным обработчикам: 
-/// берёт пачку в порядке следования идентификаторов, применяет по
-/// и фиксирует результат - доставлено, повторить позже или отправить на разбор.
-/// Доставка at-least-once, поэтому обработчик обязан быть идемпотентным (ADR 0040).
+/// Доставка outbox-сообщений одной полосы. Сообщение обрабатывается в одной транзакции:
+/// десериализация в доменное событие и его доставка обработчикам; исход фиксируется
+/// как processed / retrying / dead. Полоса fast - in-process и транзакционна, аренда не нужна
+/// (её используют будущие slow-обработчики с внешними эффектами).
 /// </summary>
 internal sealed class OutboxProcessor(
     SetsDbContext context,
-    IEnumerable<IOutboxMessageHandler> handlers,
-    IOptions<OutboxOptions> options,
+    IDomainEventDispatcher dispatcher,
     TimeProvider clock,
     ILogger<OutboxProcessor> logger)
 {
-    /// <summary>Паузы между попытками: 5 с, 25 с, 2 мин, 10 мин, дальше раз в час.</summary>
     private static readonly TimeSpan[] Backoff =
     [
         TimeSpan.FromSeconds(5),
@@ -31,12 +28,14 @@ internal sealed class OutboxProcessor(
         TimeSpan.FromHours(1),
     ];
 
-    /// <summary>Обрабатывает одну пачку сообщений и возвращает число доставленных.</summary>
-    public async Task<int> ProcessBatchAsync(int batchSize, CancellationToken cancellationToken)
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
+    /// <summary>Обрабатывает пачку готовых сообщений полосы и возвращает число доставленных.</summary>
+    public async Task<int> ProcessBatchAsync(string lane, int batchSize, int maxAttempts, CancellationToken cancellationToken)
     {
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
 
-        var ids = await LockPendingIdsAsync(batchSize, cancellationToken);
+        var ids = await LockDueIdsAsync(lane, batchSize, cancellationToken);
         if (ids.Count == 0)
         {
             await transaction.CommitAsync(cancellationToken);
@@ -48,42 +47,31 @@ internal sealed class OutboxProcessor(
             .OrderBy(message => message.Id)
             .ToListAsync(cancellationToken);
 
-        var byType = handlers
-            .GroupBy(handler => handler.MessageType, StringComparer.Ordinal)
-            .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
-
-        var delivered = 0;
         var now = clock.GetUtcNow().UtcDateTime;
+        var delivered = 0;
 
         foreach (var message in messages)
         {
-            if (!byType.TryGetValue(message.Type, out var handler))
+            message.LastProcessedAt = now;
+
+            var domainEvent = Deserialize(message);
+            if (domainEvent is null)
             {
-                ScheduleRetry(message, now, $"Нет обработчика для типа '{message.Type}'.");
+                Fail(message, now, maxAttempts, $"Неизвестный тип события '{message.Type}'.");
                 continue;
             }
 
-            try
+            var dispatch = await dispatcher.DispatchAsync([domainEvent], cancellationToken);
+            if (dispatch.IsError)
             {
-                using var payload = JsonDocument.Parse(message.Payload);
-                var result = await handler.HandleAsync(payload.RootElement, cancellationToken);
-
-                if (result.IsError)
-                {
-                    var codes = string.Join("; ", result.Errors.Select(error => error.Code));
-                    ScheduleRetry(message, now, codes);
-                    continue;
-                }
-
-                message.ProcessedAt = now;
-                message.LastError = null;
-                delivered++;
+                Fail(message, now, maxAttempts, string.Join("; ", dispatch.Errors.Select(error => error.Code)));
+                continue;
             }
-            catch (Exception exception) when (exception is not OperationCanceledException)
-            {
-                logger.LogError(exception, "Outbox message {MessageId} of type {Type} failed", message.Id, message.Type);
-                ScheduleRetry(message, now, exception.Message);
-            }
+
+            message.Status = OutboxStatus.Processed;
+            message.FinishedAt = now;
+            message.LastError = null;
+            delivered++;
         }
 
         await context.SaveChangesAsync(cancellationToken);
@@ -92,10 +80,10 @@ internal sealed class OutboxProcessor(
     }
 
     /// <summary>
-    /// Берёт идентификаторы готовых к доставке сообщений и удерживает строки до конца транзакции:
+    /// Берёт идентификаторы готовых сообщений и удерживает строки до конца транзакции:
     /// второй инстанс приложения увидит соседние сообщения, а не те же самые.
     /// </summary>
-    private async Task<List<long>> LockPendingIdsAsync(int batchSize, CancellationToken cancellationToken)
+    private async Task<List<long>> LockDueIdsAsync(string lane, int batchSize, CancellationToken cancellationToken)
     {
         var connection = context.Database.GetDbConnection();
         await using var command = connection.CreateCommand();
@@ -103,44 +91,56 @@ internal sealed class OutboxProcessor(
         command.CommandText = """
             SELECT id
             FROM sets.outbox_messages
-            WHERE processed_at IS NULL AND abandoned_at IS NULL AND next_attempt_at <= now()
+            WHERE lane = @lane AND status IN ('pending', 'retrying') AND next_attempt_at <= now()
             ORDER BY id
             FOR UPDATE SKIP LOCKED
             LIMIT @batch_size
             """;
 
-        var parameter = command.CreateParameter();
-        parameter.ParameterName = "batch_size";
-        parameter.Value = batchSize;
-        command.Parameters.Add(parameter);
+        var laneParameter = command.CreateParameter();
+        laneParameter.ParameterName = "lane";
+        laneParameter.Value = lane;
+        command.Parameters.Add(laneParameter);
+
+        var batchParameter = command.CreateParameter();
+        batchParameter.ParameterName = "batch_size";
+        batchParameter.Value = batchSize;
+        command.Parameters.Add(batchParameter);
 
         var ids = new List<long>(batchSize);
-        await using DbDataReader reader = await command.ExecuteReaderAsync(cancellationToken);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken))
             ids.Add(reader.GetInt64(0));
 
         return ids;
     }
 
-    /// <summary>
-    /// Переносит попытку в будущее с нарастающей паузой; после лимита помечает сообщение брошенным,
-    /// чтобы оно не крутилось вечно и было видно в логах.
-    /// </summary>
-    private void ScheduleRetry(OutboxMessage message, DateTime now, string error)
+    private static IDomainEvent? Deserialize(OutboxMessage message)
+    {
+        var eventType = DomainEventTypeRegistry.Resolve(message.Type);
+        if (eventType is null)
+            return null;
+
+        return JsonSerializer.Deserialize(message.Payload, eventType, JsonOptions) as IDomainEvent;
+    }
+
+    /// <summary>Фиксирует неудачу: до исчерпания попыток - retrying с паузой, после - dead (только вручную).</summary>
+    private void Fail(OutboxMessage message, DateTime now, int maxAttempts, string error)
     {
         message.Attempts++;
         message.LastError = error.Length > 1024 ? error[..1024] : error;
 
-        if (message.Attempts >= options.Value.MaxAttempts)
+        if (message.Attempts >= maxAttempts)
         {
-            message.AbandonedAt = now;
+            message.Status = OutboxStatus.Dead;
+            message.FinishedAt = now;
             logger.LogError(
-                "Outbox message {MessageId} of type {Type} abandoned after {Attempts} attempts: {Error}",
+                "Outbox message {MessageId} of type {Type} is dead after {Attempts} attempts: {Error}",
                 message.Id, message.Type, message.Attempts, error);
             return;
         }
 
-        var delay = Backoff[Math.Min(message.Attempts - 1, Backoff.Length - 1)];
-        message.NextAttemptAt = now + delay;
+        message.Status = OutboxStatus.Retrying;
+        message.NextAttemptAt = now + Backoff[Math.Min(message.Attempts - 1, Backoff.Length - 1)];
     }
 }

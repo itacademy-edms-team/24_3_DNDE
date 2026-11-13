@@ -1,3 +1,4 @@
+using Common.Domain.DomainEvents;
 using ErrorOr;
 
 namespace Sets.Domain.Elements;
@@ -6,7 +7,7 @@ namespace Sets.Domain.Elements;
 /// Элемент набора.
 /// Не может существовать без обязательно привязки к набору.
 /// </summary>
-public sealed class Element
+public sealed class Element : HasDomainEventsBase
 {
     private Element() { }
 
