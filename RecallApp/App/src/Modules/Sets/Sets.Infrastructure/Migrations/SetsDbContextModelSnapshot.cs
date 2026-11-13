@@ -166,6 +166,60 @@ namespace Sets.Infrastructure.Migrations
                     b.ToTable("idempotency_keys", "sets");
                 });
 
+            modelBuilder.Entity("Sets.Infrastructure.Data.Outbox.OutboxMessage", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime?>("AbandonedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("abandoned_at");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempts");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)")
+                        .HasColumnName("last_error");
+
+                    b.Property<DateTime>("NextAttemptAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_attempt_at");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("payload");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("processed_at");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NextAttemptAt", "Id")
+                        .HasDatabaseName("ix_outbox_messages_pending")
+                        .HasFilter("processed_at IS NULL AND abandoned_at IS NULL");
+
+                    b.ToTable("outbox_messages", "sets");
+                });
+
             modelBuilder.Entity("Sets.Domain.Elements.Element", b =>
                 {
                     b.HasOne("Sets.Domain.Sets.Set", null)

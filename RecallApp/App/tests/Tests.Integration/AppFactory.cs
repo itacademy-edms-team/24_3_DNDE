@@ -1,3 +1,4 @@
+using Common.Application.Outbox;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -6,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
+using Tests.Integration.Helpers;
 
 namespace Tests.Integration;
 
@@ -44,7 +46,10 @@ public sealed class AppFactory : WebApplicationFactory<Program>
 
         builder
             .UseEnvironment("Development")
+            .UseSetting("Sets:Outbox:Enabled", "false")
             .ConfigureServices(services => services
+                .AddSingleton<IOutboxMessageHandler, RecordingOutboxHandler>()
+                .AddSingleton<IOutboxMessageHandler, FailingOutboxHandler>()
                 .AddAuthentication(options =>
                 {
                     options.DefaultAuthenticateScheme = TestAuthScheme;

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Sets.Domain.Elements;
 using Sets.Domain.Sets;
 using Sets.Infrastructure.Data.Idempotency;
+using Sets.Infrastructure.Data.Outbox;
 
 namespace Sets.Infrastructure.Data;
 
@@ -15,6 +16,8 @@ internal sealed class SetsDbContext(DbContextOptions<SetsDbContext> options) : D
     public DbSet<Element> Elements => Set<Element>();
 
     public DbSet<IdempotencyKeyRecord> IdempotencyKeys => Set<IdempotencyKeyRecord>();
+
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

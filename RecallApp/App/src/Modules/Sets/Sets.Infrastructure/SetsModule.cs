@@ -13,6 +13,7 @@ using Sets.Application.Elements;
 using Sets.Application.Sets;
 using Sets.Infrastructure.Data;
 using Sets.Infrastructure.Data.Idempotency;
+using Sets.Infrastructure.Data.Outbox;
 using Sets.Infrastructure.Data.Purge;
 
 namespace Sets.Infrastructure;
@@ -38,6 +39,12 @@ public static class SetsModule
         services.AddScoped<ISetRepository, SetRepository>();
         services.AddScoped<IElementRepository, ElementRepository>();
         services.AddScoped<ISetsIdempotencyStore, IdempotencyStore>();
+        services.AddScoped<IOutboxWriter, OutboxWriter>();
+        services.AddScoped<OutboxProcessor>();
+
+        // Доставка межмодульных сообщений: обработчики регистрируются модулями-потребителями (ADR 0040).
+        services.AddOptions<OutboxOptions>().BindConfiguration("Sets:Outbox");
+        services.AddHostedService<OutboxDispatcher>();
 
         // Фоновая чистка истёкших ключей.
         services.AddOptions<IdempotencyCleanupOptions>().BindConfiguration("Sets:Idempotency");
