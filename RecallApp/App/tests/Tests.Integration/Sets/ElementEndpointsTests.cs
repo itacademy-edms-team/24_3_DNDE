@@ -482,6 +482,61 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
                 : body.GetProperty("nextCursor").GetString());
     }
 
+    [DatabaseFact]
+    public async Task ReorderElements_SameOrder_DoesNotTouchTimestamps()
+    {
+        using var client = CreateClientForNewUser();
+        var setId = await CreateSetAsync(client);
+        var first = await CreateElementAsync(client, setId, "Первый", "1");
+        var second = await CreateElementAsync(client, setId, "Второй", "2");
+
+        var setBefore = await client.GetFromJsonAsync<JsonElement>($"/api/sets/{setId}");
+        var elementsBefore = await ReadPageAsync(client, setId);
+
+        var response = await client.PutAsJsonAsync(
+            $"{ElementsUrl(setId)}/order",
+            new { elementIds = new[] { first.Id, second.Id } });
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+
+        var setAfter = await client.GetFromJsonAsync<JsonElement>($"/api/sets/{setId}");
+        Assert.Equal(setBefore.GetProperty("updatedAt").GetDateTime(), setAfter.GetProperty("updatedAt").GetDateTime());
+
+        var elementsAfter = await ReadPageAsync(client, setId);
+        Assert.Equal(
+            elementsBefore.Items.Select(item => item.GetProperty("updatedAt").GetDateTime()),
+            elementsAfter.Items.Select(item => item.GetProperty("updatedAt").GetDateTime()));
+    }
+
+    [DatabaseFact]
+    public async Task ReorderElements_ChangedOrder_BumpsOnlyMovedElements()
+    {
+        using var client = CreateClientForNewUser();
+        var setId = await CreateSetAsync(client);
+        var first = await CreateElementAsync(client, setId, "Первый", "1");
+        var second = await CreateElementAsync(client, setId, "Второй", "2");
+        var third = await CreateElementAsync(client, setId, "Третий", "3");
+
+        var before = await ReadPageAsync(client, setId);
+        var beforeById = before.Items.ToDictionary(
+            item => item.GetProperty("id").GetGuid(),
+            item => item.GetProperty("updatedAt").GetDateTime());
+
+        // Меняем местами первые два; третий остаётся на месте.
+        await client.PutAsJsonAsync(
+            $"{ElementsUrl(setId)}/order",
+            new { elementIds = new[] { second.Id, first.Id, third.Id } });
+
+        var after = await ReadPageAsync(client, setId);
+        var afterById = after.Items.ToDictionary(
+            item => item.GetProperty("id").GetGuid(),
+            item => item.GetProperty("updatedAt").GetDateTime());
+
+        Assert.True(afterById[first.Id] > beforeById[first.Id]);
+        Assert.True(afterById[second.Id] > beforeById[second.Id]);
+        Assert.Equal(beforeById[third.Id], afterById[third.Id]);
+    }
+
     private static string ToBase64Url(string value) =>
         Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(value))
             .TrimEnd('=')
