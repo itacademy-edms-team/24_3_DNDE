@@ -509,7 +509,7 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
     }
 
     [DatabaseFact]
-    public async Task ReorderElements_ChangedOrder_BumpsOnlyMovedElements()
+    public async Task ReorderElements_ChangedOrder_KeepsElementTimestampsAndBumpsSet()
     {
         using var client = CreateClientForNewUser();
         var setId = await CreateSetAsync(client);
@@ -517,6 +517,7 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
         var second = await CreateElementAsync(client, setId, "Второй", "2");
         var third = await CreateElementAsync(client, setId, "Третий", "3");
 
+        var setBefore = await client.GetFromJsonAsync<JsonElement>($"/api/sets/{setId}");
         var before = await ReadPageAsync(client, setId);
         var beforeById = before.Items.ToDictionary(
             item => item.GetProperty("id").GetGuid(),
@@ -532,9 +533,11 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
             item => item.GetProperty("id").GetGuid(),
             item => item.GetProperty("updatedAt").GetDateTime());
 
-        Assert.True(afterById[first.Id] > beforeById[first.Id]);
-        Assert.True(afterById[second.Id] > beforeById[second.Id]);
-        Assert.Equal(beforeById[third.Id], afterById[third.Id]);
+        // Смена позиции - структурное изменение набора: метки элементов не двигаются.
+        Assert.All(afterById, pair => Assert.Equal(beforeById[pair.Key], pair.Value));
+
+        var setAfter = await client.GetFromJsonAsync<JsonElement>($"/api/sets/{setId}");
+        Assert.True(setAfter.GetProperty("updatedAt").GetDateTime() > setBefore.GetProperty("updatedAt").GetDateTime());
     }
 
     private static string ToBase64Url(string value) =>
