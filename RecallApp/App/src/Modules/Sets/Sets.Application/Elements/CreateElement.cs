@@ -76,15 +76,18 @@ public sealed class CreateElementHandler(
                 requestHash,
                 operationBody: async innerToken =>
                 {
-                    var position = command.Position ?? activeCount;
-                    if (position > activeCount)
-                        return ElementErrors.PositionOutOfRange(position, activeCount);
+                    var current = await elements.ListForOrderingAsync(command.SetId, innerToken);
+                    var position = command.Position ?? current.Count;
+
+                    var shifted = SetOrdering.ForInsert(current, position);
+                    if (shifted.IsError)
+                        return shifted.Errors;
 
                     var created = Element.Create(command.SetId, payload.Value, position, now);
                     if (created.IsError)
                         return created.Errors;
 
-                    await elements.ShiftPositionsFromAsync(command.SetId, position, innerToken);
+                    await elements.ApplyPositionsAsync(command.SetId, shifted.Value, innerToken);
                     elements.Add(created.Value);
                     set.MarkContentChanged(now);
                     await elements.SaveChangesAsync(innerToken);

@@ -83,4 +83,15 @@ public sealed class Element
         DeletedAt = utcNow;
         UpdatedAt = utcNow;
     }
+
+    /// <summary>
+    /// Меняет позицию элемента в наборе.
+    /// Не трогает <see cref="UpdatedAt"/>.
+    /// </summary>
+    public void MoveTo(int newPosition)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(newPosition);
+
+        Position = newPosition;
+    }
 }

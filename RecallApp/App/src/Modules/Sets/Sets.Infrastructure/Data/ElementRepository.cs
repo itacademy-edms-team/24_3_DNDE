@@ -9,8 +9,7 @@ namespace Sets.Infrastructure.Data;
 internal sealed class ElementRepository(SetsDbContext context) : IElementRepository
 {
     /// <summary>
-    /// Временный сдвиг позиций при вставке и перестановке: частичный уникальный индекс
-    /// не позволяет двигать строки «на месте».
+    /// Временный сдвиг позиций: частичный уникальный индекс не позволяет двигать строки «на месте».
     /// </summary>
     private const int ShiftOffset = 1_000_000;
 
@@ -41,6 +40,15 @@ internal sealed class ElementRepository(SetsDbContext context) : IElementReposit
             .Take(take)
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<IReadOnlyList<Element>> ListForOrderingAsync(
+        Guid setId,
+        CancellationToken cancellationToken) =>
+        await context.Elements
+            .AsNoTracking()
+            .Where(element => element.SetId == setId && element.DeletedAt == null)
+            .OrderBy(element => element.Position)
+            .ToListAsync(cancellationToken);
 
     public Task<Element?> FindAsync(Guid setId, Guid elementId, CancellationToken cancellationToken) =>
         context.Elements.SingleOrDefaultAsync(
@@ -82,32 +90,40 @@ internal sealed class ElementRepository(SetsDbContext context) : IElementReposit
 
     public void Add(Element element) => context.Elements.Add(element);
 
-    public async Task<int> ShiftPositionsFromAsync(
+    public async Task ApplyPositionsAsync(
         Guid setId,
-        int fromPosition,
+        IReadOnlyList<ElementPosition> positions,
         CancellationToken cancellationToken)
     {
+        if (positions.Count == 0)
+            return;
+
+        var elementIds = positions.Select(position => position.ElementId).ToArray();
+
         // Фаза 1: уводим затрагиваемые строки за пределы диапазона.
         // pos = pos + ShiftOffset
-        var shifted = await context.Elements
+        await context.Elements
             .Where(element => element.SetId == setId
                 && element.DeletedAt == null
-                && element.Position >= fromPosition)
+                && elementIds.Contains(element.Id))
             .ExecuteUpdateAsync(
-                update => update.SetProperty(element => element.Position, element => element.Position + ShiftOffset),
+                update => update
+                    .SetProperty(element => element.Position, element => element.Position + ShiftOffset),
                 cancellationToken);
 
         // Фаза 2: возвращаем в диапазон со сдвигом +1.
         // pos = pos - ShiftOffset + 1
-        await context.Elements
-            .Where(element => element.SetId == setId
-                && element.DeletedAt == null
-                && element.Position >= fromPosition + ShiftOffset)
-            .ExecuteUpdateAsync(
-                update => update.SetProperty(element => element.Position, element => element.Position - ShiftOffset + 1),
-                cancellationToken);
+        foreach (var position in positions)
+        {
+            var elementId = position.ElementId;
+            var newPosition = position.Position;
 
-        return shifted;
+            await context.Elements
+                .Where(element => element.Id == elementId && element.SetId == setId && element.DeletedAt == null)
+                .ExecuteUpdateAsync(
+                    update => update.SetProperty(element => element.Position, newPosition),
+                    cancellationToken);
+        }
     }
 
     public Task<int> MarkAllDeletedAsync(Guid setId, DateTime utcNow, CancellationToken cancellationToken) =>
@@ -116,87 +132,6 @@ internal sealed class ElementRepository(SetsDbContext context) : IElementReposit
             .ExecuteUpdateAsync(update => update
                 .SetProperty(element => element.DeletedAt, utcNow)
                 .SetProperty(element => element.UpdatedAt, utcNow), cancellationToken);
-
-    public async Task<bool> DeleteAndCompactAsync(
-        Guid setId,
-        Guid elementId,
-        DateTime utcNow,
-        CancellationToken cancellationToken)
-    {
-        var element = await context.Elements.SingleOrDefaultAsync(
-            candidate => candidate.Id == elementId && candidate.SetId == setId && candidate.DeletedAt == null,
-            cancellationToken);
-
-        if (element is null)
-            return false;
-
-        var removedPosition = element.Position;
-        element.MarkDeleted(utcNow);
-
-        // Фиксируем удаление до сдвига: иначе сосед упрётся в частичный уникальный индекс.
-        await context.SaveChangesAsync(cancellationToken);
-
-        await context.Elements
-            .Where(candidate => candidate.SetId == setId
-                && candidate.DeletedAt == null
-                && candidate.Position > removedPosition)
-            .ExecuteUpdateAsync(
-                update => update.SetProperty(candidate => candidate.Position, candidate => candidate.Position - 1),
-                cancellationToken);
-
-        return true;
-    }
-
-    public async Task<int> ApplyOrderAsync(
-        Guid setId,
-        IReadOnlyList<Guid> orderedElementIds,
-        DateTime utcNow,
-        CancellationToken cancellationToken)
-    {
-        var currentPositions = await context.Elements
-            .AsNoTracking()
-            .Where(element => element.SetId == setId && element.DeletedAt == null)
-            .Select(element => new { element.Id, element.Position })
-            .ToDictionaryAsync(entry => entry.Id, entry => entry.Position, cancellationToken);
-
-        var movedIds = orderedElementIds
-            .Select((elementId, position) => new { elementId, position })
-            .Where(target => currentPositions.TryGetValue(target.elementId, out var current)
-                && current != target.position)
-            .Select(target => target.elementId)
-            .ToHashSet();
-
-        // Повтор с тем же порядком — не трогаем ничего: ни позиции, ни updated_at элементов/набора.
-        if (movedIds.Count == 0)
-            return 0;
-
-        // Фаза 1: уводим активные позиции за пределы целевого диапазона, чтобы снять коллизии индекса.
-        await context.Elements
-            .Where(element => element.SetId == setId && element.DeletedAt == null)
-            .ExecuteUpdateAsync(
-                update => update.SetProperty(element => element.Position, element => element.Position + ShiftOffset),
-                cancellationToken);
-
-        // Фаза 2: присваиваем позиции 0..n-1; updated_at трогаем только у реально сдвинутых.
-        for (var position = 0; position < orderedElementIds.Count; position++)
-        {
-            var elementId = orderedElementIds[position];
-            var newPosition = position;
-            var isMoved = movedIds.Contains(elementId);
-
-            await context.Elements
-                .Where(element => element.Id == elementId && element.SetId == setId && element.DeletedAt == null)
-                .ExecuteUpdateAsync(
-                    update => isMoved
-                        ? update
-                            .SetProperty(element => element.Position, newPosition)
-                            .SetProperty(element => element.UpdatedAt, utcNow)
-                        : update.SetProperty(element => element.Position, newPosition),
-                    cancellationToken);
-        }
-
-        return movedIds.Count;
-    }
 
     public Task SaveChangesAsync(CancellationToken cancellationToken) => context.SaveChangesAsync(cancellationToken);
 

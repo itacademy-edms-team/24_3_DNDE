@@ -22,6 +22,15 @@ public interface IElementRepository
         int take,
         CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Все активные элементы набора по порядку (0, 1, 2, ...). Нужен, чтобы посчитать новые
+    /// позиции при вставке, удалении или перестановке - это делают правила в <see cref="SetOrdering"/>.
+    /// Объекты возвращаются без отслеживания изменений: позиции записывает отдельный вызов
+    /// <see cref="ApplyPositionsAsync"/> - одним SQL с временным сдвигом, иначе уникальный индекс
+    /// не даст поменять позиции местами.
+    /// </summary>
+    Task<IReadOnlyList<Element>> ListForOrderingAsync(Guid setId, CancellationToken cancellationToken);
+
     Task<Element?> FindAsync(Guid setId, Guid elementId, CancellationToken cancellationToken);
 
     /// <summary>Id активных элементов набора: нужен для проверки полноты присланного порядка.</summary>
@@ -43,34 +52,17 @@ public interface IElementRepository
     void Add(Element element);
 
     /// <summary>
-    /// Сдвигает активные элементы с позиции <paramref name="fromPosition"/> на +1.
-    /// Двухфазная запись: частичный уникальный индекс не даёт сдвигать строки «на месте».
+    /// Применяет доменные назначения позиций.
+    /// Двухфазная запись (временный сдвиг за пределы диапазона, затем целевые значения)
+    /// нужна, потому что частичный уникальный индекс не допускает промежуточных коллизий.
     /// </summary>
-    Task<int> ShiftPositionsFromAsync(Guid setId, int fromPosition, CancellationToken cancellationToken);
+    Task ApplyPositionsAsync(
+        Guid setId,
+        IReadOnlyList<ElementPosition> positions,
+        CancellationToken cancellationToken);
 
     /// <summary>Мягко удаляет все элементы набора при удалении самого набора (онтология §6.6).</summary>
     Task<int> MarkAllDeletedAsync(Guid setId, DateTime utcNow, CancellationToken cancellationToken);
-
-    /// <summary>
-    /// Мягко удаляет элемент и уплотняет позиции остальных.
-    /// Вызывается внутри <see cref="ExecuteLockedAsync"/>: собственную транзакцию не открывает.
-    /// Удаление фиксируется до сдвига: частичный уникальный индекс
-    /// не пустит соседа на ещё занятую позицию.
-    /// </summary>
-    /// <returns>false - элемента нет, он удалён или принадлежит другому набору.</returns>
-    Task<bool> DeleteAndCompactAsync(Guid setId, Guid elementId, DateTime utcNow, CancellationToken cancellationToken);
-
-    /// <summary>
-    /// Переставляет элементы в заданном порядке: позиции становятся `0..n-1`.
-    /// Вызывается внутри <see cref="ExecuteLockedAsync"/> - состав уже проверен под локом.
-    /// Двухфазная запись: частичный уникальный индекс не даёт поменять две строки местами на месте.
-    /// </summary>
-    /// <returns>Сколько элементов реально сменили позицию; 0 - порядок элементов не поменялся.</returns>
-    Task<int> ApplyOrderAsync(
-        Guid setId,
-        IReadOnlyList<Guid> orderedElementIds,
-        DateTime utcNow,
-        CancellationToken cancellationToken);
 
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }

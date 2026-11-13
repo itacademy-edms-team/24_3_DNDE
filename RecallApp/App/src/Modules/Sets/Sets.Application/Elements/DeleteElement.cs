@@ -11,8 +11,8 @@ public sealed record DeleteElementCommand(Guid SetId, Guid ElementId) : IRequest
 
 /// <summary>
 /// Мягкое удаление элемента с уплотнением позиций: набор остаётся плотным `0..n-1`
-/// (онтология §6.5), а сам набор живёт дальше. Проверка существования, удаление и сдвиг
-/// идут под блокировкой набора - тот же лок, что у вставки и перестановки.
+/// (онтология §6.5), а сам набор живёт дальше.
+/// За решение по сдвигу отвечает (<see cref="SetOrdering.ForRemoval"/>).
 /// </summary>
 public sealed class DeleteElementHandler(
     ISetRepository sets,
@@ -36,9 +36,21 @@ public sealed class DeleteElementHandler(
             command.SetId,
             async (_, token) =>
             {
-                var deleted = await elements.DeleteAndCompactAsync(command.SetId, command.ElementId, now, token);
-                if (!deleted)
+                var element = await elements.FindAsync(command.SetId, command.ElementId, token);
+                if (element is null)
                     return ElementErrors.NotFound;
+
+                element.MarkDeleted(now);
+
+                // Удаление фиксируется до сдвига: частичный уникальный индекс 
+                // не пустит соседа на ещё занятую позицию.
+                await elements.SaveChangesAsync(token);
+
+                var remaining = await elements.ListForOrderingAsync(command.SetId, token);
+                await elements.ApplyPositionsAsync(
+                    command.SetId,
+                    SetOrdering.ForRemoval(remaining, element.Position),
+                    token);
 
                 set.MarkContentChanged(now);
                 await sets.SaveChangesAsync(token);

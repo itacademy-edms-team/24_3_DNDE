@@ -7,15 +7,15 @@ using Sets.Domain.Sets;
 
 namespace Sets.Application.Elements;
 
+/// <param name="SetId">Набор из маршрута.</param>
 /// <param name="ElementIds">Все активные id набора в новом порядке; частичная перестановка не поддерживается.</param>
 public sealed record ReorderElementsCommand(Guid SetId, IReadOnlyList<Guid>? ElementIds)
     : IRequest<ErrorOr<Updated>>;
 
 /// <summary>
-/// Полный пересчёт порядка элементов: клиент присылает все id, сервер присваивает позиции `0..n-1`.
-/// Сверка состава и запись идут под одним локом набора: иначе между проверкой и применением могла бы вклиниться вставка,
-/// и новый элемент остался бы за пределами диапазона позиций.
-/// Несовпадение набора id означает, что состав изменился между чтением и записью - 409.
+/// Полный пересчёт порядка: клиент присылает все id, сервер присваивает позиции `0..n-1`.
+/// Проверка состава и вычисление целевых позиций - в домене (<see cref="SetOrdering.Assign"/>);
+/// сверка и запись идут под одним локом набора.
 /// </summary>
 public sealed class ReorderElementsHandler(
     ISetRepository sets,
@@ -35,32 +35,29 @@ public sealed class ReorderElementsHandler(
         if (set is null)
             return SetErrors.NotFound;
 
-        if (command.ElementIds is not { Count: > 0 } requested)
-            return ElementErrors.OrderRequired;
-
-        var requestedSet = requested.ToHashSet();
-        if (requestedSet.Count != requested.Count)
-            return ElementErrors.OrderMismatch;
-
         var now = clock.GetUtcNow().UtcDateTime;
 
         return await elements.ExecuteLockedAsync<ErrorOr<Updated>>(
             command.SetId,
             async (_, token) =>
             {
-                var activeIds = await elements.ListActiveIdsAsync(command.SetId, token);
-                if (!requestedSet.SetEquals(activeIds))
-                    return ElementErrors.OrderMismatch;
+                var current = await elements.ListForOrderingAsync(command.SetId, token);
 
-                var moved = await elements.ApplyOrderAsync(command.SetId, requested, now, token);
+                var assignments = SetOrdering.Assign(current, command.ElementIds);
+                if (assignments.IsError)
+                    return assignments.Errors;
+
+                var currentPositions = current.ToDictionary(element => element.Id, element => element.Position);
+                var moved = assignments.Value.Count(assignment =>
+                    currentPositions[assignment.ElementId] != assignment.Position);
 
                 // Порядок уже такой - не считаем это изменением набора.
-                if (moved > 0)
-                {
-                    set.MarkContentChanged(now);
-                    await sets.SaveChangesAsync(token);
-                }
+                if (moved == 0)
+                    return Result.Updated;
 
+                await elements.ApplyPositionsAsync(command.SetId, assignments.Value, token);
+                set.MarkContentChanged(now);
+                await sets.SaveChangesAsync(token);
                 return Result.Updated;
             },
             cancellationToken);
