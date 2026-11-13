@@ -10,6 +10,7 @@ WORKDIR /src
 COPY App.sln Directory.Packages.props Directory.Build.props ./
 COPY src/Api/Api.csproj src/Api/
 COPY src/Common/Common.Application/Common.Application.csproj src/Common/Common.Application/
+COPY src/Common/Common.Domain/Common.Domain.csproj src/Common/Common.Domain/
 COPY src/Common/Common.Infrastructure/Common.Infrastructure.csproj src/Common/Common.Infrastructure/
 COPY src/Modules/Accounts/Accounts.Domain/Accounts.Domain.csproj src/Modules/Accounts/Accounts.Domain/
 COPY src/Modules/Accounts/Accounts.Application/Accounts.Application.csproj src/Modules/Accounts/Accounts.Application/

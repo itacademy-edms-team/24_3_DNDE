@@ -1,4 +1,4 @@
-namespace Common.Application.DomainEvents;
+namespace Common.Domain.DomainEvents;
 
 /// <summary>
 /// Доменное событие: факт, который сущность регистрирует в памяти, а outbox доставляет позже.
@@ -12,6 +12,6 @@ public interface IDomainEvent
     /// <summary>Когда событие произошло.</summary>
     DateTime DateOccurred { get; }
 
-    /// <summary>Стабильное имя события для маршрутизации в outbox.</summary>
+    /// <summary>Стабильное имя события для маршрутизации в outbox (не AssemblyQualifiedName).</summary>
     string EventType { get; }
 }

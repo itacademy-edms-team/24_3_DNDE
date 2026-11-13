@@ -1,3 +1,4 @@
+using Common.Domain.DomainEvents;
 using ErrorOr;
 
 namespace Common.Application.DomainEvents;

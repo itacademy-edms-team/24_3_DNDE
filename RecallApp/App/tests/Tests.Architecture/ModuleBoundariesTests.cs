@@ -35,7 +35,7 @@ public sealed class ModuleBoundariesTests
         ["Sets.Infrastructure"] = new(SetsModuleName,
             ["Sets.Application", "Sets.Contracts", "Common.Application", "Common.Infrastructure", "Media.Contracts"]),
         ["Media.Domain"] = new(MediaModuleName, []),
-        ["Media.Contracts"] = new(MediaModuleName, ["Common.Application"]),
+        ["Media.Contracts"] = new(MediaModuleName, ["Common.Application", "Common.Domain"]),
         ["Media.Application"] = new(MediaModuleName, ["Media.Domain", "Media.Contracts", "Common.Application"]),
         ["Media.Infrastructure"] = new(MediaModuleName,
             ["Media.Application", "Media.Contracts", "Common.Application", "Common.Infrastructure"]),

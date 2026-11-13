@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Common.Application.DomainEvents;
+using Common.Domain.DomainEvents;
 using ErrorOr;
 using MediatR;
 

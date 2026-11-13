@@ -1,4 +1,4 @@
-namespace Common.Application.DomainEvents;
+namespace Common.Domain.DomainEvents;
 
 /// <summary>
 /// Сущность, способная держать доменные события до их материализации в outbox (ADR 0040).

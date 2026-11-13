@@ -1,4 +1,4 @@
-using Common.Application.DomainEvents;
+using Common.Domain.DomainEvents;
 
 namespace Media.Contracts;
 

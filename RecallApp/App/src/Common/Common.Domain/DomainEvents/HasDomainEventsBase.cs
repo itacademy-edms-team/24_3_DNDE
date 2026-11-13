@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Common.Application.DomainEvents;
+namespace Common.Domain.DomainEvents;
 
 /// <summary>
 /// Базовая реализация <see cref="IHasDomainEvents"/>: события лежат в памяти и не маппятся в БД.
