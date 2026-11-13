@@ -13,6 +13,7 @@ using Sets.Application.Elements;
 using Sets.Application.Sets;
 using Sets.Infrastructure.Data;
 using Sets.Infrastructure.Data.Idempotency;
+using Sets.Infrastructure.Data.Purge;
 using Sets.Infrastructure.Http;
 
 namespace Sets.Infrastructure;
@@ -42,6 +43,10 @@ public static class SetsModule
         // Фоновая чистка истёкших ключей.
         services.AddOptions<IdempotencyCleanupOptions>().BindConfiguration("Sets:Idempotency");
         services.AddHostedService<IdempotencyCleanupService>();
+
+        // Физическая чистка мягко удалённого контента после окна retention (ADR 0036).
+        services.AddOptions<SetsPurgeOptions>().BindConfiguration("Sets:Purge");
+        services.AddHostedService<SetsPurgeService>();
 
         return services;
     }
