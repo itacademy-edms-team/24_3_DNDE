@@ -52,9 +52,15 @@ public sealed class ReorderElementsHandler(
                 if (!requestedSet.SetEquals(activeIds))
                     return ElementErrors.OrderMismatch;
 
-                await elements.ApplyOrderAsync(command.SetId, requested, now, token);
-                set.MarkContentChanged(now);
-                await sets.SaveChangesAsync(token);
+                var moved = await elements.ApplyOrderAsync(command.SetId, requested, now, token);
+
+                // Порядок уже такой - не считаем это изменением набора.
+                if (moved > 0)
+                {
+                    set.MarkContentChanged(now);
+                    await sets.SaveChangesAsync(token);
+                }
+
                 return Result.Updated;
             },
             cancellationToken);

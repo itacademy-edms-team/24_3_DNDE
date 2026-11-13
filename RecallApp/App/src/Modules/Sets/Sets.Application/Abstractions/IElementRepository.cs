@@ -65,7 +65,8 @@ public interface IElementRepository
     /// Вызывается внутри <see cref="ExecuteLockedAsync"/> - состав уже проверен под локом.
     /// Двухфазная запись: частичный уникальный индекс не даёт поменять две строки местами на месте.
     /// </summary>
-    Task ApplyOrderAsync(
+    /// <returns>Сколько элементов реально сменили позицию; 0 - порядок элементов не поменялся.</returns>
+    Task<int> ApplyOrderAsync(
         Guid setId,
         IReadOnlyList<Guid> orderedElementIds,
         DateTime utcNow,
