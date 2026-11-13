@@ -1,5 +1,6 @@
 using Amazon.S3;
 using Common.Application.Behaviors;
+using Common.Application.Outbox;
 using Common.Infrastructure.Http;
 using MediatR;
 using Media.Application.Abstractions;
@@ -12,6 +13,7 @@ using Media.Infrastructure.Data.Cleanup;
 using Media.Infrastructure.Data.Idempotency;
 using Media.Infrastructure.Http;
 using Media.Infrastructure.Images;
+using Media.Infrastructure.Outbox;
 using Media.Infrastructure.Storage;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -45,6 +47,8 @@ public static class MediaModule
         services.AddScoped<IMediaObjectRepository, MediaObjectRepository>();
         services.AddScoped<IMediaIdempotencyStore, IdempotencyStore>();
         services.AddScoped<IUploadIdempotencyStore, LeasedIdempotencyStore>();
+        services.AddScoped<IMediaReferenceRepository, MediaReferenceRepository>();
+        services.AddScoped<IOutboxMessageHandler, MediaReferencesSyncHandler>();
         services.AddSingleton<IImageProcessor, SkiaImageProcessor>();
 
         services.AddScoped<MediaCleaner>();

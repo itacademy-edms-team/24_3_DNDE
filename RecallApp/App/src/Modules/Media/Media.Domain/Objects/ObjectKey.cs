@@ -25,7 +25,7 @@ public readonly record struct ObjectKey
     public static ErrorOr<ObjectKey> FromStorage(string? value)
     {
         if (string.IsNullOrWhiteSpace(value) || value.Length > MaxLength)
-            return Error.Validation("Media.ObjectKeyInvalid", "Некорректный ключ объекта.");
+            return MediaErrors.ObjectKeyInvalid;
 
         return new ObjectKey(value);
     }

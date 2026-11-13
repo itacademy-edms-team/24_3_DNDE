@@ -17,7 +17,19 @@ public static class MediaErrors
         Error.Conflict("Media.PendingLimitReached", "Слишком много незавершённых загрузок.",
             new Dictionary<string, object> { ["maxPending"] = MediaConstraints.MaxPendingPerOwner });
 
-    /// <summary>Файла нет, он чужой или удалён - состояния неразличимы, чтобы не выдавать существование.</summary>
+    /// <summary>Ключ объекта не соответствует формату: ошибка внутреннего состояния, а не ввода.</summary>
+    public static Error ObjectKeyInvalid =>
+        Error.Validation("Media.ObjectKeyInvalid", "Некорректный ключ объекта.");
+
+    /// <summary>Ключ слота пуст или длиннее допустимого.</summary>
+    public static Error ReferenceInvalid =>
+        Error.Validation("Media.ReferenceInvalid", "Некорректный ключ ссылки.");
+
+    /// <summary>Сообщение outbox не разбирается или нарушает контракт синхронизации.</summary>
+    public static Error MessageInvalid =>
+        Error.Validation("Media.MessageInvalid", "Некорректное сообщение синхронизации ссылок.");
+
+    /// <summary>Файла нет, он чужой или удалён — состояния неразличимы, чтобы не выдавать существование.</summary>
     public static Error NotFound => Error.NotFound("Media.NotFound", "Изображение не найдено.");
 
     /// <summary>Файл существует, но не готов к использованию: `pending`, `failed` или `deleted`.</summary>

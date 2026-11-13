@@ -43,7 +43,7 @@ public sealed class MediaReference
             return MediaErrors.NotFound;
 
         if (string.IsNullOrWhiteSpace(reference) || reference.Length > MaxReferenceLength)
-            return Error.Validation("Media.ReferenceInvalid", "Некорректный ключ ссылки.");
+            return MediaErrors.ReferenceInvalid;
 
         return new MediaReference(Guid.NewGuid(), mediaId, reference.Trim(), now);
     }
@@ -63,7 +63,11 @@ public sealed class MediaReference
     }
 
     /// <summary>Проверяет, что ссылка относится к области элемента или набора.</summary>
-    public bool BelongsTo(string scope) =>
-        Reference.Equals(scope, StringComparison.Ordinal)
-        || Reference.StartsWith(scope + ":", StringComparison.Ordinal);
+    public bool BelongsTo(string scope) => IsInScope(Reference, scope);
+
+    /// <summary>Принадлежит ли ключ слота области: `scope` целиком или `scope:` + хвост.</summary>
+    public static bool IsInScope(string? reference, string scope) =>
+        reference is not null
+        && (reference.Equals(scope, StringComparison.Ordinal)
+            || reference.StartsWith(scope + ":", StringComparison.Ordinal));
 }
