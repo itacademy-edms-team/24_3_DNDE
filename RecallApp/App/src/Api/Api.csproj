@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Modules\Accounts\Accounts.Infrastructure\Accounts.Infrastructure.csproj" />
     <ProjectReference Include="..\Modules\Sets\Sets.Infrastructure\Sets.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\Media\Media.Infrastructure\Media.Infrastructure.csproj" />
     <ProjectReference Include="..\Common\Common.Infrastructure\Common.Infrastructure.csproj" />
   </ItemGroup>
 
