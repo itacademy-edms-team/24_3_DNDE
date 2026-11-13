@@ -3,6 +3,7 @@ using Common.Application.Idempotency;
 using ErrorOr;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using Sets.Application.Abstractions;
 
 namespace Sets.Infrastructure.Data.Idempotency;
 
@@ -12,7 +13,7 @@ namespace Sets.Infrastructure.Data.Idempotency;
 /// Если вызывающий код уже открыл транзакцию (например, под локом набора), стор в неё встраивается
 /// и не управляет коммитом/откатом - это делает владелец транзакции.
 /// </summary>
-internal sealed class IdempotencyStore(SetsDbContext context, TimeProvider clock) : IIdempotencyStore
+internal sealed class IdempotencyStore(SetsDbContext context, TimeProvider clock) : ISetsIdempotencyStore
 {
     /// <summary>Время жизни ключа: повторы после суток считаются новым запросом.</summary>
     private static readonly TimeSpan Ttl = TimeSpan.FromHours(24);

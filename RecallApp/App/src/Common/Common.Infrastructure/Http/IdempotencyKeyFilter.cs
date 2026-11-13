@@ -1,15 +1,14 @@
 using Common.Application.Idempotency;
-using Common.Infrastructure.Http;
 using Microsoft.AspNetCore.Http;
 
-namespace Sets.Infrastructure.Http;
+namespace Common.Infrastructure.Http;
 
 /// <summary>
-/// Транспортная проверка обязательного заголовка Idempotency-Key (ADR 0038: форма запроса - на HTTP-слое).
+/// Транспортная проверка обязательного заголовка `Idempotency-Key` (ADR 0038: форма запроса - на HTTP-слое).
 /// Фильтр проверяет наличие и формат, а также нормализует значение к каноничному виду UUID:
 /// в БД ключ хранится строкой, поэтому «{ABC...}», «ABC...» и «abc...» иначе стали бы разными ключами.
 /// </summary>
-internal sealed class IdempotencyKeyFilter : IEndpointFilter
+public sealed class IdempotencyKeyFilter : IEndpointFilter
 {
     public const string HeaderName = "Idempotency-Key";
 

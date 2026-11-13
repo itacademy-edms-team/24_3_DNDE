@@ -14,7 +14,6 @@ using Sets.Application.Sets;
 using Sets.Infrastructure.Data;
 using Sets.Infrastructure.Data.Idempotency;
 using Sets.Infrastructure.Data.Purge;
-using Sets.Infrastructure.Http;
 
 namespace Sets.Infrastructure;
 
@@ -38,7 +37,7 @@ public static class SetsModule
         services.AddCommandValidators(typeof(ISetRepository));
         services.AddScoped<ISetRepository, SetRepository>();
         services.AddScoped<IElementRepository, ElementRepository>();
-        services.AddScoped<IIdempotencyStore, IdempotencyStore>();
+        services.AddScoped<ISetsIdempotencyStore, IdempotencyStore>();
 
         // Фоновая чистка истёкших ключей.
         services.AddOptions<IdempotencyCleanupOptions>().BindConfiguration("Sets:Idempotency");

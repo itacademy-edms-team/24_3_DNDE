@@ -22,7 +22,7 @@ public sealed record CreateSetCommand(string? Title, string? Description, string
 
 public sealed class CreateSetHandler(
     ISetRepository repository,
-    IIdempotencyStore idempotency,
+    ISetsIdempotencyStore idempotency,
     ICurrentUser currentUser,
     TimeProvider clock)
     : IRequestHandler<CreateSetCommand, ErrorOr<SetResponse>>

@@ -31,7 +31,7 @@ public sealed record CreateElementCommand(
 public sealed class CreateElementHandler(
     ISetRepository sets,
     IElementRepository elements,
-    IIdempotencyStore idempotency,
+    ISetsIdempotencyStore idempotency,
     ICurrentUser currentUser,
     TimeProvider clock)
     : IRequestHandler<CreateElementCommand, ErrorOr<ElementResponse>>
