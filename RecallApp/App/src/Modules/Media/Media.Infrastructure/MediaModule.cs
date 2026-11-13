@@ -8,6 +8,7 @@ using Media.Application.Objects;
 using Media.Application.Storage;
 using Media.Domain.Objects;
 using Media.Infrastructure.Data;
+using Media.Infrastructure.Data.Cleanup;
 using Media.Infrastructure.Data.Idempotency;
 using Media.Infrastructure.Http;
 using Media.Infrastructure.Images;
@@ -45,6 +46,10 @@ public static class MediaModule
         services.AddScoped<IMediaIdempotencyStore, IdempotencyStore>();
         services.AddScoped<IUploadIdempotencyStore, LeasedIdempotencyStore>();
         services.AddSingleton<IImageProcessor, SkiaImageProcessor>();
+
+        services.AddScoped<MediaCleaner>();
+        services.AddOptions<MediaCleanupOptions>().BindConfiguration("Media:Cleanup");
+        services.AddHostedService<MediaCleanupService>();
 
         services.AddOptions<S3Options>()
             .BindConfiguration(S3Options.SectionName)
