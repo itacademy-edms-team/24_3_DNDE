@@ -25,6 +25,9 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Api\Api.csproj" />
     <ProjectReference Include="..\..\src\Modules\Sets\Sets.Infrastructure\Sets.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Media\Media.Domain\Media.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Media\Media.Application\Media.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Media\Media.Infrastructure\Media.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

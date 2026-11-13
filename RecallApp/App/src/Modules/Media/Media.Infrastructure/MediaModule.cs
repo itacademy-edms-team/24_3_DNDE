@@ -1,7 +1,11 @@
+using Amazon.S3;
 using MediatR;
+using Media.Application.Storage;
+using Media.Infrastructure.Data;
+using Media.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Media.Infrastructure.Data;
+using Microsoft.Extensions.Options;
 using Npgsql;
 
 namespace Media.Infrastructure;
@@ -20,6 +24,18 @@ public static class MediaModule
 
         services.AddMediatR(configuration =>
             configuration.RegisterServicesFromAssembly(typeof(MediaModule).Assembly));
+
+        services.AddOptions<S3Options>()
+            .BindConfiguration(S3Options.SectionName)
+            .Validate(
+                options => options.Missing().Count == 0,
+                "Media:S3: не заданы обязательные параметры (Endpoint, Region, Bucket, AccessKeyId, SecretKey).")
+            .ValidateOnStart();
+        services.AddSingleton<IAmazonS3>(provider =>
+            S3ObjectStorage.CreateClient(provider.GetRequiredService<IOptions<S3Options>>().Value));
+        services.AddSingleton<IObjectStorage>(provider => new S3ObjectStorage(
+            provider.GetRequiredService<IAmazonS3>(),
+            provider.GetRequiredService<IOptions<S3Options>>().Value.Bucket));
 
         return services;
     }
