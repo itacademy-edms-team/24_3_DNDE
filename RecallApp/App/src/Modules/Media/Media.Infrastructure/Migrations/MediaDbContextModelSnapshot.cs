@@ -175,6 +175,14 @@ namespace Media.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
 
+                    b.Property<Guid?>("LeaseOwner")
+                        .HasColumnType("uuid")
+                        .HasColumnName("lease_owner");
+
+                    b.Property<DateTime?>("LeaseUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("lease_until");
+
                     b.Property<string>("Operation")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -190,6 +198,11 @@ namespace Media.Infrastructure.Migrations
                     b.Property<string>("Response")
                         .HasColumnType("jsonb")
                         .HasColumnName("response");
+
+                    b.Property<string>("Status")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("status");
 
                     b.Property<int?>("StatusCode")
                         .HasColumnType("integer")

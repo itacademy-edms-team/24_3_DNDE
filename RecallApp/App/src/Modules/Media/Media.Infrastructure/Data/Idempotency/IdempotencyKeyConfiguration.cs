@@ -16,6 +16,9 @@ internal sealed class IdempotencyKeyConfiguration : IEntityTypeConfiguration<Ide
         builder.Property(record => record.RequestHash).HasColumnName("request_hash").HasMaxLength(64).IsRequired();
         builder.Property(record => record.StatusCode).HasColumnName("status_code");
         builder.Property(record => record.Response).HasColumnName("response").HasColumnType("jsonb");
+        builder.Property(record => record.Status).HasColumnName("status").HasMaxLength(16);
+        builder.Property(record => record.LeaseOwner).HasColumnName("lease_owner");
+        builder.Property(record => record.LeaseUntil).HasColumnName("lease_until");
         builder.Property(record => record.ExpiresAt).HasColumnName("expires_at");
         builder.Property(record => record.CreatedAt).HasColumnName("created_at");
 

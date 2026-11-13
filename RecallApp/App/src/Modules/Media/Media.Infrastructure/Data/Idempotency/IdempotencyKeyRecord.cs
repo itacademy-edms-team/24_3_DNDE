@@ -17,6 +17,18 @@ internal sealed class IdempotencyKeyRecord
 
     public string? Response { get; set; }
 
+    /// <summary>
+    /// Состояние аренды для долгих операций: `in_progress` / `completed`.
+    /// У коротких операций (режим A) остаётся пустым: ключ и результат коммитятся одной транзакцией.
+    /// </summary>
+    public string? Status { get; set; }
+
+    /// <summary>Кто сейчас выполняет операцию: защищает от второго обработчика на том же ключе.</summary>
+    public Guid? LeaseOwner { get; set; }
+
+    /// <summary>До какого момента аренда жива; после истечения работу перехватывает следующий запрос.</summary>
+    public DateTime? LeaseUntil { get; set; }
+
     public DateTime ExpiresAt { get; set; }
 
     public DateTime CreatedAt { get; set; }

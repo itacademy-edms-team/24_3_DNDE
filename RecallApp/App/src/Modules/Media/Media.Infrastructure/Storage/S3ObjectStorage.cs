@@ -41,10 +41,14 @@ internal sealed class S3ObjectStorage : IObjectStorage
             Key = objectKey,
             Expires = expires,
             // В AWSSDK v4 коллекции по умолчанию null: инициализируем явно.
-            Fields = new Dictionary<string, string> { ["success_action_status"] = "201" },
+            // `Content-Type` - поле формы: политика проверяет его, а не заголовок файла.
+            Fields = new Dictionary<string, string>
+            {
+                ["Content-Type"] = contentType,
+                ["success_action_status"] = "201",
+            },
             Conditions = new List<S3PostCondition>
             {
-                new ExactMatchCondition("key", objectKey),
                 new ExactMatchCondition("Content-Type", contentType),
                 new ContentLengthRangeCondition(MediaConstraints.MinUploadBytes, maxBytes),
             },

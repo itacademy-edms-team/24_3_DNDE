@@ -6,6 +6,7 @@ using Media.Application.Abstractions;
 using Media.Application.Images;
 using Media.Application.Objects;
 using Media.Application.Storage;
+using Media.Domain.Objects;
 using Media.Infrastructure.Data;
 using Media.Infrastructure.Data.Idempotency;
 using Media.Infrastructure.Images;
@@ -41,6 +42,7 @@ public static class MediaModule
 
         services.AddScoped<IMediaObjectRepository, MediaObjectRepository>();
         services.AddScoped<IMediaIdempotencyStore, IdempotencyStore>();
+        services.AddScoped<IUploadIdempotencyStore, LeasedIdempotencyStore>();
         services.AddSingleton<IImageProcessor, SkiaImageProcessor>();
 
         services.AddOptions<S3Options>()
@@ -73,6 +75,48 @@ public static class MediaModule
             return result.IsError
                 ? result.Errors.ToProblem()
                 : Results.Created($"{MediaRoute.Group}/{result.Value.MediaId}", result.Value);
+        }).AddEndpointFilter<IdempotencyKeyFilter>();
+
+        group.MapPost("/uploads/{mediaId:guid}/confirm", async (
+            Guid mediaId,
+            HttpContext http,
+            ISender sender,
+            IObjectStorage storage,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await sender.Send(
+                new ConfirmUploadCommand(mediaId, IdempotencyKeyFilter.GetCanonicalKey(http)),
+                cancellationToken);
+
+            if (result.IsError)
+                return result.Errors.ToProblem();
+
+            // Ссылки подписываются в момент ответа:
+            // в сохранённом идемпотентном результате их нет, иначе повтор отдавал бы уже истёкшие ссылки.
+            var variants = new Dictionary<string, object>();
+            foreach (var variant in result.Value.Variants)
+            {
+                var url = await storage.CreateReadUrlAsync(
+                    variant.ObjectKey, MediaConstraints.ReadLinkLifetime, cancellationToken);
+                if (url.IsError)
+                    return url.Errors.ToProblem();
+
+                variants[variant.Variant.ToStorageName()] = new
+                {
+                    url = url.Value,
+                    width = variant.Width,
+                    height = variant.Height,
+                    sizeBytes = variant.SizeBytes,
+                };
+            }
+
+            return Results.Ok(new
+            {
+                mediaId = result.Value.MediaId,
+                status = result.Value.Status.ToString().ToLowerInvariant(),
+                failureCode = result.Value.FailureCode,
+                variants,
+            });
         }).AddEndpointFilter<IdempotencyKeyFilter>();
 
         return endpoints;
