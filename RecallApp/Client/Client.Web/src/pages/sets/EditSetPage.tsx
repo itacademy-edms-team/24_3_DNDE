@@ -1,5 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { Alert, Button, Center, Group, Loader, Stack, Text, Title } from "@mantine/core";
+import {
+  Alert,
+  Button,
+  Center,
+  Group,
+  Loader,
+  Stack,
+  Text,
+  Title,
+} from "@mantine/core";
 import { ArrowLeft, Plus } from "@phosphor-icons/react";
 import { Link, useParams } from "react-router";
 
@@ -15,6 +24,7 @@ import {
 } from "@/features/sets/api/useElementMutations";
 import { ElementCard, type EditorCard } from "@/features/sets/ui/ElementCard";
 import { flashcard } from "@/features/sets/ui/flashcard";
+import { swapCards } from "@/features/sets/ui/swapCards";
 import type { Element, ElementPayloadInput } from "@/features/sets/model/types";
 
 const AUTOSAVE_DELAY = 600;
@@ -84,7 +94,14 @@ function EditSetContent({ setId }: { setId: string }) {
     );
   }
 
-  return <EditorBoard key={setId} setId={setId} title={set?.title} initialElements={elements} />;
+  return (
+    <EditorBoard
+      key={setId}
+      setId={setId}
+      title={set?.title}
+      initialElements={elements}
+    />
+  );
 }
 
 /** Редактирование: локальный список карточек — источник истины, автозапись debounce+blur. */
@@ -97,8 +114,12 @@ function EditorBoard({
   title: string | undefined;
   initialElements: Element[];
 }) {
-  const [cards, setCards] = useState<EditorCard[]>(() => initialElements.map(toEditorCard));
+  const [cards, setCards] = useState<EditorCard[]>(() =>
+    initialElements.map(toEditorCard),
+  );
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   const create = useCreateElement(setId);
   const update = useUpdateElement(setId);
@@ -117,7 +138,8 @@ function EditorBoard({
     };
   }, []);
 
-  const fail = () => setSaveError("Не удалось сохранить изменения. Проверьте соединение.");
+  const fail = () =>
+    setSaveError("Не удалось сохранить изменения. Проверьте соединение.");
 
   const saveCard = (card: EditorCard) => {
     update.mutate(
@@ -160,7 +182,9 @@ function EditorBoard({
       {
         onSuccess: (element) => {
           creatingDrafts.current.delete(card.id);
-          setCards((prev) => prev.map((c) => (c.id === card.id ? toEditorCard(element) : c)));
+          setCards((prev) =>
+            prev.map((c) => (c.id === card.id ? toEditorCard(element) : c)),
+          );
         },
         onError: () => {
           creatingDrafts.current.delete(card.id);
@@ -180,7 +204,12 @@ function EditorBoard({
     const localId = `local-${draftCounter.current++}`;
     setCards((prev) => [
       ...prev,
-      { id: localId, isDraft: true, type: "flashcard", payload: flashcard.defaultDraft() },
+      {
+        id: localId,
+        isDraft: true,
+        type: "flashcard",
+        payload: flashcard.defaultDraft(),
+      },
     ]);
   };
 
@@ -195,14 +224,7 @@ function EditorBoard({
     if (card && !card.isDraft) remove.mutate(id, { onError: fail });
   };
 
-  const moveCard = (id: string, dir: -1 | 1) => {
-    const idx = cards.findIndex((c) => c.id === id);
-    const target = idx + dir;
-    if (idx < 0 || target < 0 || target >= cards.length) return;
-    if (cards[idx].isDraft) return;
-
-    const next = [...cards];
-    [next[idx], next[target]] = [next[target], next[idx]];
+  const persistOrder = (next: EditorCard[]) => {
     setCards(next);
     reorder.mutate(
       next.filter((c) => !c.isDraft).map((c) => c.id),
@@ -210,11 +232,49 @@ function EditorBoard({
     );
   };
 
+  const swapOrder = (aId: string, bId: string) => {
+    const next = swapCards(cards, aId, bId);
+    if (next !== cards) persistOrder(next);
+  };
+
+  const moveCard = (id: string, dir: -1 | 1) => {
+    const idx = cards.findIndex((c) => c.id === id);
+    const target = idx + dir;
+    if (idx < 0 || target < 0 || target >= cards.length) return;
+    if (cards[idx].isDraft) return;
+    swapOrder(id, cards[target].id);
+  };
+
+  // DnD: перетащили карточку на другую — меняем их местами.
+  const moveCardTo = (dragged: string, target: string) => {
+    const card = cards.find((c) => c.id === dragged);
+    if (!card || card.isDraft) return;
+    swapOrder(dragged, target);
+  };
+
+  const handleDragStart = (id: string) => setDraggedId(id);
+  const handleDragOver = (id: string) =>
+    setDragOverId((prev) => (prev === id ? prev : id));
+  const handleDrop = (targetId: string) => {
+    if (draggedId) moveCardTo(draggedId, targetId);
+    setDraggedId(null);
+    setDragOverId(null);
+  };
+  const handleDragEnd = () => {
+    setDraggedId(null);
+    setDragOverId(null);
+  };
+
   return (
     <Stack gap="md">
       <Group justify="space-between" align="center">
         <Title order={2}>{title ?? "Набор"}</Title>
-        <Button variant="default" component={Link} to="/sets" leftSection={<ArrowLeft size={16} />}>
+        <Button
+          variant="default"
+          component={Link}
+          to="/sets"
+          leftSection={<ArrowLeft size={16} />}
+        >
           Назад
         </Button>
       </Group>
@@ -246,11 +306,20 @@ function EditorBoard({
             onDelete={() => removeCard(card.id)}
             onMoveUp={() => moveCard(card.id, -1)}
             onMoveDown={() => moveCard(card.id, 1)}
+            isDragOver={dragOverId === card.id && card.id !== draggedId}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+            onDragEnd={handleDragEnd}
           />
         ))
       )}
 
-      <Button variant="light" leftSection={<Plus size={16} />} onClick={addCard}>
+      <Button
+        variant="light"
+        leftSection={<Plus size={16} />}
+        onClick={addCard}
+      >
         Добавить карточку
       </Button>
     </Stack>
