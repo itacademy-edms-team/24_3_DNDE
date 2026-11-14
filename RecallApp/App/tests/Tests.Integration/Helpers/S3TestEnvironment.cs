@@ -35,6 +35,7 @@ public sealed record S3TestSettings(
 /// <summary>
 /// Фабрика S3-клиента для тестов. Единственное место, где настраивается endpoint cloud.ru:
 /// порядок важен, в AWS SDK v4 <c>RegionEndpoint</c> перекрывает <c>ServiceURL</c> (spike, ADR 0037).
+/// Virtual-hosted (без ForcePathStyle) - как в проде: cloud.ru применяет CORS только к virtual-hosted URL.
 /// </summary>
 public static class S3TestEnvironment
 {
@@ -42,7 +43,6 @@ public static class S3TestEnvironment
     {
         var config = new AmazonS3Config
         {
-            ForcePathStyle = true,
             RegionEndpoint = RegionEndpoint.GetBySystemName(settings.Region),
             AuthenticationRegion = settings.Region,
         };

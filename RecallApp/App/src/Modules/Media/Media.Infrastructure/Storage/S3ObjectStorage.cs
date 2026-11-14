@@ -145,14 +145,15 @@ internal sealed class S3ObjectStorage : IObjectStorage
 
     /// <summary>
     /// Создаёт клиент.
-    /// Cначала указываем регион, потом ServiceURL - иначе SDK уходит
+    /// Сначала указываем регион, потом ServiceURL - иначе SDK уходит
     /// на amazonaws.com вместо cloud.ru (проверено spike-тестом, ADR 0037).
+    /// Virtual-hosted (без ForcePathStyle) обязателен: cloud.ru применяет CORS только к
+    /// URL вида {bucket}.s3.cloud.ru, а path-style обходит CORS-движок и префлайт получает 403.
     /// </summary>
     internal static AmazonS3Client CreateClient(S3Options options)
     {
         var config = new AmazonS3Config
         {
-            ForcePathStyle = true,
             RegionEndpoint = RegionEndpoint.GetBySystemName(options.Region),
             AuthenticationRegion = options.Region,
         };
