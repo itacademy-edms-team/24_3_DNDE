@@ -9,7 +9,7 @@
 | `Tests.Integration`, `Category=Database` | JIT-провижининг (ADR 0020) против живой app_db: аутентифицированный `GET /api/users/me` создаёт доменную строку (upsert идемпотентен, id стабилен)       | app_db (контейнер)                             |
 | `Tests.Integration`, `Category=S3`       | spike media-среза (ADR 0037): presigned POST, ограничение размера политикой, права на объекты в бакете                                                   | реальный cloud.ru и переменные `Media__S3__*`  |
 
-Конфигурация тестового хоста — в `AppFactory.cs`: тестовая аутентификация (claims по заголовку `X-Test-Auth`), опциональная подмена claim `sub` заголовком `X-Test-Sub` (проверка 400 `InvalidKeycloakSub`), строки подключения берутся из env контейнера, локально подменяются заглушками. `DatabaseFact` пропускает тест, если не задан `ConnectionStrings__AccountsMigrations` (паттерн `KeycloakFact` из BFF). 
+Конфигурация тестового хоста - в `AppFactory.cs`: тестовая аутентификация (claims по заголовку `X-Test-Auth`), опциональная подмена claim `sub` заголовком `X-Test-Sub` (проверка 400 `User.KeycloakSubInvalid`), строки подключения берутся из env контейнера, локально подменяются заглушками. `DatabaseFact` пропускает тест, если не задан `ConnectionStrings__AccountsMigrations` (паттерн `KeycloakFact` из BFF). 
 
 Общие правила тестирования: [docs/testing-conventions.md](../../docs/testing-conventions.md).
 

@@ -29,14 +29,17 @@ public sealed class User
     public static ErrorOr<User> Create(Guid keycloakSub, string email, string displayName, DateTime utcNow)
     {
         if (keycloakSub == Guid.Empty)
-            return UserErrors.KeycloakSubEmpty;
+            return UserErrors.KeycloakSubInvalid;
 
         if (string.IsNullOrWhiteSpace(email))
-            return UserErrors.EmailEmpty;
+            return UserErrors.EmailRequired;
 
         var name = displayName.Trim();
-        if (name.Length is 0 or > DisplayNameMaxLength)
-            return UserErrors.DisplayNameInvalid(DisplayNameMaxLength);
+        if (name.Length == 0)
+            return UserErrors.DisplayNameRequired;
+
+        if (name.Length > DisplayNameMaxLength)
+            return UserErrors.DisplayNameTooLong(name.Length);
 
         return new User
         {

@@ -4,10 +4,13 @@
  * Происхождение ошибки приходит отдельно, в problem.source.
  */
 export const restCodeMessages: Record<string, string> = {
-  // Домен Accounts
-  InvalidKeycloakSub: "Не удалось определить пользователя. Войдите заново.",
-  InvalidEmail: "Некорректный email.",
-  InvalidDisplayName: "Недопустимое отображаемое имя.",
+  // Домен Accounts (коды вида <Сущность>.<Правило>, ADR 0038)
+  "User.NotFound": "Профиль не найден.",
+  "User.KeycloakSubInvalid":
+    "Не удалось определить пользователя. Войдите заново.",
+  "User.EmailRequired": "Некорректный email.",
+  "User.DisplayNameRequired": "Укажите отображаемое имя.",
+  "User.DisplayNameTooLong": "Отображаемое имя слишком длинное.",
   // BFF
   NotAuthenticated: "Требуется вход в аккаунт.",
   SessionExpired: "Сессия истекла. Войдите заново.",
