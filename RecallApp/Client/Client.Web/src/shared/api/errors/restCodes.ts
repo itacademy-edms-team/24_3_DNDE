@@ -17,6 +17,14 @@ export const restCodeMessages: Record<string, string> = {
   "Set.TitleRequired": "Укажите название набора.",
   "Set.TitleTooLong": "Название набора слишком длинное.",
   "Set.DescriptionTooLong": "Описание набора слишком длинное.",
+  // Домен Sets — элементы
+  "Element.NotFound": "Карточка не найдена.",
+  "Element.TermRequired": "Укажите термин.",
+  "Element.TermTooLong": "Термин слишком длинный.",
+  "Element.DefinitionRequired": "Укажите определение.",
+  "Element.DefinitionTooLong": "Определение слишком длинное.",
+  "Element.TypeUnsupported": "Тип элемента не поддерживается.",
+  "Element.PayloadInvalid": "Неверный формат содержимого карточки.",
   // Идемпотентность POST-создания (общий заголовок Idempotency-Key)
   "Idempotency.KeyRequired": "Запрос не прошёл проверку повторной отправки.",
   "Idempotency.KeyInvalid": "Запрос не прошёл проверку повторной отправки.",

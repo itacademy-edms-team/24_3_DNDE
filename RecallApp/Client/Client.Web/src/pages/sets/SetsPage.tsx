@@ -9,13 +9,14 @@ import {
   Title,
 } from "@mantine/core";
 import { useIntersection } from "@mantine/hooks";
-import { Plus } from "@phosphor-icons/react";
+import { Lightning, Plus } from "@phosphor-icons/react";
 
 import { toErrorView } from "@/shared/api/errors/errorView";
 import { RequireSession } from "@/features/session/ui/RequireSession";
 import { useSets } from "@/features/sets/api/useSets";
 import { DeleteSetModal } from "@/features/sets/ui/DeleteSetModal";
 import { SetCard } from "@/features/sets/ui/SetCard";
+import { QuickCardModal } from "@/features/sets/ui/QuickCardModal";
 import { SetFormModal } from "@/features/sets/ui/SetFormModal";
 import type { SetSummary } from "@/features/sets/model/types";
 
@@ -47,6 +48,7 @@ function SetsContent() {
 
   const [modal, setModal] = useState<SetModalState>({ kind: "closed" });
   const [deleting, setDeleting] = useState<SetSummary | null>(null);
+  const [quickOpen, setQuickOpen] = useState(false);
 
   const { ref: sentinelRef, entry } = useIntersection({ threshold: 0.1 });
 
@@ -82,19 +84,25 @@ function SetsContent() {
 
   return (
     <Stack gap="md">
-      <Group justify="space-between" align="center">
+      <Group justify="space-between" align="center" wrap="wrap" gap="sm">
         <Title order={2}>Мои наборы</Title>
-        <Button
-          leftSection={<Plus size={16} />}
-          onClick={() => setModal({ kind: "create" })}
-        >
-          Создать набор
-        </Button>
+        <Group gap="xs">
+          <Button
+            variant="light"
+            leftSection={<Lightning size={16} />}
+            onClick={() => setQuickOpen(true)}
+          >
+            Быстрая карточка
+          </Button>
+          <Button leftSection={<Plus size={16} />} onClick={() => setModal({ kind: "create" })}>
+            Создать набор
+          </Button>
+        </Group>
       </Group>
 
       {items.length === 0 ? (
         <Center py="xl">
-          <Text c="dimmed">Наборов пока нет создайте первый.</Text>
+          <Text c="dimmed">Наборов пока нет — создайте первый.</Text>
         </Center>
       ) : (
         <Stack gap="sm">
@@ -124,6 +132,7 @@ function SetsContent() {
           onClose={() => setModal({ kind: "closed" })}
         />
       )}
+      {quickOpen && <QuickCardModal onClose={() => setQuickOpen(false)} />}
       {deleting && (
         <DeleteSetModal set={deleting} onClose={() => setDeleting(null)} />
       )}
