@@ -1,5 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { Alert, Button, Center, Group, Loader, Stack, Text, Title } from "@mantine/core";
+import {
+  Alert,
+  Button,
+  Center,
+  Group,
+  Loader,
+  Stack,
+  Text,
+  Title,
+} from "@mantine/core";
 import {
   closestCenter,
   DndContext,
@@ -42,7 +51,7 @@ function toEditorCard(element: Element): EditorCard {
         id: element.id,
         isDraft: false,
         type: "flashcard",
-        payload: flashcard.toDraft(element.payload),
+        payload: flashcard.toDraft(element.payload, element.images),
       };
   }
 }
@@ -99,7 +108,14 @@ function EditSetContent({ setId }: { setId: string }) {
     );
   }
 
-  return <EditorBoard key={setId} setId={setId} title={set?.title} initialElements={elements} />;
+  return (
+    <EditorBoard
+      key={setId}
+      setId={setId}
+      title={set?.title}
+      initialElements={elements}
+    />
+  );
 }
 
 /** Редактирование: локальный список карточек — источник истины, автозапись debounce+blur. */
@@ -112,7 +128,9 @@ function EditorBoard({
   title: string | undefined;
   initialElements: Element[];
 }) {
-  const [cards, setCards] = useState<EditorCard[]>(() => initialElements.map(toEditorCard));
+  const [cards, setCards] = useState<EditorCard[]>(() =>
+    initialElements.map(toEditorCard),
+  );
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const create = useCreateElement(setId);
@@ -127,7 +145,9 @@ function EditorBoard({
   const sensors = useSensors(
     // distance 8: drag стартует после сдвига на 8px — клики/скролл не перехватываются.
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
   );
 
   // Не даём отложенным сохранениям выстрелить после размонтирования (иначе onError сработает на мёртвом компоненте).
@@ -138,7 +158,8 @@ function EditorBoard({
     };
   }, []);
 
-  const fail = () => setSaveError("Не удалось сохранить изменения. Проверьте соединение.");
+  const fail = () =>
+    setSaveError("Не удалось сохранить изменения. Проверьте соединение.");
 
   const saveCard = (card: EditorCard) => {
     update.mutate(
@@ -181,7 +202,9 @@ function EditorBoard({
       {
         onSuccess: (element) => {
           creatingDrafts.current.delete(card.id);
-          setCards((prev) => prev.map((c) => (c.id === card.id ? toEditorCard(element) : c)));
+          setCards((prev) =>
+            prev.map((c) => (c.id === card.id ? toEditorCard(element) : c)),
+          );
         },
         onError: () => {
           creatingDrafts.current.delete(card.id);
@@ -201,7 +224,12 @@ function EditorBoard({
     const localId = `local-${draftCounter.current++}`;
     setCards((prev) => [
       ...prev,
-      { id: localId, isDraft: true, type: "flashcard", payload: flashcard.defaultDraft() },
+      {
+        id: localId,
+        isDraft: true,
+        type: "flashcard",
+        payload: flashcard.defaultDraft(),
+      },
     ]);
   };
 
@@ -246,7 +274,12 @@ function EditorBoard({
     <Stack gap="md">
       <Group justify="space-between" align="center">
         <Title order={2}>{title ?? "Набор"}</Title>
-        <Button variant="default" component={Link} to="/sets" leftSection={<ArrowLeft size={16} />}>
+        <Button
+          variant="default"
+          component={Link}
+          to="/sets"
+          leftSection={<ArrowLeft size={16} />}
+        >
           Назад
         </Button>
       </Group>
@@ -267,8 +300,15 @@ function EditorBoard({
           </Stack>
         </Center>
       ) : (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={cards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={cards.map((c) => c.id)}
+            strategy={verticalListSortingStrategy}
+          >
             {cards.map((card, index) => (
               <ElementCard
                 key={card.id}
@@ -286,7 +326,11 @@ function EditorBoard({
         </DndContext>
       )}
 
-      <Button variant="light" leftSection={<Plus size={16} />} onClick={addCard}>
+      <Button
+        variant="light"
+        leftSection={<Plus size={16} />}
+        onClick={addCard}
+      >
         Добавить карточку
       </Button>
     </Stack>

@@ -1,11 +1,30 @@
-import type { FlashcardPayload, FlashcardPayloadInput } from "@/features/sets/model/types";
+import type {
+  ElementImages,
+  ElementSideImages,
+  FlashcardPayload,
+  FlashcardPayloadInput,
+} from "@/features/sets/model/types";
 
-/** Черновик флеш-карточки в редакторе (текст + id изображений). */
+/** Изображение стороны карточки: id файла + превью (thumb) для отображения в редакторе. */
+export interface FlashcardSideImage {
+  mediaId: string;
+  thumbUrl: string;
+}
+
+/** Черновик флеш-карточки в редакторе (текст + изображения сторон). */
 export interface FlashcardDraft {
   term: string;
   definition: string;
-  frontImageId: string | null;
-  backImageId: string | null;
+  frontImage: FlashcardSideImage | null;
+  backImage: FlashcardSideImage | null;
+}
+
+function toSideImage(
+  mediaId: string | null,
+  side: ElementSideImages | undefined,
+): FlashcardSideImage | null {
+  if (!mediaId || !side?.thumb) return null;
+  return { mediaId, thumbUrl: side.thumb.url };
 }
 
 /**
@@ -15,15 +34,18 @@ export interface FlashcardDraft {
  */
 export const flashcard = {
   defaultDraft(): FlashcardDraft {
-    return { term: "", definition: "", frontImageId: null, backImageId: null };
+    return { term: "", definition: "", frontImage: null, backImage: null };
   },
 
-  toDraft(payload: FlashcardPayload): FlashcardDraft {
+  toDraft(
+    payload: FlashcardPayload,
+    images: ElementImages | null,
+  ): FlashcardDraft {
     return {
       term: payload.term,
       definition: payload.definition,
-      frontImageId: payload.frontImageId,
-      backImageId: payload.backImageId,
+      frontImage: toSideImage(payload.frontImageId, images?.front),
+      backImage: toSideImage(payload.backImageId, images?.back),
     };
   },
 
@@ -31,8 +53,8 @@ export const flashcard = {
     return {
       term: draft.term,
       definition: draft.definition,
-      frontImageId: draft.frontImageId,
-      backImageId: draft.backImageId,
+      frontImageId: draft.frontImage?.mediaId ?? null,
+      backImageId: draft.backImage?.mediaId ?? null,
     };
   },
 
