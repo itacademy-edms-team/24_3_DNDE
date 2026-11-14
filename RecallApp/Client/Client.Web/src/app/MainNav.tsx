@@ -10,6 +10,7 @@ interface NavItem {
 
 const items: NavItem[] = [
   { to: "/", label: "Главная", end: true },
+  { to: "/sets", label: "Наборы", end: false },
   { to: "/account", label: "Аккаунт", end: false },
 ];
 

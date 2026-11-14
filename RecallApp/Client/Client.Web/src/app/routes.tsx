@@ -2,6 +2,7 @@ import type { RouteObject } from "react-router";
 
 import { AccountPage } from "@/pages/account/AccountPage";
 import { HomePage } from "@/pages/home/HomePage";
+import { SetsPage } from "@/pages/sets/SetsPage";
 import { AppLayout } from "./AppLayout";
 import { NotFoundPage } from "./NotFoundPage";
 
@@ -17,6 +18,7 @@ export const routes: RouteObject[] = [
     children: [
       { index: true, element: <HomePage /> },
       { path: "account", element: <AccountPage /> },
+      { path: "sets", element: <SetsPage /> },
       { path: "*", element: <NotFoundPage /> },
     ],
   },

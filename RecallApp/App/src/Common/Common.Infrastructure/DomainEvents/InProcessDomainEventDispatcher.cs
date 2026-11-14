@@ -44,7 +44,7 @@ public sealed class InProcessDomainEventDispatcher(IServiceProvider services) : 
     {
         var handlerType = typeof(IDomainEventHandler<>).MakeGenericType(eventType);
         var handlersType = typeof(IEnumerable<>).MakeGenericType(handlerType);
-        var handleMethod = handlerType.GetMethod(nameof(IDomainEventHandler<>.HandleAsync))!;
+        var handleMethod = handlerType.GetMethod(nameof(IDomainEventHandler<IDomainEvent>.HandleAsync))!;
 
         return async (provider, domainEvent, cancellationToken) =>
         {

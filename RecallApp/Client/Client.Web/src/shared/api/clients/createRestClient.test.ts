@@ -1,4 +1,4 @@
-import { AxiosError, AxiosHeaders, type InternalAxiosRequestConfig } from "axios";
+import { AxiosError, AxiosHeaders, type AxiosResponse, type InternalAxiosRequestConfig } from "axios";
 import { describe, expect, it } from "vitest";
 
 import { createRestClient } from "./createRestClient";
@@ -22,6 +22,20 @@ function failingAdapter(status: number, data: unknown) {
 function networkFailureAdapter() {
   return async (config: InternalAxiosRequestConfig) => {
     throw new AxiosError("Network Error", "ERR_NETWORK", config);
+  };
+}
+
+/** Adapter, который ловит итоговый конфиг запроса после интерцепторов и отвечает пустым 200. */
+function capturingAdapter(onRequest: (config: InternalAxiosRequestConfig) => void) {
+  return async (config: InternalAxiosRequestConfig): Promise<AxiosResponse> => {
+    onRequest(config);
+    return {
+      data: {},
+      status: 200,
+      statusText: "OK",
+      headers: new AxiosHeaders(),
+      config,
+    };
   };
 }
 
@@ -69,5 +83,38 @@ describe("createRestClient", () => {
 
     expect(error).toBeInstanceOf(RestApiError);
     expect((error as RestApiError).problem).toBeNull();
+  });
+});
+
+describe("createRestClient CSRF header", () => {
+  it.each(["post", "put", "patch", "delete"] as const)(
+    "adds X-CSRF: 1 to %s requests",
+    async (method) => {
+      const client = createRestClient("https://bff.localhost/api");
+      let captured: InternalAxiosRequestConfig | undefined;
+
+      await client.request({
+        method,
+        url: "/sets",
+        adapter: capturingAdapter((config) => {
+          captured = config;
+        }),
+      });
+
+      expect(captured?.headers.get("X-CSRF")).toBe("1");
+    },
+  );
+
+  it("does not add X-CSRF to GET requests", async () => {
+    const client = createRestClient("https://bff.localhost/api");
+    let captured: InternalAxiosRequestConfig | undefined;
+
+    await client.get("/sets", {
+      adapter: capturingAdapter((config) => {
+        captured = config;
+      }),
+    });
+
+    expect(captured?.headers.get("X-CSRF")).toBeUndefined();
   });
 });
