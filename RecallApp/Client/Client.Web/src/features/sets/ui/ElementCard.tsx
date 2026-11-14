@@ -1,4 +1,5 @@
 import { ActionIcon, Box, Card, Group, Menu } from "@mantine/core";
+import { useSortable } from "@dnd-kit/sortable";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -31,15 +32,12 @@ interface ElementCardProps {
   onDelete: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
-  /** Drag&drop перестановка (десктоп; на таче работают кнопки в меню). */
-  isDragOver: boolean;
-  onDragStart: (id: string) => void;
-  onDragOver: (id: string) => void;
-  onDrop: (id: string) => void;
-  onDragEnd: () => void;
 }
 
-/** Оболочка карточки: общая «рама» (ручка DnD + меню действий) + поля конкретного типа. */
+/**
+ * Оболочка карточки: общая «рама» (ручка DnD + меню действий) + поля конкретного типа.
+ * Перестановка — через @dnd-kit/sortable (Pointer/Keyboard-сенсоры), работает мышью и пальцем.
+ */
 export function ElementCard({
   card,
   index,
@@ -49,50 +47,50 @@ export function ElementCard({
   onDelete,
   onMoveUp,
   onMoveDown,
-  isDragOver,
-  onDragStart,
-  onDragOver,
-  onDrop,
-  onDragEnd,
 }: ElementCardProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: card.id,
+    disabled: card.isDraft,
+  });
+
   const canUp = index > 0 && !card.isDraft;
   const canDown = index < total - 1 && !card.isDraft;
 
   return (
     <Card
+      ref={setNodeRef}
       withBorder
       radius="md"
       padding="md"
-      style={
-        isDragOver
-          ? { outline: "2px solid var(--mantine-color-blue-5)" }
-          : undefined
-      }
-      onDragOver={(event) => {
-        event.preventDefault();
-        onDragOver(card.id);
-      }}
-      onDrop={(event) => {
-        event.preventDefault();
-        onDrop(card.id);
+      style={{
+        transform: transform
+          ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
+          : undefined,
+        transition,
+        opacity: isDragging ? 0.6 : undefined,
+        position: "relative",
+        zIndex: isDragging ? 1 : undefined,
       }}
     >
       <Group justify="space-between" align="center" mb="xs">
         <Box
-          draggable={!card.isDraft}
-          onDragStart={(event) => {
-            event.dataTransfer.effectAllowed = "move";
-            // Firefox не начинает drag без setData.
-            event.dataTransfer.setData("text/plain", card.id);
-            onDragStart(card.id);
-          }}
-          onDragEnd={onDragEnd}
+          {...attributes}
+          {...listeners}
           title="Перетащите, чтобы изменить порядок"
           c="dimmed"
           style={{
             cursor: card.isDraft ? "default" : "grab",
             display: "flex",
             padding: 4,
+            // Без touch-action браузер перехватывает жест под скролл — DnD на таче не стартует.
+            touchAction: "none",
           }}
         >
           <DotsSixVerticalIcon size={20} />
