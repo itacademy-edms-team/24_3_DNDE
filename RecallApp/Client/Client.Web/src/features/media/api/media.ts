@@ -40,11 +40,6 @@ export async function getMedia(
   return data;
 }
 
-/** Удаление медиа-объекта (DELETE /api/media/{id}). */
-export async function deleteMedia(mediaId: string): Promise<void> {
-  await apiClient.delete(`/media/${mediaId}`);
-}
-
 /**
  * Прямая загрузка файла в S3 (не через API): FormData из подписанных `fields` + файл полем "file".
  * Прогресс — через XHR (fetch не поддерживает upload.onprogress).
