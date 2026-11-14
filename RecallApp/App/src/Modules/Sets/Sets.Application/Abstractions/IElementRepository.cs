@@ -36,6 +36,9 @@ public interface IElementRepository
     /// <summary>Id активных элементов набора: нужен для проверки полноты присланного порядка.</summary>
     Task<IReadOnlyList<Guid>> ListActiveIdsAsync(Guid setId, CancellationToken cancellationToken);
 
+    /// <summary>Считает число активных элементов набора.</summary>
+    Task<int> CountActiveAsync(Guid setId, CancellationToken cancellationToken);
+
     /// <summary>
     /// Выполняет действие над составом набора в транзакции с блокировкой строки набора
     /// (<c>SELECT … FOR UPDATE</c>). Параметр действия - число активных элементов, посчитанное

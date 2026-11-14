@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent, PointerEvent } from "react";
 import {
   ActionIcon,
@@ -16,7 +16,7 @@ import { Link, useParams } from "react-router";
 import { toErrorView } from "@/shared/api/errors/errorView";
 import { RequireSession } from "@/features/session/ui/RequireSession";
 import { useSet } from "@/features/sets/api/useSet";
-import { useElements } from "@/features/sets/api/useElements";
+import { useElementsPaged } from "@/features/sets/api/useElementsPaged";
 import type { Element } from "@/features/sets/model/types";
 
 const SWIPE_THRESHOLD = 50;
@@ -35,9 +35,31 @@ export function PreviewSetPage() {
 
 function PreviewContent({ setId }: { setId: string }) {
   const { data: set } = useSet(setId);
-  const { data: elements, isPending, error } = useElements(setId);
+  const {
+    data,
+    isPending,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useElementsPaged(setId);
 
   const [index, setIndex] = useState(0);
+
+  const elements = data?.pages.flatMap((page) => page.items) ?? [];
+  const total = set?.elementCount ?? elements.length;
+
+  // Догружаем следующую страницу заранее, когда подходим к концу загруженных карточек.
+  useEffect(() => {
+    if (
+      elements.length > 0 &&
+      index >= elements.length - 2 &&
+      hasNextPage &&
+      !isFetchingNextPage
+    ) {
+      void fetchNextPage();
+    }
+  }, [index, elements.length, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   if (isPending) {
     return (
@@ -47,7 +69,7 @@ function PreviewContent({ setId }: { setId: string }) {
     );
   }
 
-  if (!elements) {
+  if (!data) {
     const view = toErrorView(error);
     return (
       <Center h="50vh">
@@ -61,8 +83,8 @@ function PreviewContent({ setId }: { setId: string }) {
     );
   }
 
-  const goTo = (i: number) =>
-    setIndex(Math.max(0, Math.min(elements.length - 1, i)));
+  const goTo = (i: number) => setIndex(Math.max(0, Math.min(total - 1, i)));
+  const current = elements[index];
 
   return (
     <Stack gap="md">
@@ -78,15 +100,15 @@ function PreviewContent({ setId }: { setId: string }) {
         </Button>
       </Group>
 
-      {elements.length === 0 ? (
+      {total === 0 ? (
         <Center py="xl">
           <Text c="dimmed">Набор пуст.</Text>
         </Center>
-      ) : (
+      ) : current ? (
         <Stack gap="md" align="center">
           <FlipCard
-            key={elements[index].id}
-            element={elements[index]}
+            key={current.id}
+            element={current}
             onPrev={() => goTo(index - 1)}
             onNext={() => goTo(index + 1)}
           />
@@ -101,19 +123,23 @@ function PreviewContent({ setId }: { setId: string }) {
               <ArrowLeftIcon size={20} />
             </ActionIcon>
             <Text c="dimmed">
-              {index + 1} / {elements.length}
+              {index + 1} / {total}
             </Text>
             <ActionIcon
               variant="default"
               size="lg"
               onClick={() => goTo(index + 1)}
-              disabled={index === elements.length - 1}
+              disabled={index >= total - 1}
               aria-label="Следующая карточка"
             >
               <ArrowRightIcon size={20} />
             </ActionIcon>
           </Group>
         </Stack>
+      ) : (
+        <Center py="xl">
+          <Loader />
+        </Center>
       )}
     </Stack>
   );
@@ -153,8 +179,8 @@ function FlipCard({ element, onPrev, onNext }: FlipCardProps) {
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === "ArrowLeftIcon") onPrev();
-    else if (event.key === "ArrowRightIcon") onNext();
+    if (event.key === "ArrowLeft") onPrev();
+    else if (event.key === "ArrowRight") onNext();
     else if (event.key === " " || event.key === "Enter") {
       event.preventDefault();
       setFlipped((f) => !f);

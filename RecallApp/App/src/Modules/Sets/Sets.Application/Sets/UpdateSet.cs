@@ -11,7 +11,11 @@ namespace Sets.Application.Sets;
 /// <param name="Description">Новое описание; null или пустая строка, чтобы затереть.</param>
 public sealed record UpdateSetCommand(Guid Id, string? Title, string? Description) : IRequest<ErrorOr<SetResponse>>;
 
-public sealed class UpdateSetHandler(ISetRepository repository, ICurrentUser currentUser, TimeProvider clock)
+public sealed class UpdateSetHandler(
+    ISetRepository repository,
+    IElementRepository elements,
+    ICurrentUser currentUser,
+    TimeProvider clock)
     : IRequestHandler<UpdateSetCommand, ErrorOr<SetResponse>>
 {
     public async Task<ErrorOr<SetResponse>> Handle(UpdateSetCommand command, CancellationToken cancellationToken)
@@ -28,6 +32,8 @@ public sealed class UpdateSetHandler(ISetRepository repository, ICurrentUser cur
             return replaced.Errors;
 
         await repository.SaveChangesAsync(cancellationToken);
-        return SetResponse.From(set);
+
+        var elementCount = await elements.CountActiveAsync(set.Id, cancellationToken);
+        return SetResponse.From(set, elementCount);
     }
 }

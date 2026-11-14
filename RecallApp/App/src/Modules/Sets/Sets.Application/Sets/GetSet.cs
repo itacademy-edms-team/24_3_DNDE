@@ -9,7 +9,10 @@ namespace Sets.Application.Sets;
 /// <param name="Id">Id набора</param>
 public sealed record GetSetQuery(Guid Id) : IRequest<ErrorOr<SetResponse>>;
 
-public sealed class GetSetHandler(ISetRepository repository, ICurrentUser currentUser)
+public sealed class GetSetHandler(
+    ISetRepository repository,
+    IElementRepository elements,
+    ICurrentUser currentUser)
     : IRequestHandler<GetSetQuery, ErrorOr<SetResponse>>
 {
     public async Task<ErrorOr<SetResponse>> Handle(GetSetQuery query, CancellationToken cancellationToken)
@@ -18,6 +21,10 @@ public sealed class GetSetHandler(ISetRepository repository, ICurrentUser curren
             return SetErrors.UserUnresolved;
 
         var set = await repository.FindOwnedAsync(query.Id, ownerId, cancellationToken);
-        return set is null ? SetErrors.NotFound : SetResponse.From(set);
+        if (set is null)
+            return SetErrors.NotFound;
+
+        var elementCount = await elements.CountActiveAsync(set.Id, cancellationToken);
+        return SetResponse.From(set, elementCount);
     }
 }

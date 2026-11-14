@@ -14,14 +14,15 @@ public sealed record SetSummaryResponse(
         new(set.Id, set.Title.Value, set.Description?.Value, set.CreatedAt, set.UpdatedAt);
 }
 
-/// <summary>Набор целиком, без элементов: элементы приходят отдельным запросом.</summary>
+/// <summary>Набор целиком, без элементов: элементы приходят отдельным запросом, их число - в ElementCount.</summary>
 public sealed record SetResponse(
     Guid Id,
     string Title,
     string? Description,
     DateTime CreatedAt,
-    DateTime UpdatedAt)
+    DateTime UpdatedAt,
+    int ElementCount)
 {
-    public static SetResponse From(Set set) =>
-        new(set.Id, set.Title.Value, set.Description?.Value, set.CreatedAt, set.UpdatedAt);
+    public static SetResponse From(Set set, int elementCount) =>
+        new(set.Id, set.Title.Value, set.Description?.Value, set.CreatedAt, set.UpdatedAt, elementCount);
 }

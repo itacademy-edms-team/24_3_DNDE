@@ -46,7 +46,7 @@ public sealed class CreateSetHandler(
 
                 repository.Add(created.Value);
                 await repository.SaveChangesAsync(token);
-                return SetResponse.From(created.Value);
+                return SetResponse.From(created.Value, elementCount: 0);
             }, cancellationToken);
     }
 }

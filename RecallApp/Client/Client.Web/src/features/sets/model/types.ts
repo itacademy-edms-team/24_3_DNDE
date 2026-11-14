@@ -10,6 +10,11 @@ export interface SetSummary {
   updatedAt: string;
 }
 
+/** Набор по id (GET /api/sets/{id}): как SetSummary + число элементов (для предпросмотра). */
+export interface SetDetail extends SetSummary {
+  elementCount: number;
+}
+
 /** Страница списка наборов: элементы и курсор следующей страницы (keyset, ADR 0039). */
 export interface SetsPage {
   items: SetSummary[];

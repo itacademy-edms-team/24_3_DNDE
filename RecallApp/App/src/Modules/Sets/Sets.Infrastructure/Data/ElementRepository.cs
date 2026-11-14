@@ -63,6 +63,11 @@ internal sealed class ElementRepository(SetsDbContext context) : IElementReposit
             .Select(element => element.Id)
             .ToListAsync(cancellationToken);
 
+    public Task<int> CountActiveAsync(Guid setId, CancellationToken cancellationToken) =>
+        context.Elements.CountAsync(
+            element => element.SetId == setId && element.DeletedAt == null,
+            cancellationToken);
+
     public async Task<TResult> ExecuteLockedAsync<TResult>(
         Guid setId,
         Func<int, CancellationToken, Task<TResult>> action,
