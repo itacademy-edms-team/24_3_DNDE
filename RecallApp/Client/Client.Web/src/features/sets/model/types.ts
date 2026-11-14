@@ -30,3 +30,67 @@ export interface UpdateSetInput {
   title: string | null;
   description: string | null;
 }
+
+/** Ссылка на вариант изображения (MediaImageLink): подписанный URL и размеры. */
+export interface ElementImageLink {
+  url: string;
+  width: number;
+  height: number;
+}
+
+/** Сторона карточки: варианты thumb/display. */
+export interface ElementSideImages {
+  thumb: ElementImageLink;
+  display: ElementImageLink;
+}
+
+/** Изображения элемента: сторона -> варианты. null — изображений нет. */
+export interface ElementImages {
+  front?: ElementSideImages;
+  back?: ElementSideImages;
+}
+
+/** Payload флеш-карточки в ответе API (frontImageId/backImageId всегда присутствуют). */
+export interface FlashcardPayload {
+  term: string;
+  definition: string;
+  frontImageId: string | null;
+  backImageId: string | null;
+}
+
+/** Элемент набора в ответе API. */
+export interface Element {
+  id: string;
+  type: "flashcard";
+  payload: FlashcardPayload;
+  images: ElementImages | null;
+  position: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Страница элементов (keyset-пагинация). */
+export interface ElementsPage {
+  items: Element[];
+  nextCursor: string | null;
+}
+
+/** Payload флеш-карточки в теле запроса: изображения необязательны. */
+export interface FlashcardInput {
+  term: string;
+  definition: string;
+  frontImageId?: string | null;
+  backImageId?: string | null;
+}
+
+/** Тело POST /api/sets/{setId}/elements. */
+export interface CreateElementInput {
+  type: "flashcard";
+  payload: FlashcardInput;
+  position?: number | null;
+}
+
+/** Тело PUT /api/sets/{setId}/elements/{elementId}: тип неизменяем, только payload. */
+export interface UpdateElementInput {
+  payload: FlashcardInput;
+}

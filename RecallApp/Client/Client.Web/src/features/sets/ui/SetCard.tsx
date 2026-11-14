@@ -1,33 +1,40 @@
-import { ActionIcon, Card, Group, Menu, Stack, Text } from "@mantine/core";
+import { ActionIcon, Card, Group, Menu, Stack, Text, UnstyledButton } from "@mantine/core";
 import { DotsThreeVertical, PencilSimple, Trash } from "@phosphor-icons/react";
+import { Link } from "react-router";
 
 import type { SetSummary } from "@/features/sets/model/types";
 import { formatUpdatedAt } from "./formatUpdatedAt";
 
 interface SetCardProps {
   set: SetSummary;
-  onEdit: (set: SetSummary) => void;
+  onRename: (set: SetSummary) => void;
   onDelete: (set: SetSummary) => void;
 }
 
-/** Карточка набора в списке: название, описание, дата изменения и меню действий. */
-export function SetCard({ set, onEdit, onDelete }: SetCardProps) {
+/** Карточка набора: клик по содержимому открывает редактор, меню — переименовать/удалить. */
+export function SetCard({ set, onRename, onDelete }: SetCardProps) {
   return (
     <Card withBorder radius="md" padding="lg">
       <Group justify="space-between" align="flex-start" wrap="nowrap">
-        <Stack gap={2} style={{ minWidth: 0, flex: 1 }}>
-          <Text fw={600} truncate>
-            {set.title}
-          </Text>
-          {set.description && (
-            <Text size="sm" c="dimmed" lineClamp={2}>
-              {set.description}
+        <UnstyledButton
+          component={Link}
+          to={`/sets/${set.id}/edit`}
+          style={{ flex: 1, minWidth: 0, textAlign: "left" }}
+        >
+          <Stack gap={2}>
+            <Text fw={600} truncate>
+              {set.title}
             </Text>
-          )}
-          <Text size="xs" c="dimmed">
-            Изменено {formatUpdatedAt(set.updatedAt)}
-          </Text>
-        </Stack>
+            {set.description && (
+              <Text size="sm" c="dimmed" lineClamp={2}>
+                {set.description}
+              </Text>
+            )}
+            <Text size="xs" c="dimmed">
+              Изменено {formatUpdatedAt(set.updatedAt)}
+            </Text>
+          </Stack>
+        </UnstyledButton>
 
         <Menu shadow="md" position="bottom-end" width={200}>
           <Menu.Target>
@@ -36,8 +43,8 @@ export function SetCard({ set, onEdit, onDelete }: SetCardProps) {
             </ActionIcon>
           </Menu.Target>
           <Menu.Dropdown>
-            <Menu.Item leftSection={<PencilSimple size={16} />} onClick={() => onEdit(set)}>
-              Редактировать
+            <Menu.Item leftSection={<PencilSimple size={16} />} onClick={() => onRename(set)}>
+              Переименовать
             </Menu.Item>
             <Menu.Item leftSection={<Trash size={16} />} color="red" onClick={() => onDelete(set)}>
               Удалить

@@ -102,7 +102,7 @@ function SetsContent() {
             <SetCard
               key={set.id}
               set={set}
-              onEdit={(s) => setModal({ kind: "edit", set: s })}
+              onRename={(s) => setModal({ kind: "edit", set: s })}
               onDelete={setDeleting}
             />
           ))}

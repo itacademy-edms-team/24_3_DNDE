@@ -2,6 +2,7 @@ import type { RouteObject } from "react-router";
 
 import { AccountPage } from "@/pages/account/AccountPage";
 import { HomePage } from "@/pages/home/HomePage";
+import { EditSetPage } from "@/pages/sets/EditSetPage";
 import { SetsPage } from "@/pages/sets/SetsPage";
 import { AppLayout } from "./AppLayout";
 import { NotFoundPage } from "./NotFoundPage";
@@ -19,6 +20,7 @@ export const routes: RouteObject[] = [
       { index: true, element: <HomePage /> },
       { path: "account", element: <AccountPage /> },
       { path: "sets", element: <SetsPage /> },
+      { path: "sets/:id/edit", element: <EditSetPage /> },
       { path: "*", element: <NotFoundPage /> },
     ],
   },
