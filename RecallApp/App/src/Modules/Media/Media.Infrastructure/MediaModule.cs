@@ -48,6 +48,7 @@ public static class MediaModule
         services.AddScoped<IMediaIdempotencyStore, IdempotencyStore>();
         services.AddScoped<IUploadIdempotencyStore, LeasedIdempotencyStore>();
         services.AddScoped<IMediaReferenceRepository, MediaReferenceRepository>();
+        services.AddScoped<IMediaLinkReader, MediaLinkReader>();
         services.AddDomainEventHandlers(typeof(MediaModule).Assembly);
 
         // Контракт для других модулей: проверка готовности и выдача подписанных ссылок.
@@ -124,6 +125,20 @@ public static class MediaModule
         {
             var result = await sender.Send(new DeleteMediaCommand(mediaId), cancellationToken);
             return result.IsError ? result.Errors.ToProblem() : Results.NoContent();
+        });
+
+        group.MapPost("/links", async (
+            GetMediaLinksRequest request,
+            ISender sender,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await sender.Send(
+                new GetMediaLinksQuery(request.MediaIds ?? []),
+                cancellationToken);
+
+            return result.IsError
+                ? result.Errors.ToProblem()
+                : Results.Ok(result.Value);
         });
 
         return endpoints;

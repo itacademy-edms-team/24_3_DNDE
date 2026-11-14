@@ -1,55 +1,17 @@
-using Media.Application.Storage;
+using Media.Application.Abstractions;
 using Media.Contracts;
-using Media.Domain.Objects;
-using Media.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
 
 namespace Media.Infrastructure.Contracts;
 
 /// <summary>
-/// Ссылки на файлы для других модулей: читает готовые варианты и подписывает адреса на короткий срок.
-/// Чужие и неготовые файлы в результат не попадают - вызывающий показывает заглушку.
+/// Ссылки на файлы для других модулей: тот же читатель, что и у HTTP-эндпоинта,
+/// чтобы модули и клиент видели одинаковые адреса и одинаковые правила отбора.
 /// </summary>
-internal sealed class MediaLinksQuery(MediaDbContext context, IObjectStorage storage) : IMediaLinksQuery
+internal sealed class MediaLinksQuery(IMediaLinkReader reader) : IMediaLinksQuery
 {
-    public async Task<IReadOnlyDictionary<Guid, MediaFileLinks>> GetLinksAsync(
+    public Task<IReadOnlyDictionary<Guid, MediaFileLinks>> GetLinksAsync(
         Guid ownerId,
         IReadOnlyCollection<Guid> mediaIds,
-        CancellationToken cancellationToken)
-    {
-        if (mediaIds.Count == 0)
-            return new Dictionary<Guid, MediaFileLinks>();
-
-        var distinct = mediaIds.Distinct().ToArray();
-
-        var files = await context.MediaObjects
-            .AsNoTracking()
-            .Where(media => distinct.Contains(media.Id)
-                            && media.OwnerId == ownerId
-                            && media.Status == MediaStatus.Ready)
-            .Include(media => media.Variants)
-            .ToArrayAsync(cancellationToken);
-
-        var links = new Dictionary<Guid, MediaFileLinks>(files.Length);
-
-        foreach (var media in files)
-        {
-            var variants = new Dictionary<string, MediaImageLink>(media.Variants.Count);
-
-            foreach (var variant in media.Variants)
-            {
-                var url = await storage.CreateReadUrlAsync(
-                    variant.ObjectKey.Value, MediaConstraints.ReadLinkLifetime, cancellationToken);
-                if (url.IsError)
-                    continue;
-
-                variants[variant.Variant.ToStorageName()] = new MediaImageLink(url.Value, variant.Width, variant.Height);
-            }
-
-            if (variants.Count > 0)
-                links[media.Id] = new MediaFileLinks(variants);
-        }
-
-        return links;
-    }
+        CancellationToken cancellationToken) =>
+        reader.ReadAsync(ownerId, mediaIds, cancellationToken);
 }

@@ -40,4 +40,7 @@ public static class MediaConstraints
 
     /// <summary>Сколько незавершённых загрузок может быть у одного пользователя одновременно.</summary>
     public const int MaxPendingPerOwner = 5;
+
+    /// <summary>Сколько идентификаторов можно запросить в одном запросе на подпись ссылок.</summary>
+    public const int MaxLinksPerRequest = 100;
 }

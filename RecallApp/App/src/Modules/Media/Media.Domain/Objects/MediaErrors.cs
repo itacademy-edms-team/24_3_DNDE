@@ -76,4 +76,9 @@ public static class MediaErrors
     /// <summary>Файл прошёл проверку сигнатуры, но не декодируется.</summary>
     public static Error ImageCorrupt =>
         Error.Validation("Media.ImageCorrupt", "Файл повреждён и не может быть обработан.");
+
+    /// <summary>Запрошено больше идентификаторов, чем разрешено подписывать за один раз.</summary>
+    public static Error LinksLimitExceeded(int requested) =>
+        Error.Validation("Media.LinksLimitExceeded", $"Запрошено {requested} ссылок при лимите {MediaConstraints.MaxLinksPerRequest}.",
+            new Dictionary<string, object> { ["max"] = MediaConstraints.MaxLinksPerRequest });
 }
