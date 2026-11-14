@@ -12,10 +12,25 @@ namespace Media.Infrastructure.Data;
 /// </summary>
 internal sealed class MediaObjectRepository(MediaDbContext context) : IMediaObjectRepository
 {
-    public Task<int> CountPendingAsync(Guid ownerId, CancellationToken cancellationToken) =>
+    public Task<int> CountPendingAsync(Guid ownerId, DateTime now, CancellationToken cancellationToken) =>
         context.MediaObjects.CountAsync(
-            media => media.OwnerId == ownerId && media.Status == MediaStatus.Pending,
+            media => media.OwnerId == ownerId
+                     && media.Status == MediaStatus.Pending
+                     && media.UploadExpiresAt > now,
             cancellationToken);
+
+    public Task<int> MarkExpiredUploadsAsync(Guid ownerId, DateTime now, CancellationToken cancellationToken) =>
+        context.MediaObjects
+            .Where(media => media.OwnerId == ownerId
+                            && media.Status == MediaStatus.Pending
+                            && media.UploadExpiresAt <= now)
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(media => media.Status, MediaStatus.Failed)
+                    .SetProperty(media => media.FailureCode, MediaErrors.UploadExpired.Code)
+                    .SetProperty(media => media.FailureDescription, MediaErrors.UploadExpired.Description)
+                    .SetProperty(media => media.UpdatedAt, now),
+                cancellationToken);
 
     public Task<MediaObject?> FindAsync(Guid mediaId, CancellationToken cancellationToken) =>
         context.MediaObjects

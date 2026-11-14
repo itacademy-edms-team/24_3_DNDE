@@ -45,6 +45,22 @@ public sealed class MediaCleanupTests : IClassFixture<AppFactory>
     }
 
     [DatabaseFact]
+    public async Task PurgeAbandoned_WithCutoffNow_RemovesFreshPendingUpload()
+    {
+        // Dev-режим подчистки на старте: ретенция не применяется, убирается любая брошенная загрузка.
+        using var client = CreateClientForNewUser();
+        var mediaId = await InitAndUploadAsync(client);
+
+        using var scope = _factory.Services.CreateScope();
+        var cleaner = scope.ServiceProvider.GetRequiredService<MediaCleaner>();
+        // Батч большой: база общая для тестов, иначе в выборку попадут только чужие старые строки.
+        var removed = await cleaner.PurgeAbandonedAsync(DateTime.UtcNow, batchSize: 10_000, CancellationToken.None);
+
+        Assert.True(removed > 0);
+        Assert.False(await RowExistsAsync(mediaId));
+    }
+
+    [DatabaseFact]
     public async Task PurgeUnreferenced_MarksDeletedAndRemovesVariants()
     {
         using var client = CreateClientForNewUser();

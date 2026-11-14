@@ -2,6 +2,9 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Media.Domain.Objects;
+using Media.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Tests.Integration.Media;
 
@@ -150,6 +153,51 @@ public sealed class MediaInitTests : IClassFixture<AppFactory>
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         var problem = await ReadProblemAsync(response);
         Assert.Equal("Media.PendingLimitReached", problem.GetProperty("title").GetString());
+    }
+
+    [DatabaseFact]
+    public async Task InitUpload_ExpiredPendingUploads_DoNotOccupySlotsAndAreMarkedFailed()
+    {
+        using var client = CreateClientForNewUser();
+        var mediaIds = new List<Guid>();
+
+        for (var index = 0; index < MediaConstraints.MaxPendingPerOwner; index++)
+            mediaIds.Add(await InitAndReadIdAsync(client));
+
+        var blocked = await PostInitAsync(client, "image/png", 1024, Guid.NewGuid().ToString());
+        Assert.Equal(HttpStatusCode.Conflict, blocked.StatusCode);
+
+        // Сдвигаем окно загрузки в прошлое: подтвердить эти загрузки уже нельзя.
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<MediaDbContext>();
+            var past = DateTime.UtcNow.AddMinutes(-1);
+            await context.MediaObjects
+                .Where(media => mediaIds.Contains(media.Id))
+                .ExecuteUpdateAsync(setters => setters.SetProperty(media => media.UploadExpiresAt, past));
+        }
+
+        var response = await PostInitAsync(client, "image/png", 1024, Guid.NewGuid().ToString());
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        using var checkScope = _factory.Services.CreateScope();
+        var check = checkScope.ServiceProvider.GetRequiredService<MediaDbContext>();
+        var stale = await check.MediaObjects
+            .AsNoTracking()
+            .Where(media => mediaIds.Contains(media.Id))
+            .ToArrayAsync();
+
+        Assert.All(stale, media => Assert.Equal(MediaStatus.Failed, media.Status));
+        Assert.All(stale, media => Assert.Equal("Media.UploadExpired", media.FailureCode));
+    }
+
+    private static async Task<Guid> InitAndReadIdAsync(HttpClient client)
+    {
+        var created = await PostInitAsync(client, "image/png", 1024, Guid.NewGuid().ToString());
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var body = await created.Content.ReadFromJsonAsync<JsonElement>();
+        return body.GetProperty("mediaId").GetGuid();
     }
 
     private HttpClient CreateClientForNewUser()

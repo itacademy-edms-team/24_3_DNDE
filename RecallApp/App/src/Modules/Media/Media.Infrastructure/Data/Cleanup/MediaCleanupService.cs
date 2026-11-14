@@ -19,6 +19,9 @@ internal sealed class MediaCleanupService(
     {
         var settings = options.Value;
 
+        if (settings.PurgeOnStartup)
+            await PurgeAbandonedOnStartupAsync(settings, stoppingToken);
+
         while (!stoppingToken.IsCancellationRequested)
         {
             try
@@ -56,6 +59,39 @@ internal sealed class MediaCleanupService(
             {
                 return;
             }
+        }
+    }
+
+    /// <summary>
+    /// Dev-режим: перед первым циклом убирает все брошенные загрузки независимо от возраста.
+    /// Иначе после серии неудачных загрузок лимит остаётся занятым до истечения ретенции.
+    /// </summary>
+    private async Task PurgeAbandonedOnStartupAsync(MediaCleanupOptions settings, CancellationToken stoppingToken)
+    {
+        try
+        {
+            using var scope = scopeFactory.CreateScope();
+            var cleaner = scope.ServiceProvider.GetRequiredService<MediaCleaner>();
+            var now = clock.GetUtcNow().UtcDateTime;
+
+            var total = 0;
+            int removed;
+            do
+            {
+                removed = await cleaner.PurgeAbandonedAsync(now, settings.BatchSize, stoppingToken);
+                total += removed;
+            }
+            while (removed == settings.BatchSize && !stoppingToken.IsCancellationRequested);
+
+            if (total > 0)
+                logger.LogInformation("Media cleanup on startup: {Count} abandoned uploads removed", total);
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Media cleanup on startup failed");
         }
     }
 }

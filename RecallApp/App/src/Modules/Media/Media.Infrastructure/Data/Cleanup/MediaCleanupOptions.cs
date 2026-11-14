@@ -17,6 +17,13 @@ internal sealed class MediaCleanupOptions
     /// <summary>Интервал запуска чистки.</summary>
     public TimeSpan Interval { get; set; } = TimeSpan.FromHours(1);
 
+    /// <summary>
+    /// Чистить ли все брошенные загрузки перед первым циклом, без оглядки на ретенцию.
+    /// Для локальной разработки: чтобы рестарт возвращал чистое состояние по загрузкам.
+    /// В производственном окружении не включать.
+    /// </summary>
+    public bool PurgeOnStartup { get; set; }
+
     /// <summary>Сколько записей обрабатывать за один заход.</summary>
     public int BatchSize { get; set; } = 500;
 }

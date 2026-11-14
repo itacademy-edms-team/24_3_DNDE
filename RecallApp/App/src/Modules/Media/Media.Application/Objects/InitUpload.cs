@@ -65,12 +65,16 @@ public sealed class InitUploadHandler(
             requestHash: InitUploadRequestHash.Compute(contentType, declaredSize),
             operationBody: async token =>
             {
-                // Проверяем лимит незавершённых загрузок
-                var pending = await repository.CountPendingAsync(ownerId, token);
+                // Проверяем лимит незавершённых загрузок: слот занимают только те, чьё окно ещё живо.
+                var now = clock.GetUtcNow().UtcDateTime;
+
+                // Истёкшие загрузки подтвердить уже нельзя - переводим их в failed до подсчёта, чтобы не ждали чистки.
+                await repository.MarkExpiredUploadsAsync(ownerId, now, token);
+
+                var pending = await repository.CountPendingAsync(ownerId, now, token);
                 if (pending >= MediaConstraints.MaxPendingPerOwner)
                     return MediaErrors.PendingLimitReached;
 
-                var now = clock.GetUtcNow().UtcDateTime;
                 var created = MediaObject.Create(ownerId, contentType, now);
                 if (created.IsError)
                     return created.Errors;

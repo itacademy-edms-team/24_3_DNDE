@@ -8,8 +8,16 @@ namespace Media.Application.Abstractions;
 /// </summary>
 public interface IMediaObjectRepository
 {
-    /// <summary>Сколько незавершённых загрузок у владельца сейчас: ограничивает злоупотребление хранилищем.</summary>
-    Task<int> CountPendingAsync(Guid ownerId, CancellationToken cancellationToken);
+    /// <summary>
+    /// Считает, сколько незавершённых загрузок у владельца сейчас: учитываются только те, чьё окно загрузки ещё не истекло.
+    /// </summary>
+    Task<int> CountPendingAsync(Guid ownerId, DateTime now, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Переводит в `failed` те загрузки, чьё окно истекло: слот освобождается, а строка честно говорит,
+    /// что файл не был загружен. Возвращает число затронутых строк.
+    /// </summary>
+    Task<int> MarkExpiredUploadsAsync(Guid ownerId, DateTime now, CancellationToken cancellationToken);
 
     /// <summary>Объект по идентификатору без проверки владельца: владение проверяет вызывающий сценарий.</summary>
     Task<MediaObject?> FindAsync(Guid mediaId, CancellationToken cancellationToken);
