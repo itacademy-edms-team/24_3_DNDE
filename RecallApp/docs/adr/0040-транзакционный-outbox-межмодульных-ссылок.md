@@ -1,6 +1,6 @@
 # ADR 0040. Транзакционный outbox на доменных событиях
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-11-13
 - **Decision-maker(s):** Aleksandr
 - **Owner:** Aleksandr

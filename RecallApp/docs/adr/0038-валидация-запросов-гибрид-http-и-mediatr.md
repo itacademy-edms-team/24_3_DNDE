@@ -1,6 +1,6 @@
 # ADR 0038. Валидация запросов: гибрид HTTP-конвейера и MediatR
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-11-10
 - **Decision-maker(s):** Aleksandr
 - **Owner:** Aleksandr
