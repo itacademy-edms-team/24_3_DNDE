@@ -31,6 +31,7 @@ export const restCodeMessages: Record<string, string> = {
   "Element.PayloadInvalid": "Неверный формат содержимого карточки.",
   // Домен Media
   "Media.NotFound": "Файл не найден.",
+  "Media.LinksLimitExceeded": "Слишком много изображений в запросе.",
   "Media.NotReady": "Файл ещё обрабатывается.",
   "Media.InUse": "Файл используется и не может быть удалён.",
   "Media.UploadExpired": "Время загрузки истекло. Попробуйте снова.",

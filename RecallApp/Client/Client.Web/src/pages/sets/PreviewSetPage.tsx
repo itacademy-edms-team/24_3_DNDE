@@ -17,10 +17,26 @@ import { toErrorView } from "@/shared/api/errors/errorView";
 import { RequireSession } from "@/features/session/ui/RequireSession";
 import { useSet } from "@/features/sets/api/useSet";
 import { useElementsPaged } from "@/features/sets/api/useElementsPaged";
+import {
+  useMediaLink,
+  useMediaLinks,
+} from "@/features/media/api/useMediaLinks";
 import type { Element } from "@/features/sets/model/types";
 
 const SWIPE_THRESHOLD = 50;
 const TAP_THRESHOLD = 10;
+
+/** Файлы карточки: по ним переподписываются ссылки превью. */
+function elementMediaIds(element: Element): string[] {
+  switch (element.type) {
+    case "flashcard": {
+      const { frontImageId, backImageId } = element.payload;
+      return [frontImageId, backImageId].filter((mediaId): mediaId is string =>
+        Boolean(mediaId),
+      );
+    }
+  }
+}
 
 /** Страница предпросмотра набора: read-only, флип-карточки по одной. */
 export function PreviewSetPage() {
@@ -48,6 +64,9 @@ function PreviewContent({ setId }: { setId: string }) {
 
   const elements = data?.pages.flatMap((page) => page.items) ?? [];
   const total = set?.elementCount ?? elements.length;
+
+  // Ссылки display-вариантов живут 15 минут: продлеваем батчем по всем загруженным страницам.
+  useMediaLinks(elements.flatMap(elementMediaIds));
 
   // Догружаем следующую страницу заранее, когда подходим к концу загруженных карточек.
   useEffect(() => {
@@ -216,22 +235,45 @@ function FlipCard({ element, onPrev, onNext }: FlipCardProps) {
           transform: flipped ? "rotateY(180deg)" : "rotateY(0deg)",
         }}
       >
-        <FlipFace image={frontImage} text={element.payload.term} />
-        <FlipFace image={backImage} text={element.payload.definition} back />
+        <FlipFace
+          mediaId={element.payload.frontImageId ?? undefined}
+          image={frontImage}
+          text={element.payload.term}
+        />
+        <FlipFace
+          mediaId={element.payload.backImageId ?? undefined}
+          image={backImage}
+          text={element.payload.definition}
+          back
+        />
       </div>
     </div>
   );
 }
 
 function FlipFace({
+  mediaId,
   image,
   text,
   back,
 }: {
+  mediaId?: string;
   image?: string;
   text: string;
   back?: boolean;
 }) {
+  const { variants, refresh } = useMediaLink(mediaId ?? "");
+  // Свежая ссылка из батча перекрывает ту, что пришла с элементом.
+  const src = variants?.display?.url ?? image;
+  // Одна фолбэк-попытка на файл: иначе битая ссылка зациклит перезагрузку.
+  const attempted = useRef<string | null>(null);
+
+  const handleLoadError = () => {
+    if (!mediaId || attempted.current === mediaId) return;
+    attempted.current = mediaId;
+    void refresh();
+  };
+
   return (
     <div
       style={{
@@ -248,10 +290,11 @@ function FlipFace({
         overflow: "hidden",
       }}
     >
-      {image && (
+      {src && (
         <img
-          src={image}
+          src={src}
           alt=""
+          onError={handleLoadError}
           style={{ width: "100%", height: "55%", objectFit: "cover" }}
         />
       )}

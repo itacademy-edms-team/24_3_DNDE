@@ -39,6 +39,7 @@ import {
 } from "@/features/sets/api/useElementMutations";
 import { ElementCard, type EditorCard } from "@/features/sets/ui/ElementCard";
 import { flashcard } from "@/features/sets/ui/flashcard";
+import { useMediaLinks } from "@/features/media/api/useMediaLinks";
 import type { Element, ElementPayloadInput } from "@/features/sets/model/types";
 
 const AUTOSAVE_DELAY = 600;
@@ -67,6 +68,18 @@ function isComplete(card: EditorCard): boolean {
   switch (card.type) {
     case "flashcard":
       return flashcard.isComplete(card.payload);
+  }
+}
+
+/** Файлы, на которые ссылаются карточки: по ним переподписываются ссылки редактора. */
+function cardMediaIds(card: EditorCard): string[] {
+  switch (card.type) {
+    case "flashcard": {
+      const { frontImage, backImage } = card.payload;
+      return [frontImage?.mediaId, backImage?.mediaId].filter(
+        (mediaId): mediaId is string => Boolean(mediaId),
+      );
+    }
   }
 }
 
@@ -137,6 +150,9 @@ function EditorBoard({
   const update = useUpdateElement(setId);
   const remove = useDeleteElement(setId);
   const reorder = useReorderElements(setId);
+
+  // Один батч-запрос на все картинки набора: ссылки живут 15 минут и продлеваются фоном.
+  useMediaLinks(cards.flatMap(cardMediaIds));
 
   const saveTimers = useRef(new Map<string, number>());
   const creatingDrafts = useRef(new Set<string>());

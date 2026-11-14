@@ -7,6 +7,7 @@ import {
   initUpload,
   uploadToS3,
 } from "@/features/media/api/media";
+import { useMediaLink } from "@/features/media/api/useMediaLinks";
 import {
   MEDIA_CONTENT_TYPES,
   MEDIA_MAX_BYTES,
@@ -36,6 +37,20 @@ export function MediaImageSlot({
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  // Один фолбэк-запрос на файл: иначе битая ссылка зациклит перезагрузку картинки.
+  const reloadAttemptedFor = useRef<string | null>(null);
+
+  const { variants, refresh } = useMediaLink(image?.mediaId ?? "");
+
+  // Свежая ссылка из батча перекрывает ту, что лежит в черновике с момента загрузки.
+  const src = variants?.thumb?.url ?? image?.thumbUrl;
+
+  const handleLoadError = () => {
+    const mediaId = image?.mediaId;
+    if (!mediaId || reloadAttemptedFor.current === mediaId) return;
+    reloadAttemptedFor.current = mediaId;
+    void refresh();
+  };
 
   const pick = () => {
     if (!uploading) inputRef.current?.click();
@@ -84,9 +99,10 @@ export function MediaImageSlot({
       {image ? (
         <Group align="flex-start" gap="xs">
           <img
-            src={image.thumbUrl}
+            src={src}
             alt={label}
             onClick={pick}
+            onError={handleLoadError}
             style={{
               maxWidth: "100%",
               maxHeight: 200,

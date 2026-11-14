@@ -36,6 +36,26 @@ export interface InitUploadResponse {
   expiresInSeconds: number;
 }
 
+/** Ссылка на готовый вариант: адрес для чтения и фактические размеры. */
+export interface MediaImageLink {
+  url: string;
+  width: number;
+  height: number;
+}
+
+/** Ссылки на варианты одного файла: клиент выбирает размер сам. */
+export interface MediaFileLinks {
+  variants: {
+    thumb?: MediaImageLink;
+    display?: MediaImageLink;
+  };
+}
+
+/** Ответ POST /api/media/links: карта «mediaId → варианты». Чужих и неготовых файлов в ней нет. */
+export interface MediaLinksResponse {
+  links: Record<string, MediaFileLinks>;
+}
+
 /** Максимальный размер файла (10 МБ) — зеркало MediaConstraints.MaxUploadBytes. */
 export const MEDIA_MAX_BYTES = 10 * 1024 * 1024;
 

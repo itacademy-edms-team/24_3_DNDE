@@ -6,7 +6,7 @@ vi.mock("@/shared/api/clients/apiClient", () => ({
 }));
 
 import { apiClient } from "@/shared/api/clients/apiClient";
-import { confirmUpload, getMedia, initUpload } from "./media";
+import { confirmUpload, fetchMediaLinks, getMedia, initUpload } from "./media";
 
 const get = vi.mocked(apiClient.get);
 const post = vi.mocked(apiClient.post);
@@ -51,5 +51,15 @@ describe("media api", () => {
   it("getMedia gets /media/{id}", async () => {
     await getMedia("m1");
     expect(get).toHaveBeenCalledWith("/media/m1", { signal: undefined });
+  });
+
+  it("fetchMediaLinks posts the id list to /media/links", async () => {
+    await fetchMediaLinks(["m1", "m2"]);
+
+    expect(post).toHaveBeenCalledWith(
+      "/media/links",
+      { mediaIds: ["m1", "m2"] },
+      { signal: undefined },
+    );
   });
 });

@@ -2,6 +2,7 @@ import { apiClient } from "@/shared/api/clients/apiClient";
 import type {
   InitUploadInput,
   InitUploadResponse,
+  MediaLinksResponse,
   MediaResponse,
 } from "@/features/media/model/types";
 
@@ -37,6 +38,22 @@ export async function getMedia(
   const { data } = await apiClient.get<MediaResponse>(`/media/${mediaId}`, {
     signal,
   });
+  return data;
+}
+
+/**
+ * Ссылки на чтение пачкой (POST /api/media/links): один запрос на все картинки страницы.
+ * Возвращает только свои и готовые файлы — остальные обновляются как заглушки.
+ */
+export async function fetchMediaLinks(
+  mediaIds: readonly string[],
+  signal?: AbortSignal,
+): Promise<MediaLinksResponse> {
+  const { data } = await apiClient.post<MediaLinksResponse>(
+    "/media/links",
+    { mediaIds },
+    { signal },
+  );
   return data;
 }
 
