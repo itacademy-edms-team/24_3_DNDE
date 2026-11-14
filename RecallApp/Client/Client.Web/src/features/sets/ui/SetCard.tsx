@@ -1,5 +1,18 @@
-import { ActionIcon, Card, Group, Menu, Stack, Text, UnstyledButton } from "@mantine/core";
-import { DotsThreeVertical, PencilSimple, Trash } from "@phosphor-icons/react";
+import {
+  ActionIcon,
+  Card,
+  Group,
+  Menu,
+  Stack,
+  Text,
+  UnstyledButton,
+} from "@mantine/core";
+import {
+  DotsThreeVerticalIcon,
+  EyeIcon,
+  PencilSimpleIcon,
+  TrashIcon,
+} from "@phosphor-icons/react";
 import { Link } from "react-router";
 
 import type { SetSummary } from "@/features/sets/model/types";
@@ -38,15 +51,33 @@ export function SetCard({ set, onRename, onDelete }: SetCardProps) {
 
         <Menu shadow="md" position="bottom-end" width={200}>
           <Menu.Target>
-            <ActionIcon variant="subtle" color="gray" aria-label="Действия с набором">
-              <DotsThreeVertical size={20} />
+            <ActionIcon
+              variant="subtle"
+              color="gray"
+              aria-label="Действия с набором"
+            >
+              <DotsThreeVerticalIcon size={20} />
             </ActionIcon>
           </Menu.Target>
           <Menu.Dropdown>
-            <Menu.Item leftSection={<PencilSimple size={16} />} onClick={() => onRename(set)}>
+            <Menu.Item
+              leftSection={<EyeIcon size={16} />}
+              component={Link}
+              to={`/sets/${set.id}/preview`}
+            >
+              Предпросмотр
+            </Menu.Item>
+            <Menu.Item
+              leftSection={<PencilSimpleIcon size={16} />}
+              onClick={() => onRename(set)}
+            >
               Переименовать
             </Menu.Item>
-            <Menu.Item leftSection={<Trash size={16} />} color="red" onClick={() => onDelete(set)}>
+            <Menu.Item
+              leftSection={<TrashIcon size={16} />}
+              color="red"
+              onClick={() => onDelete(set)}
+            >
               Удалить
             </Menu.Item>
           </Menu.Dropdown>
