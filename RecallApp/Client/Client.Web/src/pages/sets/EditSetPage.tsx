@@ -14,18 +14,37 @@ import {
   useUpdateElement,
 } from "@/features/sets/api/useElementMutations";
 import { ElementCard, type EditorCard } from "@/features/sets/ui/ElementCard";
-import type { Element } from "@/features/sets/model/types";
+import { flashcard } from "@/features/sets/ui/flashcard";
+import type { Element, ElementPayloadInput } from "@/features/sets/model/types";
 
 const AUTOSAVE_DELAY = 600;
 
-const toEditorCard = (element: Element): EditorCard => ({
-  id: element.id,
-  isDraft: false,
-  term: element.payload.term,
-  definition: element.payload.definition,
-  frontImageId: element.payload.frontImageId,
-  backImageId: element.payload.backImageId,
-});
+// Dispatch-точки по типу элемента. Новый тип = добавить ветку (switch исчерпывающий, TS заставит).
+function toEditorCard(element: Element): EditorCard {
+  switch (element.type) {
+    case "flashcard":
+      return {
+        id: element.id,
+        isDraft: false,
+        type: "flashcard",
+        payload: flashcard.toDraft(element.payload),
+      };
+  }
+}
+
+function toApiPayload(card: EditorCard): ElementPayloadInput {
+  switch (card.type) {
+    case "flashcard":
+      return flashcard.toApiPayload(card.payload);
+  }
+}
+
+function isComplete(card: EditorCard): boolean {
+  switch (card.type) {
+    case "flashcard":
+      return flashcard.isComplete(card.payload);
+  }
+}
 
 /** Страница редактора набора. */
 export function EditSetPage() {
@@ -102,17 +121,7 @@ function EditorBoard({
 
   const saveCard = (card: EditorCard) => {
     update.mutate(
-      {
-        elementId: card.id,
-        input: {
-          payload: {
-            term: card.term,
-            definition: card.definition,
-            frontImageId: card.frontImageId,
-            backImageId: card.backImageId,
-          },
-        },
-      },
+      { elementId: card.id, input: { payload: toApiPayload(card) } },
       { onError: fail },
     );
   };
@@ -140,64 +149,38 @@ function EditorBoard({
     if (card && !card.isDraft) saveCard(card);
   };
 
-  // Черновик становится элементом, когда оба поля заполнены (бэкенд требует непустые term/definition).
-  const maybeCreate = (id: string, term: string, definition: string) => {
-    if (creatingDrafts.current.has(id)) return;
-    if (!term.trim() || !definition.trim()) return;
+  // Черновик становится элементом, когда payload «полон» (для флеш-карточки — оба поля заполнены).
+  const maybeCreate = (card: EditorCard) => {
+    if (creatingDrafts.current.has(card.id)) return;
+    if (!isComplete(card)) return;
 
-    creatingDrafts.current.add(id);
+    creatingDrafts.current.add(card.id);
     create.mutate(
-      { type: "flashcard", payload: { term: term.trim(), definition: definition.trim() } },
+      { type: card.type, payload: toApiPayload(card) },
       {
         onSuccess: (element) => {
-          creatingDrafts.current.delete(id);
-          setCards((prev) =>
-            prev.map((c) =>
-              c.id === id
-                ? {
-                    id: element.id,
-                    isDraft: false,
-                    term: element.payload.term,
-                    definition: element.payload.definition,
-                    frontImageId: element.payload.frontImageId,
-                    backImageId: element.payload.backImageId,
-                  }
-                : c,
-            ),
-          );
+          creatingDrafts.current.delete(card.id);
+          setCards((prev) => prev.map((c) => (c.id === card.id ? toEditorCard(element) : c)));
         },
         onError: () => {
-          creatingDrafts.current.delete(id);
+          creatingDrafts.current.delete(card.id);
           fail();
         },
       },
     );
   };
 
-  const changeTerm = (card: EditorCard, value: string) => {
-    setCards((prev) => prev.map((c) => (c.id === card.id ? { ...c, term: value } : c)));
-    if (card.isDraft) maybeCreate(card.id, value, card.definition);
-    else scheduleSave({ ...card, term: value });
-  };
-
-  const changeDefinition = (card: EditorCard, value: string) => {
-    setCards((prev) => prev.map((c) => (c.id === card.id ? { ...c, definition: value } : c)));
-    if (card.isDraft) maybeCreate(card.id, card.term, value);
-    else scheduleSave({ ...card, definition: value });
+  const changeCard = (updated: EditorCard) => {
+    setCards((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+    if (updated.isDraft) maybeCreate(updated);
+    else scheduleSave(updated);
   };
 
   const addCard = () => {
     const localId = `local-${draftCounter.current++}`;
     setCards((prev) => [
       ...prev,
-      {
-        id: localId,
-        isDraft: true,
-        term: "",
-        definition: "",
-        frontImageId: null,
-        backImageId: null,
-      },
+      { id: localId, isDraft: true, type: "flashcard", payload: flashcard.defaultDraft() },
     ]);
   };
 
@@ -258,8 +241,7 @@ function EditorBoard({
             card={card}
             index={index}
             total={cards.length}
-            onTermChange={(value) => changeTerm(card, value)}
-            onDefinitionChange={(value) => changeDefinition(card, value)}
+            onCardChange={changeCard}
             onBlur={() => flushSave(card.id)}
             onDelete={() => removeCard(card.id)}
             onMoveUp={() => moveCard(card.id, -1)}

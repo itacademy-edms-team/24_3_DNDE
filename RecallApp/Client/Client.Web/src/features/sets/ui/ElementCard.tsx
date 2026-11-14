@@ -1,60 +1,49 @@
-import {
-  ActionIcon,
-  Card,
-  Divider,
-  Group,
-  Menu,
-  Text,
-  Textarea,
-  TextInput,
-} from "@mantine/core";
+import { ActionIcon, Card, Group, Menu } from "@mantine/core";
 import { ArrowDown, ArrowUp, GearSix, Trash } from "@phosphor-icons/react";
 
-/** Карточка в редакторе: сохранённый элемент или локальный черновик (ещё не создан на сервере). */
-export interface EditorCard {
-  /** uuid сервера либо локальный id черновика. */
+import { FlashcardFields } from "./FlashcardFields";
+import type { FlashcardDraft } from "./flashcard";
+
+/**
+ * Карточка в редакторе — размеченное объединение по `type`.
+ * Новый тип = добавить вариант сюда + ветку в dispatch ниже + модуль полей типа.
+ */
+export type EditorCard = {
   id: string;
   isDraft: boolean;
-  term: string;
-  definition: string;
-  frontImageId: string | null;
-  backImageId: string | null;
-}
+  type: "flashcard";
+  payload: FlashcardDraft;
+};
 
 interface ElementCardProps {
   card: EditorCard;
   index: number;
   total: number;
-  onTermChange: (value: string) => void;
-  onDefinitionChange: (value: string) => void;
+  /** Замена карточки целиком: поля конкретного типа собирают новый payload. */
+  onCardChange: (card: EditorCard) => void;
   onBlur: () => void;
   onDelete: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
 }
 
-/** Одна карточка редактора: лицевая (термин) / оборотная (определение) + меню действий. */
+/** Оболочка карточки: общая «рама» (меню действий) + поля конкретного типа. */
 export function ElementCard({
   card,
   index,
   total,
-  onTermChange,
-  onDefinitionChange,
+  onCardChange,
   onBlur,
   onDelete,
   onMoveUp,
   onMoveDown,
 }: ElementCardProps) {
-  // Черновик ещё не имеет позиции на сервере — его нельзя переставлять.
   const canUp = index > 0 && !card.isDraft;
   const canDown = index < total - 1 && !card.isDraft;
 
   return (
     <Card withBorder radius="md" padding="md">
-      <Group justify="space-between" align="center" mb="xs">
-        <Text size="xs" c="dimmed" tt="uppercase" fw={700}>
-          Лицевая сторона
-        </Text>
+      <Group justify="flex-end" mb="xs">
         <Menu shadow="md" position="bottom-end" width={200}>
           <Menu.Target>
             <ActionIcon variant="subtle" color="gray" aria-label="Действия с карточкой">
@@ -75,26 +64,13 @@ export function ElementCard({
         </Menu>
       </Group>
 
-      <TextInput
-        placeholder="Термин"
-        value={card.term}
-        onChange={(event) => onTermChange(event.currentTarget.value)}
-        onBlur={onBlur}
-      />
-
-      <Divider my="md" />
-
-      <Text size="xs" c="dimmed" tt="uppercase" fw={700} mb="xs">
-        Оборотная сторона
-      </Text>
-      <Textarea
-        placeholder="Определение"
-        value={card.definition}
-        onChange={(event) => onDefinitionChange(event.currentTarget.value)}
-        onBlur={onBlur}
-        minRows={3}
-        autosize
-      />
+      {card.type === "flashcard" ? (
+        <FlashcardFields
+          draft={card.payload}
+          onChange={(draft) => onCardChange({ ...card, payload: draft })}
+          onBlur={onBlur}
+        />
+      ) : null}
     </Card>
   );
 }

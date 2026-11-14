@@ -17,7 +17,7 @@ export interface SetsPage {
 }
 
 /**
- * Тело POST /api/sets. `title: null` допустим - домен подставит имя по умолчанию
+ * Тело POST /api/sets. `title: null` допустим — домен подставит имя по умолчанию
  * (используется быстрой карточкой, US-5). В форме создания название обязательно.
  */
 export interface CreateSetInput {
@@ -30,6 +30,8 @@ export interface UpdateSetInput {
   title: string | null;
   description: string | null;
 }
+
+// ===== Элементы =====
 
 /** Ссылка на вариант изображения (MediaImageLink): подписанный URL и размеры. */
 export interface ElementImageLink {
@@ -50,6 +52,18 @@ export interface ElementImages {
   back?: ElementSideImages;
 }
 
+/** Известные типы элементов. Новый тип = добавить значение + вариант в Element/ElementPayloadInput. */
+export type ElementType = "flashcard";
+
+/** Общие поля элемента, одинаковые для всех типов. */
+interface ElementBase {
+  id: string;
+  images: ElementImages | null;
+  position: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 /** Payload флеш-карточки в ответе API (frontImageId/backImageId всегда присутствуют). */
 export interface FlashcardPayload {
   term: string;
@@ -58,16 +72,17 @@ export interface FlashcardPayload {
   backImageId: string | null;
 }
 
-/** Элемент набора в ответе API. */
-export interface Element {
-  id: string;
+/** Элемент-флеш-карточка. */
+export interface FlashcardElement extends ElementBase {
   type: "flashcard";
   payload: FlashcardPayload;
-  images: ElementImages | null;
-  position: number;
-  createdAt: string;
-  updatedAt: string;
 }
+
+/**
+ * Элемент набора в ответе API — размеченное объединение по `type`.
+ * Потребитель сужает по `element.type`; новый тип = новый вариант + ветки в dispatch-точках.
+ */
+export type Element = FlashcardElement;
 
 /** Страница элементов (keyset-пагинация). */
 export interface ElementsPage {
@@ -76,21 +91,24 @@ export interface ElementsPage {
 }
 
 /** Payload флеш-карточки в теле запроса: изображения необязательны. */
-export interface FlashcardInput {
+export interface FlashcardPayloadInput {
   term: string;
   definition: string;
   frontImageId?: string | null;
   backImageId?: string | null;
 }
 
+/** Payload в теле запроса — объединение по типам элементов. */
+export type ElementPayloadInput = FlashcardPayloadInput;
+
 /** Тело POST /api/sets/{setId}/elements. */
 export interface CreateElementInput {
-  type: "flashcard";
-  payload: FlashcardInput;
+  type: ElementType;
+  payload: ElementPayloadInput;
   position?: number | null;
 }
 
 /** Тело PUT /api/sets/{setId}/elements/{elementId}: тип неизменяем, только payload. */
 export interface UpdateElementInput {
-  payload: FlashcardInput;
+  payload: ElementPayloadInput;
 }
