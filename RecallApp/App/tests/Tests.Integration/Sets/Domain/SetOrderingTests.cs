@@ -134,26 +134,6 @@ public sealed class SetOrderingTests
         Assert.Empty(SetOrdering.ForRemoval(elements, 1));
     }
 
-    [Fact]
-    public void MoveTo_NewPosition_ChangesPositionButKeepsUpdatedAt()
-    {
-        var element = MakeElements(1)[0];
-        var updatedAt = element.UpdatedAt;
-
-        element.MoveTo(7);
-
-        Assert.Equal(7, element.Position);
-        Assert.Equal(updatedAt, element.UpdatedAt);
-    }
-
-    [Fact]
-    public void MoveTo_NegativePosition_Throws()
-    {
-        var element = MakeElements(1)[0];
-
-        Assert.Throws<ArgumentOutOfRangeException>(() => element.MoveTo(-1));
-    }
-
     private static List<Element> MakeElements(int count)
     {
         var setId = Guid.NewGuid();

@@ -15,6 +15,13 @@ public sealed class Element : HasDomainEventsBase
 
     public Guid SetId { get; private set; }
 
+    /// <summary>
+    /// Возвращает позицию элемента в наборе.
+    /// </summary>
+    /// <remarks>
+    /// Порядок пересчитывается целиком: домен решает, кому какая позиция, а записывает их
+    /// инфраструктура. Отдельного метода «подвинуть одну карточку» нет, поэтому сеттер закрыт.
+    /// </remarks>
     public int Position { get; private set; }
     
     /// <summary>Дискриминатор состава payload; выводится из payload и после создания не меняется.</summary>

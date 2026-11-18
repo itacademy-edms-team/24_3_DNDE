@@ -51,12 +51,14 @@ public sealed class MediaCleanupTests : IClassFixture<AppFactory>
         using var client = CreateClientForNewUser();
         var mediaId = await InitAndUploadAsync(client);
 
+        // Метка назад: отбирается самый старый pending, поэтому чужие свежие строки не затрагиваются.
+        await BackdateAsync(mediaId, setters => setters.SetProperty(media => media.CreatedAt, DateTime.UtcNow.AddDays(-2)));
+
         using var scope = _factory.Services.CreateScope();
         var cleaner = scope.ServiceProvider.GetRequiredService<MediaCleaner>();
-        // Батч большой: база общая для тестов, иначе в выборку попадут только чужие старые строки.
-        var removed = await cleaner.PurgeAbandonedAsync(DateTime.UtcNow, batchSize: 10_000, CancellationToken.None);
+        var removed = await cleaner.PurgeAbandonedAsync(DateTime.UtcNow, batchSize: 1, CancellationToken.None);
 
-        Assert.True(removed > 0);
+        Assert.Equal(1, removed);
         Assert.False(await RowExistsAsync(mediaId));
     }
 
