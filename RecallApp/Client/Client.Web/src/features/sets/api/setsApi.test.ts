@@ -25,7 +25,7 @@ const del = vi.mocked(apiClient.delete);
 const sampleSet: SetSummary = {
   id: "s1",
   title: "T",
-  description: null,
+  description: "",
   createdAt: "2026-11-14T00:00:00Z",
   updatedAt: "2026-11-14T00:00:00Z",
 };

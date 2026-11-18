@@ -8,7 +8,7 @@ namespace Sets.Application.Sets;
 
 /// <param name="Id">Id набора.</param>
 /// <param name="Title">Новое название: PUT присылает полное состояние.</param>
-/// <param name="Description">Новое описание; null или пустая строка, чтобы затереть.</param>
+/// <param name="Description">Новое описание; null и пустая строка означают «описания нет».</param>
 public sealed record UpdateSetCommand(Guid Id, string? Title, string? Description) : IRequest<ErrorOr<SetResponse>>;
 
 public sealed class UpdateSetHandler(

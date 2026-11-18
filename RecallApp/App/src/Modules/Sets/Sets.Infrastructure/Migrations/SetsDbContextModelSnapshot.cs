@@ -91,6 +91,7 @@ namespace Sets.Infrastructure.Migrations
                         .HasColumnName("deleted_at");
 
                     b.Property<string>("Description")
+                        .IsRequired()
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)")
                         .HasColumnName("description");

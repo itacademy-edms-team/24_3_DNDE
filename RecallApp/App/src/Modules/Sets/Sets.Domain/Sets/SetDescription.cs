@@ -4,10 +4,14 @@ namespace Sets.Domain.Sets;
 
 /// <summary>
 /// Описание набора.
-/// Пустая строка означает «описания нет».
 /// </summary>
 public readonly record struct SetDescription
 {
+    /// <summary>
+    /// Инициализирует пустое описание.
+    /// </summary>
+    public static SetDescription Empty => new(string.Empty);
+
     private SetDescription(string value) => Value = value;
 
     public string Value { get; }

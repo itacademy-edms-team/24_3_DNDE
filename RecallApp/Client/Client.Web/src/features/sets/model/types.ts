@@ -5,7 +5,7 @@
 export interface SetSummary {
   id: string;
   title: string;
-  description: string | null;
+  description: string;
   createdAt: string;
   updatedAt: string;
 }

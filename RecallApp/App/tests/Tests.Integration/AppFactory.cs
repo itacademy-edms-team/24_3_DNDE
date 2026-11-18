@@ -50,6 +50,8 @@ public sealed class AppFactory : WebApplicationFactory<Program>
         builder
             .UseEnvironment("Development")
             .UseSetting("Sets:Outbox:Enabled", "false")
+            // Dev-очистка на старте удаляет pending-загрузки всех тестов сразу: в тестовом хосте она запрещена.
+            .UseSetting("Media:Cleanup:PurgeOnStartup", "false")
             .ConfigureServices(services => services
                 .AddSingleton<RecordingOutboxHandler>()
                 .AddSingleton<IDomainEventHandler<OutboxTestEvent>>(sp => sp.GetRequiredService<RecordingOutboxHandler>())

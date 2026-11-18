@@ -21,13 +21,14 @@ internal sealed class SetConfiguration : IEntityTypeConfiguration<Set>
             .HasConversion(new ValueConverter<SetTitle, string>(title => title.Value, value => SetTitle.FromStorage(value)))
             .IsRequired();
 
-        // Описание необязательно: конвертер объявлен на не-nullable типе, null EF пропускает мимо конвертера.
+        // Описание обязательно на уровне схемы. Если нету -> пустая строка.
         builder.Property(set => set.Description)
             .HasColumnName("description")
             .HasMaxLength(SetConstraints.DescriptionMaxLength)
             .HasConversion(new ValueConverter<SetDescription, string>(
                 description => description.Value,
-                value => SetDescription.FromStorage(value)));
+                value => SetDescription.FromStorage(value)))
+            .IsRequired();
 
         builder.Property(set => set.CreatedAt).HasColumnName("created_at");
         builder.Property(set => set.UpdatedAt).HasColumnName("updated_at");

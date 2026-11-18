@@ -8,7 +8,7 @@ using Sets.Domain.Sets;
 namespace Sets.Application.Sets;
 
 /// <param name="Title">Название; отсутствие или пустая строка - ошибка Set.TitleRequired.</param>
-/// <param name="Description">Описание необязательно.</param>
+/// <param name="Description">Описание; null считается как пустая строка.</param>
 /// <param name="IdempotencyKey">Значение заголовка Idempotency-Key; проверяется на HTTP-слое.</param>
 public sealed record CreateSetCommand(string? Title, string? Description, string IdempotencyKey)
     : IRequest<ErrorOr<SetResponse>>

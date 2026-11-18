@@ -4,35 +4,62 @@ using ErrorOr;
 namespace Sets.Domain.Sets;
 
 /// <summary>
-/// Набор - коллекция элементов, принадлежащая одному пользователю (владельцу).
+/// Представляет принадлежащий пользователю набор из элементов, помогающих запомнить материал.
 /// </summary>
+/// <remarks>
+/// <para>Чужие наборы неотличимы от несуществующих:
+/// операции с ними завершаются ошибкой <see cref="SetErrors.NotFound"/>.</para>
+/// <para>Жизненный цикл: активен -> помечен на удаление -> удалён физически.
+/// Пока набор помечен, но ещё не удалён, он недоступен для чтения и правки.</para>
+/// <para><see cref="UpdatedAt"/> обновляется и при правке полей,
+/// и при изменении содержимого (<see cref="MarkContentChanged"/>).</para>
+/// </remarks>
 public sealed class Set : HasDomainEventsBase
 {
     private Set() { }
 
+    /// <summary>
+    /// Возвращает идентификатор набора.
+    /// </summary>
     public Guid Id { get; private set; }
 
     /// <summary>
-    /// Id доменного пользователя из accounts.
+    /// Возвращает идентификатор доменного пользователя, которому принадлежит набор.
     /// </summary>
     public Guid OwnerId { get; private set; }
 
+    /// <summary>
+    /// Возвращает название набора.
+    /// </summary>
     public SetTitle Title { get; private set; }
 
     /// <summary>
-    /// Описание необязательно: null -> «описания нет».
+    /// Возвращает описание набора.
     /// </summary>
-    public SetDescription? Description { get; private set; }
+    /// <remarks>
+    /// <see cref="SetDescription"/> хранит пустую строку, если описание не задано.
+    /// </remarks>
+    public SetDescription Description { get; private set; }
 
+    /// <summary>
+    /// Временная метка создания набора.
+    /// </summary>
+    /// <remarks>
+    /// Задаётся сервисом.
+    /// </remarks>
     public DateTime CreatedAt { get; private set; }
 
     public DateTime UpdatedAt { get; private set; }
 
     /// <summary>
-    /// Метка мягкого удаления; null -> набор активен.
+    /// Временная метка, когда набор был помечен для удаления.
     /// </summary>
+    /// <remarks>
+    /// Такой набор и его элементы скрываются в клиенте и не показываются в большинстве взаимодействий на бэкенде.
+    /// Удаление выполняет фоновый сервис <see cref="SetsPurgeService"/>.
+    /// </remarks>
     public DateTime? DeletedAt { get; private set; }
-
+    
     public static ErrorOr<Set> Create(Guid ownerId, string? title, string? description, DateTime utcNow)
     {
         if (ownerId == Guid.Empty)
@@ -42,7 +69,7 @@ public sealed class Set : HasDomainEventsBase
         if (titleResult.IsError)
             return titleResult.Errors;
 
-        ErrorOr<SetDescription?> descriptionResult = ParseDescription(description);
+        ErrorOr<SetDescription> descriptionResult = ParseDescription(description);
         if (descriptionResult.IsError)
             return descriptionResult.Errors;
 
@@ -66,13 +93,13 @@ public sealed class Set : HasDomainEventsBase
         if (titleResult.IsError)
             return titleResult.Errors;
 
-        ErrorOr<SetDescription?> descriptionResult = ParseDescription(description);
+        ErrorOr<SetDescription> descriptionResult = ParseDescription(description);
         if (descriptionResult.IsError)
             return descriptionResult.Errors;
 
         var newTitle = titleResult.Value;
         var newDescription = descriptionResult.Value;
-        if (newTitle.Equals(Title) && Nullable.Equals(newDescription, Description))
+        if (newTitle.Equals(Title) && newDescription.Equals(Description))
             return Result.Updated;
 
         Title = newTitle;
@@ -99,12 +126,11 @@ public sealed class Set : HasDomainEventsBase
     /// </summary>
     public void MarkContentChanged(DateTime utcNow) => UpdatedAt = utcNow;
 
-    private static ErrorOr<SetDescription?> ParseDescription(string? description)
+    private static ErrorOr<SetDescription> ParseDescription(string? description)
     {
         if (string.IsNullOrWhiteSpace(description))
-            return (SetDescription?)null;
+            return SetDescription.Empty;
 
-        var result = SetDescription.Create(description);
-        return result.IsError ? result.Errors : (SetDescription?)result.Value;
+        return SetDescription.Create(description);
     }
 }

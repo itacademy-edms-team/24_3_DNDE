@@ -80,7 +80,7 @@ public sealed class SetsEndpointsTests : IClassFixture<AppFactory>
     }
 
     [DatabaseFact]
-    public async Task UpdateSet_EmptyDescription_Returns200AndClearsDescription()
+    public async Task UpdateSet_EmptyDescription_Returns200AndClearsDescriptionToEmptyString()
     {
         using var client = CreateClientForNewUser();
         var setId = await CreateSetAsync(client, "Старое имя", "старое описание");
@@ -90,11 +90,23 @@ public sealed class SetsEndpointsTests : IClassFixture<AppFactory>
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var updated = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal("Новое имя", updated.GetProperty("title").GetString());
-        Assert.Equal(JsonValueKind.Null, updated.GetProperty("description").ValueKind);
+        Assert.Equal(string.Empty, updated.GetProperty("description").GetString());
 
         var reread = await client.GetFromJsonAsync<JsonElement>($"/api/sets/{setId}");
         Assert.Equal("Новое имя", reread.GetProperty("title").GetString());
-        Assert.Equal(JsonValueKind.Null, reread.GetProperty("description").ValueKind);
+        Assert.Equal(string.Empty, reread.GetProperty("description").GetString());
+    }
+
+    [DatabaseFact]
+    public async Task CreateSet_WithoutDescription_ReturnsEmptyString()
+    {
+        using var client = CreateClientForNewUser();
+
+        var response = await PostSetAsync(client, "Набор без описания", null);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(string.Empty, body.GetProperty("description").GetString());
     }
 
     [DatabaseFact]
