@@ -57,7 +57,7 @@ public sealed class UpdateElementHandler(
         if (replaced.IsError)
             return replaced.Errors;
 
-        set.MarkContentChanged(now);
+        set.MarkElementsChanged(now);
 
         // Перезапись слота: тот же `reference`, другой файл — старый становится неиспользуемым.
         var scope = ElementMediaSlots.ElementScope(command.SetId, element.Id);

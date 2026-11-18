@@ -97,7 +97,7 @@ public sealed class CreateElementHandler(
 
                     await elements.ApplyPositionsAsync(command.SetId, shifted.Value, innerToken);
                     elements.Add(created.Value);
-                    set.MarkContentChanged(now);
+                    set.MarkElementsChanged(now);
 
                     // Событие регистрируется на сущность, а в outbox его превратит interceptor (ADR 0040).
                     var scope = ElementMediaSlots.ElementScope(command.SetId, created.Value.Id);

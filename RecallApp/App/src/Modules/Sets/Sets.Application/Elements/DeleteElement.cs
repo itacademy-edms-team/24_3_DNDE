@@ -57,7 +57,7 @@ public sealed class DeleteElementHandler(
                     SetOrdering.ForRemoval(remaining, element.Position),
                     token);
 
-                set.MarkContentChanged(now);
+                set.MarkElementsChanged(now);
                 await sets.SaveChangesAsync(token);
                 return Result.Deleted;
             },

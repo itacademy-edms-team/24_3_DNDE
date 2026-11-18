@@ -56,7 +56,7 @@ public sealed class ReorderElementsHandler(
                     return Result.Updated;
 
                 await elements.ApplyPositionsAsync(command.SetId, assignments.Value, token);
-                set.MarkContentChanged(now);
+                set.MarkElementsChanged(now);
                 await sets.SaveChangesAsync(token);
                 return Result.Updated;
             },

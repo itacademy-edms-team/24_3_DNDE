@@ -22,8 +22,8 @@ public sealed class ListSetsHandler(ISetRepository repository, ICurrentUser curr
         if (currentUser.UserId is not { } ownerId)
             return SetErrors.UserUnresolved;
 
-        var pageSize = query.PageSize ?? SetListConstraints.DefaultPageSize;
-        if (pageSize is < SetListConstraints.MinPageSize or > SetListConstraints.MaxPageSize)
+        var pageSize = query.PageSize ?? SetPaginationConstraints.DefaultPageSize;
+        if (pageSize is < SetPaginationConstraints.MinPageSize or > SetPaginationConstraints.MaxPageSize)
             return SetErrors.PageSizeInvalid(pageSize);
 
         SetCursor? cursor = null;

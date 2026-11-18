@@ -3,14 +3,26 @@ using ErrorOr;
 namespace Sets.Domain.Sets;
 
 /// <summary>
-/// Название набора.
+/// Предоставляет название набора.
 /// </summary>
 public readonly record struct SetTitle
 {
     private SetTitle(string value) => Value = value;
 
+    /// <summary>
+    /// Возвращает строковое значение названия.
+    /// </summary>
     public string Value { get; }
 
+    /// <summary>
+    /// Создаёт название из сырой строки, нормализуя её.
+    /// </summary>
+    /// <param name="raw">Строковое представление названия; <see langword="null"/>
+    /// и пробельная строка означают, что названия нет.</param>
+    /// <returns>
+    /// Нормализованное название либо ошибка:
+    /// <see cref="SetErrors.TitleRequired"/>, <see cref="SetErrors.TitleTooLong"/>.
+    /// </returns>
     public static ErrorOr<SetTitle> Create(string? raw)
     {
         var trimmed = raw?.Trim();
@@ -23,8 +35,14 @@ public readonly record struct SetTitle
         return new SetTitle(trimmed);
     }
 
-    /// <summary>Восстановление из БД (EF-конвертер): данные уже прошли валидацию при записи.</summary>
+    /// <summary>
+    /// Восстанавливает название из сохранённого значения.
+    /// </summary>
+    /// <param name="value">Значение из хранилища; считается уже прошедшим проверку при записи.</param>
     public static SetTitle FromStorage(string value) => new(value);
 
+    /// <summary>
+    /// Возвращает название в виде строки.
+    /// </summary>
     public override string ToString() => Value;
 }

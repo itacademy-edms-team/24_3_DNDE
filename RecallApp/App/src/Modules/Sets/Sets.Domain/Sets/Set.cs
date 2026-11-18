@@ -11,8 +11,9 @@ namespace Sets.Domain.Sets;
 /// операции с ними завершаются ошибкой <see cref="SetErrors.NotFound"/>.</para>
 /// <para>Жизненный цикл: активен -> помечен на удаление -> удалён физически.
 /// Пока набор помечен, но ещё не удалён, он недоступен для чтения и правки.</para>
-/// <para><see cref="UpdatedAt"/> обновляется и при правке полей,
-/// и при изменении содержимого (<see cref="MarkContentChanged"/>).</para>
+/// <para><see cref="UpdatedAt"/> обновляется и при правке полей, и при любом изменении состава
+/// (создание, правка, удаление, перестановка элементов), хотя сами элементы при перестановке
+/// своих меток не меняют.</para>
 /// </remarks>
 public sealed class Set : HasDomainEventsBase
 {
@@ -42,24 +43,36 @@ public sealed class Set : HasDomainEventsBase
     public SetDescription Description { get; private set; }
 
     /// <summary>
-    /// Временная метка создания набора.
+    /// Возвращает момент создания набора в UTC.
     /// </summary>
-    /// <remarks>
-    /// Задаётся сервисом.
-    /// </remarks>
     public DateTime CreatedAt { get; private set; }
 
+    /// <summary>
+    /// Возвращает момент последнего изменения набора в UTC.
+    /// </summary>
     public DateTime UpdatedAt { get; private set; }
 
     /// <summary>
-    /// Временная метка, когда набор был помечен для удаления.
+    /// Возвращает момент мягкого удаления набора в UTC или <see langword="null"/>, если набор не удалён.
     /// </summary>
     /// <remarks>
-    /// Такой набор и его элементы скрываются в клиенте и не показываются в большинстве взаимодействий на бэкенде.
-    /// Удаление выполняет фоновый сервис <see cref="SetsPurgeService"/>.
+    /// Пометка идемпотентна: нельзя изменить состояние уже установленной пометки.
+    /// Физически строку удаляет фоновая чистка по истечении срока хранения.
     /// </remarks>
     public DateTime? DeletedAt { get; private set; }
     
+    /// <summary>
+    /// Создаёт новый набор с указанными полями.
+    /// </summary>
+    /// <param name="ownerId">Идентификатор владельца набора.</param>
+    /// <param name="title">Название набора.</param>
+    /// <param name="description">Описание набора; <see langword="null"/> и пробельная строка означают отсутствие описания.</param>
+    /// <param name="utcNow">Момент создания набора в UTC. Задаётся вызывающим кодом.</param>
+    /// <returns>
+    /// Новый набор в состоянии «активен» либо ошибка:
+    /// <see cref="SetErrors.UserUnresolved"/>, <see cref="SetErrors.TitleRequired"/>,
+    /// <see cref="SetErrors.TitleTooLong"/>, <see cref="SetErrors.DescriptionTooLong"/>.
+    /// </returns>
     public static ErrorOr<Set> Create(Guid ownerId, string? title, string? description, DateTime utcNow)
     {
         if (ownerId == Guid.Empty)
@@ -69,7 +82,7 @@ public sealed class Set : HasDomainEventsBase
         if (titleResult.IsError)
             return titleResult.Errors;
 
-        ErrorOr<SetDescription> descriptionResult = ParseDescription(description);
+        var descriptionResult = SetDescription.Create(description);
         if (descriptionResult.IsError)
             return descriptionResult.Errors;
 
@@ -85,15 +98,29 @@ public sealed class Set : HasDomainEventsBase
     }
 
     /// <summary>
-    /// Полная замена пользовательских полей.
+    /// Заменяет название и описание набора целиком.
     /// </summary>
+    /// <remarks>
+    /// Если после нормализации значения совпадают с текущими,
+    /// набор не меняется и <see cref="UpdatedAt"/> не обновляется.
+    /// </remarks>
+    /// <param name="title">Название набора.</param>
+    /// <param name="description">Описание набора; <see langword="null"/>
+    /// и пробельная строка означают отсутствие описания.</param>
+    /// <param name="utcNow">Текущий момент в UTC.
+    /// Задаётся вызывающим кодом и применяется, только если значения полей изменились.</param>
+    /// <returns><see cref="ErrorOr.Updated"/>, если поля приведены к переданным значениям
+    /// (в том числе когда они уже совпадали), иначе ошибка:
+    /// <see cref="SetErrors.TitleRequired"/>, <see cref="SetErrors.TitleTooLong"/>,
+    /// <see cref="SetErrors.DescriptionTooLong"/>.
+    /// </returns>
     public ErrorOr<Updated> Replace(string? title, string? description, DateTime utcNow)
     {
         var titleResult = SetTitle.Create(title);
         if (titleResult.IsError)
             return titleResult.Errors;
 
-        ErrorOr<SetDescription> descriptionResult = ParseDescription(description);
+        var descriptionResult = SetDescription.Create(description);
         if (descriptionResult.IsError)
             return descriptionResult.Errors;
 
@@ -109,8 +136,12 @@ public sealed class Set : HasDomainEventsBase
     }
 
     /// <summary>
-    /// Помечает набор, что он удалён и его следует позже удалить.
+    /// Помечает набор как удалённый.
     /// </summary>
+    /// <remarks>
+    /// При первой пометке обновляет <see cref="UpdatedAt"/>.
+    /// </remarks>
+    /// <param name="utcNow">Текущий момент в UTC, который станет меткой. Задаётся вызывающим кодом.</param>
     public void MarkDeleted(DateTime utcNow)
     {
         if (DeletedAt is not null)
@@ -121,16 +152,8 @@ public sealed class Set : HasDomainEventsBase
     }
 
     /// <summary>
-    /// Обновляет временную метку последнего изменения на utcNow.
-    /// Изменение контента (элементов) набора считается редактированием самого набора.
+    /// Отмечает изменение состава набора, обновляя момент его последнего изменения.
     /// </summary>
-    public void MarkContentChanged(DateTime utcNow) => UpdatedAt = utcNow;
-
-    private static ErrorOr<SetDescription> ParseDescription(string? description)
-    {
-        if (string.IsNullOrWhiteSpace(description))
-            return SetDescription.Empty;
-
-        return SetDescription.Create(description);
-    }
+    /// <param name="utcNow">Текущий момент в UTC. Задаётся вызывающим кодом.</param>
+    public void MarkElementsChanged(DateTime utcNow) => UpdatedAt = utcNow;
 }
