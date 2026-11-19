@@ -33,6 +33,16 @@ public sealed class User
     /// <summary>Возвращает момент последнего доменного изменения в UTC.</summary>
     public DateTime UpdatedAt { get; private set; }
 
+    /// <summary>
+    /// Создаёт пользователя из данных личности.
+    /// </summary>
+    /// <param name="keycloakSub">Идентификатор пользователя в Keycloak.</param>
+    /// <param name="email">Email из claims.</param>
+    /// <param name="displayName">Отображаемое имя; нормализуется и проверяется.</param>
+    /// <param name="utcNow">Текущий момент в UTC; передаёт вызывающий.</param>
+    /// <returns>Новый пользователь либо ошибка:
+    /// <see cref="UserErrors.KeycloakSubInvalid"/>, <see cref="UserErrors.EmailRequired"/>,
+    /// <see cref="UserErrors.DisplayNameRequired"/> или <see cref="UserErrors.DisplayNameTooLong"/>.</returns>
     public static ErrorOr<User> Create(Guid keycloakSub, string email, string displayName, DateTime utcNow)
     {
         if (keycloakSub == Guid.Empty)
@@ -60,8 +70,14 @@ public sealed class User
     }
 
     /// <summary>
-    /// Актуализирует кэш email из claims. Не считается доменным изменением: UpdatedAt не трогает.
+    /// Обновляет кэш email из claims.
     /// </summary>
+    /// <remarks>
+    /// Не считается доменным изменением: <see cref="UpdatedAt"/> не трогается,
+    /// потому что источник истины - Keycloak, а не приложение.
+    /// </remarks>
+    /// <param name="email">Email из claims; приводится к нижнему регистру.</param>
+    /// <exception cref="ArgumentException">Значение пустое или состоит из пробелов.</exception>
     public void RefreshEmailContact(string email)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(email);
