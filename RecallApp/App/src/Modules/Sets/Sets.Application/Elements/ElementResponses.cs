@@ -5,10 +5,19 @@ using Sets.Domain.Elements;
 namespace Sets.Application.Elements;
 
 /// <summary>
-/// Представление элемента набора в ответе API.
-/// Тип отдаётся стабильной строкой, payload - только полями формата и без дискриминатора,
-/// изображения - подписанными ссылками на варианты (если запрошены вместе с элементом).
+/// Представляет элемент набора в ответе API.
 /// </summary>
+/// <remarks>
+/// Тип передаётся стабильной строкой отдельным полем; в payload его нет.
+/// Изображения приходят подписанными ссылками на варианты, если их запросили вместе с элементом.
+/// </remarks>
+/// <param name="Id">Идентификатор элемента.</param>
+/// <param name="Type">Контрактное имя типа элемента.</param>
+/// <param name="Payload">Содержимое элемента по схеме типа, без дискриминатора.</param>
+/// <param name="Images">Карта «сторона -> варианты»; <see langword="null"/>, если изображений нет
+/// или ссылки не запрашивались вместе с элементом.</param>
+/// <param name="CreatedAt">Момент создания в UTC.</param>
+/// <param name="UpdatedAt">Момент последнего изменения в UTC.</param>
 public sealed record ElementResponse(
     Guid Id,
     string Type,
@@ -17,6 +26,12 @@ public sealed record ElementResponse(
     DateTime CreatedAt,
     DateTime UpdatedAt)
 {
+    /// <summary>
+    /// Создаёт представление элемента для ответа API.
+    /// </summary>
+    /// <param name="element">Доменный элемент.</param>
+    /// <param name="links">Подписанные ссылки на файлы; <see langword="null"/> - не запрашивались.</param>
+    /// <returns>Представление элемента.</returns>
     public static ElementResponse From(
         Element element,
         IReadOnlyDictionary<Guid, MediaFileLinks>? links = null) => new(
@@ -28,7 +43,7 @@ public sealed record ElementResponse(
         element.UpdatedAt);
 
     /// <summary>
-    /// Собирает карту «сторона -> варианты»: ссылок нет - поля нет, чтобы клиент отличал
+    /// Собирает карту «сторона -> варианты». Если нет ссылок, то нет и поля, чтобы клиент отличал
     /// отсутствие изображения от неготового файла.
     /// </summary>
     private static IReadOnlyDictionary<string, IReadOnlyDictionary<string, MediaImageLink>>? BuildImages(

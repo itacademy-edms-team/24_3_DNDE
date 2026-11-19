@@ -9,7 +9,18 @@ using Sets.Domain.Sets;
 
 namespace Sets.Application.Elements;
 
+/// <summary>
+/// Создаёт элемент набора и ставит его в конец.
+/// </summary>
+/// <param name="SetId">Идентификатор набора.</param>
+/// <param name="Type">Контрактное имя типа элемента.</param>
+/// <param name="Payload">Содержимое элемента по схеме типа.</param>
 /// <param name="IdempotencyKey">Значение заголовка Idempotency-Key; проверяется на HTTP-слое.</param>
+/// <remarks>
+/// <para>Элемент всегда встаёт в конец набора: ранг вычисляется после последнего элемента.</para>
+/// <para>Проверка ключа идемпотентности идёт под локом набора,
+/// поэтому параллельные запросы с одним ключом не создают два элемента.</para>
+/// </remarks>
 public sealed record CreateElementCommand(
     Guid SetId,
     string? Type,
@@ -23,11 +34,6 @@ public sealed record CreateElementCommand(
     public const string Operation = "elements.create";
 }
 
-/// <summary>
-/// Создаёт элемент и ставит его в конец набора.
-/// Внутри лока набора сначала проверяется ключ идемпотентности,
-/// и только для новой операции вычисляется ранг и выполняется вставка.
-/// </summary>
 public sealed class CreateElementHandler(
     ISetRepository sets,
     IElementRepository elements,

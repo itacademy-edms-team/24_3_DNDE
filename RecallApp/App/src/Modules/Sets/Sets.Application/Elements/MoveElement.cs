@@ -10,21 +10,21 @@ namespace Sets.Application.Elements;
 /// <summary>
 /// Перемещает элемент между указанными соседями.
 /// </summary>
-/// <param name="SetId">Набор, в котором перемещается элемент.</param>
-/// <param name="ElementId">Перемещаемый элемент.</param>
+/// <param name="SetId">Идентификатор набора.</param>
+/// <param name="ElementId">Идентификатор перемещаемого элемента.</param>
 /// <param name="PreviousId">Сосед перед элементом; <see langword="null"/> - начало набора.</param>
 /// <param name="NextId">Сосед после элемента; <see langword="null"/> - конец набора.</param>
+/// <remarks>
+/// <para>Новый ранг вычисляется между соседями: остальные элементы набора не меняются.</para>
+/// <para>Хотя бы один сосед обязателен. Некорректная пара, отсутствующий сосед и отсутствие
+/// соседей возвращают <see cref="ElementErrors.OrderNeighboursRequired"/>,
+/// <see cref="ElementErrors.OrderInvalid"/> и <see cref="ElementErrors.OrderNeighbourNotFound"/>.</para>
+/// <para>Повтор команды с теми же соседями даёт тот же ранг, поэтому ключ идемпотентности не нужен.
+/// В случае изменения соседей (например в другом окне) получим ошибку, а не тихий сдвиг элемента.</para>
+/// </remarks>
 public sealed record MoveElementCommand(Guid SetId, Guid ElementId, Guid? PreviousId, Guid? NextId)
     : IRequest<ErrorOr<ElementResponse>>;
 
-/// <summary>
-/// Переставляет элемент по соседям: новый ранг лежит между ними, остальные элементы не меняются.
-/// </summary>
-/// <remarks>
-/// Операция под локом набора: соседи проверяются и позиция вычисляется на одном состоянии.
-/// Повтор с теми же соседями даёт тот же ранг, а изменившиеся соседи возвращают ошибку,
-/// поэтому отдельный ключ идемпотентности не нужен.
-/// </remarks>
 public sealed class MoveElementHandler(
     ISetRepository sets,
     IElementRepository elements,

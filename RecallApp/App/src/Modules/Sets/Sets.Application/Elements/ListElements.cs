@@ -9,6 +9,21 @@ using Sets.Domain.Sets;
 
 namespace Sets.Application.Elements;
 
+/// <summary>
+/// Возвращает страницу элементов набора.
+/// </summary>
+/// <param name="SetId">Идентификатор набора.</param>
+/// <param name="Cursor">Непрозрачный курсор предыдущей страницы; <see langword="null"/> - первая страница.</param>
+/// <param name="PageSize">Размер страницы; <see langword="null"/> - значение по умолчанию.</param>
+/// <remarks>
+/// <para>Порядок - по позициям (рангам), затем по идентификатору (ADR 0039).</para>
+/// <para>Чужой набор неотличим от несуществующего: на обе проблемы
+/// возвращается ошибка <see cref="SetErrors.NotFound"/>.</para>
+/// <para>Битый курсор и размер страницы вне допустимого диапазона возвращают
+/// <see cref="ElementErrors.CursorInvalid"/> и <see cref="ElementErrors.PageSizeInvalid"/>.</para>
+/// <para>Ссылки на изображения подписываются пачкой на страницу, поэтому поле <c>images</c>
+/// заполнено только у элементов с готовыми файлами.</para>
+/// </remarks>
 public sealed record ListElementsQuery(Guid SetId, string? Cursor, int? PageSize)
     : IRequest<ErrorOr<KeysetPage<ElementResponse>>>;
 
@@ -26,7 +41,7 @@ public sealed class ListElementsHandler(
         if (currentUser.UserId is not { } ownerId)
             return SetErrors.UserUnresolved;
 
-        // Чужой набор неотличим от несуществующего: 404 до любых выборок по элементам.
+        // Чужой набор неотличим от несуществующего. Возвращаем одинаковый код ошибки.
         if (await sets.FindOwnedAsync(query.SetId, ownerId, cancellationToken) is null)
             return SetErrors.NotFound;
 

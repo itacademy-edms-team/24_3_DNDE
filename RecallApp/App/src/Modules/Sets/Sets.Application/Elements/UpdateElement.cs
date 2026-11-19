@@ -9,13 +9,21 @@ using Sets.Domain.Sets;
 
 namespace Sets.Application.Elements;
 
+/// <summary>
+/// Заменяет содержимое элемента целиком.
+/// </summary>
+/// <param name="SetId">Идентификатор набора.</param>
+/// <param name="ElementId">Идентификатор элемента.</param>
+/// <param name="Payload">Новое содержимое по схеме типа элемента.</param>
+/// <remarks>
+/// <para>Запрещено использовать другой тип элемента:
+/// содержимое разбирается по текущему типу, содержимое другого типа отклоняется.</para>
+/// <para>Изображения проверяются до записи. Старые файлы после замены остаются без ссылок
+/// и удаляются фоновой чисткой.</para>
+/// </remarks>
 public sealed record UpdateElementCommand(Guid SetId, Guid ElementId, JsonElement? Payload)
     : IRequest<ErrorOr<ElementResponse>>;
 
-/// <summary>
-/// Полная замена содержимого элемента.
-/// Тип элемента менять нельзя.
-/// </summary>
 public sealed class UpdateElementHandler(
     ISetRepository sets,
     IElementRepository elements,
@@ -59,7 +67,7 @@ public sealed class UpdateElementHandler(
 
         set.MarkElementsChanged(now);
 
-        // Перезапись слота: тот же `reference`, другой файл — старый становится неиспользуемым.
+        // Перезапись слота: тот же `reference`, другой файл.
         var scope = ElementMediaSlots.ElementScope(command.SetId, element.Id);
         element.RegisterDomainEvent(new MediaReferencesChanged(
             ownerId, scope, ElementMediaSlots.For(payload.Value, scope)));

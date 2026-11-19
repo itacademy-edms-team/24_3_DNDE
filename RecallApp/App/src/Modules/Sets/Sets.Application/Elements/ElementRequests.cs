@@ -3,26 +3,37 @@ using System.Text.Json;
 namespace Sets.Application.Elements;
 
 /// <summary>
-/// Тело POST /api/sets/{setId}/elements.
+/// Представляет тело запроса на создание элемента набора.
 /// </summary>
-/// <param name="Type">Тип элемента; в CREATE-01 поддерживается только <c>flashcard</c>.</param>
-/// <param name="Payload">Схема полей зависит от типа; разбор и проверка происходит в домене по контрактному типу.</param>
+/// <param name="Type">Контрактное имя типа элемента, например <c>flashcard</c>.</param>
+/// <param name="Payload">Содержимое элемента; схема полей зависит от типа и проверяется в домене.</param>
 public sealed record CreateElementRequest(string? Type, JsonElement? Payload);
 
 /// <summary>
-/// Тело PUT /api/sets/{setId}/elements/{id}: полная замена содержимого.
-/// Тип не передаётся - он неизменяем и берётся у существующего элемента.
+/// Представляет тело запроса на замену содержимого элемента.
 /// </summary>
+/// <param name="Payload">Новое содержимое по схеме типа элемента.</param>
+/// <remarks>
+/// Тип в теле не передаётся: он неизменяем и берётся у существующего элемента.
+/// </remarks>
 public sealed record UpdateElementRequest(JsonElement? Payload);
 
 /// <summary>
-/// Тело POST /api/sets/{setId}/elements/{id}/move: соседи, между которыми встаёт элемент.
+/// Представляет тело запроса на перемещение элемента.
 /// </summary>
 /// <param name="PreviousId">Сосед перед элементом; <see langword="null"/> - начало набора.</param>
 /// <param name="NextId">Сосед после элемента; <see langword="null"/> - конец набора.</param>
+/// <remarks>
+/// Хотя бы один сосед обязателен: без них непонятно, куда ставить элемент.
+/// </remarks>
 public sealed record MoveElementRequest(Guid? PreviousId, Guid? NextId);
 
-/// <summary>Маршруты элементов набора: id набора всегда из пути, а не из тела.</summary>
+/// <summary>
+/// Предоставляет маршруты элементов набора.
+/// </summary>
+/// <remarks>
+/// Идентификатор набора всегда приходит из пути, а не из тела запроса.
+/// </remarks>
 public static class ElementRoute
 {
     public const string Group = "/api/sets/{setId:guid}/elements";

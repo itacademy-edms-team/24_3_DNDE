@@ -2,6 +2,13 @@ using FluentValidation;
 
 namespace Sets.Application.Elements.Validation;
 
+/// <summary>
+/// Предоставляет правила проверки команды создания элемента.
+/// </summary>
+/// <remarks>
+/// Здесь только проверки формы запроса: наличие типа и содержимого.
+/// Допустимость типа и схему содержимого проверяет домен, поэтому коды ошибок приходят из одного места (ADR 0038).
+/// </remarks>
 public sealed class CreateElementCommandValidator : AbstractValidator<CreateElementCommand>
 {
     public CreateElementCommandValidator()
@@ -16,6 +23,13 @@ public sealed class CreateElementCommandValidator : AbstractValidator<CreateElem
     }
 }
 
+/// <summary>
+/// Предоставляет правила проверки команды замены содержимого элемента.
+/// </summary>
+/// <remarks>
+/// Проверяется только наличие содержимого.
+/// Схему проверяет домен по текущему типу элемента.
+/// </remarks>
 public sealed class UpdateElementCommandValidator : AbstractValidator<UpdateElementCommand>
 {
     public UpdateElementCommandValidator()

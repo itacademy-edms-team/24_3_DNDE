@@ -8,12 +8,18 @@ using Sets.Domain.Sets;
 
 namespace Sets.Application.Elements;
 
+/// <summary>
+/// Удаляет элемент набора.
+/// </summary>
+/// <param name="SetId">Идентификатор набора.</param>
+/// <param name="ElementId">Идентификатор элемента.</param>
+/// <remarks>
+/// <para>Удаление мягкое: элемент исчезает из выдачи, но строка остаётся до фоновой чистки.</para>
+/// <para>Позиции соседей не меняются - в порядке остаётся пропуск;
+/// плотная перенумерация не нужна (онтология §6.5). </para>
+/// </remarks>
 public sealed record DeleteElementCommand(Guid SetId, Guid ElementId) : IRequest<ErrorOr<Deleted>>;
 
-/// <summary>
-/// Мягко удаляет элемент: соседние элементы сохраняют свои позиции, дырка в порядке допустима
-/// (онтология §6.5), а сам набор живёт дальше.
-/// </summary>
 public sealed class DeleteElementHandler(
     ISetRepository sets,
     IElementRepository elements,
