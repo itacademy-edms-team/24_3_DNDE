@@ -8,12 +8,14 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Common.Infrastructure.DomainEvents;
 
 /// <summary>
-/// Раздаёт доменные события обработчикам, зарегистрированным как <see cref="IDomainEventHandler{TEvent}"/>.
-/// Резолвит их напрямую из DI, без MediatR:
-/// open-generic INotificationHandler с вложенным generic-типом
-/// не поддерживается Microsoft.Extensions.DependencyInjection.
-/// Рефлексия кэшируется по типу события.
+/// Доставляет доменные события их обработчикам.
 /// </summary>
+/// <remarks>
+/// <para>Обработчики резолвятся напрямую из DI (без MediatR)
+/// и вызываются через делегат, кэшируемый по типу события.</para>
+/// <para>Ошибки всех обработчиков собираются в один результат: доставка не останавливается
+/// на первом отказе.</para>
+/// </remarks>
 public sealed class InProcessDomainEventDispatcher(IServiceProvider services) : IDomainEventDispatcher
 {
     private static readonly ConcurrentDictionary<Type, Func<IServiceProvider, IDomainEvent, CancellationToken, Task<ErrorOr<Success>>>> Invokers = new();

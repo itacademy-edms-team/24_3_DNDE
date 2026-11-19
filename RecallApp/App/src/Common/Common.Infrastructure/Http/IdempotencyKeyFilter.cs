@@ -4,12 +4,17 @@ using Microsoft.AspNetCore.Http;
 namespace Common.Infrastructure.Http;
 
 /// <summary>
-/// Транспортная проверка обязательного заголовка `Idempotency-Key` (ADR 0038: форма запроса - на HTTP-слое).
-/// Фильтр проверяет наличие и формат, а также нормализует значение к каноничному виду UUID:
-/// в БД ключ хранится строкой, поэтому «{ABC...}», «ABC...» и «abc...» иначе стали бы разными ключами.
+/// Проверяет и нормализует заголовок Idempotency-Key на HTTP-слое.
 /// </summary>
+/// <remarks>
+/// <para>Проверяются наличие и формат (UUID);
+/// значение приводится к каноничному виду (ADR 0038: форма запроса проверяется на HTTP-слое).</para>
+/// <para>Нормализация обязательна: в БД ключ хранится строкой, поэтому <c>{ABC...}</c>,
+/// <c>ABC...</c> и <c>abc...</c> иначе стали бы разными ключами.</para>
+/// </remarks>
 public sealed class IdempotencyKeyFilter : IEndpointFilter
 {
+    /// <summary>Имя заголовка идемпотентности.</summary>
     public const string HeaderName = "Idempotency-Key";
 
     /// <summary>Ключ в <see cref="HttpContext.Items"/> с уже нормализованным значением.</summary>
@@ -29,7 +34,12 @@ public sealed class IdempotencyKeyFilter : IEndpointFilter
         return await next(context);
     }
 
-    /// <summary>Достаёт нормализованный ключ, который положил фильтр.</summary>
+    /// <summary>
+    /// Достаёт нормализованный ключ, который положил фильтр.
+    /// </summary>
+    /// <param name="httpContext">Контекст запроса.</param>
+    /// <returns>Нормализованный ключ в каноничном виде UUID.</returns>
+    /// <exception cref="InvalidOperationException">Фильтр не выполнился до чтения ключа.</exception>
     public static string GetCanonicalKey(HttpContext httpContext) =>
         httpContext.Items[CanonicalKeyItem] as string
         ?? throw new InvalidOperationException(
