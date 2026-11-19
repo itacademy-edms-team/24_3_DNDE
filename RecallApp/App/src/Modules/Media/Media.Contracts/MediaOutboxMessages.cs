@@ -1,7 +1,7 @@
 namespace Media.Contracts;
 
 /// <summary>
-/// Типы сообщений outbox, которые Media принимает.
+/// Предоставляет типы сообщений outbox, которые принимает Media.
 /// </summary>
 public static class MediaOutboxMessages
 {
