@@ -6,16 +6,17 @@ namespace Sets.Infrastructure.Data.Purge;
 internal sealed class SetsPurgeOptions
 {
     /// <summary>
-    /// Сколько хранить удалённый набор и его элементы до физического удаления.
+    /// Возвращает или задает срок хранения удалённого набора и его элементов до физического
+    /// удаления.
     /// </summary>
     /// <remarks>
     /// ADR 0036: окно retention.
     /// </remarks>
     public TimeSpan Retention { get; set; } = TimeSpan.FromDays(30);
 
-    /// <summary>Интервал запуска чистки.</summary>
+    /// <summary>Возвращает или задает интервал запуска чистки.</summary>
     public TimeSpan Interval { get; set; } = TimeSpan.FromHours(1);
 
-    /// <summary>Сколько строк максимум удалять за заход.</summary>
+    /// <summary>Возвращает или задает максимум строк, удаляемых за заход.</summary>
     public int BatchSize { get; set; } = 500;
 }

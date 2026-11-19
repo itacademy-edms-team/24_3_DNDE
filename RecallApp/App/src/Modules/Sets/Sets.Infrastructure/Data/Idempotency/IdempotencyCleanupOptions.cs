@@ -5,9 +5,9 @@ namespace Sets.Infrastructure.Data.Idempotency;
 /// </summary>
 internal sealed class IdempotencyCleanupOptions
 {
-    /// <summary>Как часто запускать чистку.</summary>
+    /// <summary>Возвращает или задает интервал запуска чистки.</summary>
     public TimeSpan Interval { get; set; } = TimeSpan.FromMinutes(10);
 
-    /// <summary>Сколько строк удалять за один заход.</summary>
+    /// <summary>Возвращает или задает число строк, удаляемых за один заход.</summary>
     public int BatchSize { get; set; } = 500;
 }
