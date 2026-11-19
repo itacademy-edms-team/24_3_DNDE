@@ -6,9 +6,16 @@ using Microsoft.Extensions.Options;
 namespace Sets.Infrastructure.Data.Outbox;
 
 /// <summary>
-/// Фоновый воркер одной полосы outbox: периодически доставляет готовые сообщения своей полосы.
-/// Регистрируется по экземпляру на полосу (fast и slow), чтобы медленная полоса не блокировала быструю.
+/// Доставляет готовые outbox-сообщения одной полосы по расписанию.
 /// </summary>
+/// <remarks>
+/// <para>Экземпляр создаётся на каждую полосу (<c>fast</c> и <c>slow</c>).</para>
+/// <para>В тестах воркер выключается флагом <see cref="OutboxOptions.Enabled"/>: прогон
+/// вызывает обработку явно, без гонки с фоновым циклом.</para>
+/// <para>Ошибка прохода логируется и не останавливает цикл.</para>
+/// <para>Пауза отсчитывается <c>PeriodicTimer</c>,
+/// поэтому интервал не смещается на время обработки - в отличие от <c>Task.Delay</c> после работы.</para>
+/// </remarks>
 internal sealed class OutboxDispatcher(
     IServiceScopeFactory scopeFactory,
     string lane,

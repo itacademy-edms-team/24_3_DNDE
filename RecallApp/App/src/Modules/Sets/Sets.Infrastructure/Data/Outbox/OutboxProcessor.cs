@@ -8,17 +8,24 @@ using Microsoft.Extensions.Logging;
 namespace Sets.Infrastructure.Data.Outbox;
 
 /// <summary>
-/// Доставка outbox-сообщений одной полосы. Сообщение обрабатывается в одной транзакции:
-/// десериализация в доменное событие и его доставка обработчикам; исход фиксируется
-/// как processed / retrying / dead. Полоса fast - in-process и транзакционна, аренда не нужна
-/// (её используют будущие slow-обработчики с внешними эффектами).
+/// Доставляет outbox-сообщения одной полосы.
 /// </summary>
+/// <remarks>
+/// <para>Пачка берётся под <c>FOR UPDATE SKIP LOCKED</c> и обрабатывается в одной транзакции:
+/// десериализация в доменное событие, доставка обработчикам, фиксация исхода
+/// (<c>processed</c> / <c>retrying</c> / <c>dead</c>).</para>
+/// <para>Полоса <c>fast</c> работает in-process, поэтому аренда не нужна: строки удерживает транзакция.
+/// Аренда понадобится slow-полосе с внешними эффектами.</para>
+/// </remarks>
 internal sealed class OutboxProcessor(
     SetsDbContext context,
     IDomainEventDispatcher dispatcher,
     TimeProvider clock,
     ILogger<OutboxProcessor> logger)
 {
+    /// <summary>
+    /// Задержки между попытками доставки; последняя переиспользуется.
+    /// </summary>
     private static readonly TimeSpan[] Backoff =
     [
         TimeSpan.FromSeconds(5),
@@ -30,7 +37,14 @@ internal sealed class OutboxProcessor(
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
-    /// <summary>Обрабатывает пачку готовых сообщений полосы и возвращает число доставленных.</summary>
+    /// <summary>
+    /// Обрабатывает пачку готовых сообщений полосы.
+    /// </summary>
+    /// <param name="lane">Полоса доставки.</param>
+    /// <param name="batchSize">Сколько сообщений взять за заход.</param>
+    /// <param name="maxAttempts">После скольких неудач сообщение становится <c>dead</c>.</param>
+    /// <param name="cancellationToken">Токен отмены.</param>
+    /// <returns>Сколько сообщений доставлено успешно.</returns>
     public async Task<int> ProcessBatchAsync(string lane, int batchSize, int maxAttempts, CancellationToken cancellationToken)
     {
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);

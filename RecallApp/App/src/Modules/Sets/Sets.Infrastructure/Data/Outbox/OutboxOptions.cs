@@ -1,22 +1,35 @@
 namespace Sets.Infrastructure.Data.Outbox;
 
 /// <summary>
-/// Настройки outbox-воркера (секция <c>Sets:Outbox</c>).
+/// Содержит настройки outbox-воркера (секция <c>Sets:Outbox</c>).
 /// </summary>
 internal sealed class OutboxOptions
 {
-    /// <summary>Выключает фоновую доставку: нужно тестам, где воркер запускается вручную.</summary>
+    /// <summary>
+    /// Выключает фоновую доставку: нужно тестам, где воркер запускается вручную.
+    /// </summary>
     public bool Enabled { get; set; } = true;
 
-    /// <summary>Как часто воркер проверяет очередь.</summary>
+    /// <summary>
+    /// Как часто воркер проверяет очередь.
+    /// </summary>
     public TimeSpan Interval { get; set; } = TimeSpan.FromSeconds(5);
 
-    /// <summary>Сколько сообщений брать за один заход в полосе.</summary>
+    /// <summary>
+    /// Сколько сообщений брать за один заход в полосе.
+    /// </summary>
     public int BatchSize { get; set; } = 50;
 
-    /// <summary>После скольких неудач сообщение переходит в dead.</summary>
+    /// <summary>
+    /// После скольких неудач сообщение переходит в dead.
+    /// </summary>
     public int MaxAttempts { get; set; } = 10;
 
-    /// <summary>Срок аренды: столько воркер считается живым без продления; истёкшую перехватывает другой.</summary>
+    /// <summary>
+    /// Срок аренды: столько воркер считается живым без продления; истёкшую перехватывает другой.
+    /// </summary>
+    /// <remarks>
+    /// Используется slow-полосой; fast-полоса арендует сообщения транзакцией (FOR UPDATE SKIP LOCKED).
+    /// </remarks>
     public TimeSpan LeaseDuration { get; set; } = TimeSpan.FromSeconds(60);
 }

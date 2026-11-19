@@ -7,10 +7,15 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 namespace Sets.Infrastructure.Data.Outbox;
 
 /// <summary>
-/// Материализует доменные события, накопленные сущностями, в outbox-записи той же транзакцией:
-/// сканирует ChangeTracker на <see cref="IHasDomainEvents"/>, извлекает и очищает события,
-/// сериализует их в строки outbox. Это заменяет ручной Enqueue (ADR 0040).
+/// Преобразует доменные события сущностей в outbox-записи в той же транзакции.
 /// </summary>
+/// <remarks>
+/// <para>На <c>SavingChanges</c> перехватчик сканирует отслеживаемые сущности
+/// (<see cref="IHasDomainEvents"/>), забирает накопленные события, очищает их у сущности
+/// и добавляет строки outbox в тот же <c>SaveChanges</c>.</para>
+/// <para>Поэтому доменное изменение и его событие коммитятся вместе: либо оба, либо ничего.
+/// Это заменяет ручной <c>Enqueue</c> (ADR 0040).</para>
+/// </remarks>
 internal sealed class DomainEventsToOutboxInterceptor(TimeProvider clock) : SaveChangesInterceptor
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
