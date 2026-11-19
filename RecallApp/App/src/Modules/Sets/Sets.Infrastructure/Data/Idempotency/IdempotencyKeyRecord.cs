@@ -3,6 +3,10 @@ namespace Sets.Infrastructure.Data.Idempotency;
 /// <summary>
 /// Строка ключа идемпотентности модуля Sets (таблица <c>sets.idempotency_keys</c>).
 /// </summary>
+/// <remarks>
+/// Ключ уникален в паре с владельцем: один и тот же заголовок от разных пользователей - разные ключи.
+/// Завершённая строка хранит ответ, который возвращается при повторе до срока истечения.
+/// </remarks>
 internal sealed class IdempotencyKeyRecord
 {
     public Guid OwnerId { get; set; }

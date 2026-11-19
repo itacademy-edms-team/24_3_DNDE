@@ -8,11 +8,14 @@ using Sets.Application.Abstractions;
 namespace Sets.Infrastructure.Data.Idempotency;
 
 /// <summary>
-/// Реализация идемпотентности для схемы sets: ключ и бизнес-запись коммитятся вместе,
-/// поэтому состояния «в процессе» в БД не остаётся.
-/// Если вызывающий код уже открыл транзакцию (например, под локом набора), стор в неё встраивается
-/// и не управляет коммитом/откатом - это делает владелец транзакции.
+/// Обеспечивает идемпотентность запросов в схеме sets.
 /// </summary>
+/// <remarks>
+/// <para>Ключ и бизнес-запись коммитятся вместе, поэтому состояния «в процессе» в базе не остаётся:
+/// либо есть сохранённый ответ, либо ключа нет.</para>
+/// <para>Если вызывающий код уже открыл транзакцию (например, под блокировкой набора),
+/// хранилище встраивается в неё и не управляет коммитом - это делает владелец транзакции.</para>
+/// </remarks>
 internal sealed class IdempotencyStore(SetsDbContext context, TimeProvider clock) : ISetsIdempotencyStore
 {
     /// <summary>Время жизни ключа: повторы после суток считаются новым запросом.</summary>
@@ -142,6 +145,14 @@ internal sealed class IdempotencyStore(SetsDbContext context, TimeProvider clock
         return inserted > 0;
     }
 
+    /// <summary>
+    /// Записывает ответ и статус в зарезервированный ключ.
+    /// </summary>
+    /// <param name="ownerId">Владелец ключа.</param>
+    /// <param name="key">Ключ идемпотентности.</param>
+    /// <param name="statusCode">HTTP-статус сохранённого ответа.</param>
+    /// <param name="responseJson">Сериализованный ответ.</param>
+    /// <param name="cancellationToken">Токен отмены.</param>
     private Task<int> CompleteAsync(
         Guid ownerId,
         string key,
