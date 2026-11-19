@@ -7,6 +7,7 @@ using Media.Infrastructure;
 using Media.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Sets.Domain.Elements;
 using Sets.Domain.Sets;
 using Sets.Infrastructure;
 using Sets.Infrastructure.Data;
@@ -120,6 +121,17 @@ public sealed class ModuleBoundariesTests
     {
         Assert.Equal(120, SetConstraints.TitleMaxLength);
         Assert.Equal(2000, SetConstraints.DescriptionMaxLength);
+    }
+
+    /// <summary>
+    /// Якорь значений из ontology/sets.md §5: лимиты термина и определения — осознанное решение,
+    /// а не случайная правка константы (ADR 0038).
+    /// </summary>
+    [Fact]
+    public void ElementConstraints_Values_MatchOntology()
+    {
+        Assert.Equal(500, ElementConstraints.TermMaxLength);
+        Assert.Equal(2000, ElementConstraints.DefinitionMaxLength);
     }
 
     private static Type[] ExportedTypes(Assembly assembly) =>

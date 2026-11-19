@@ -3,7 +3,7 @@ using ErrorOr;
 namespace Sets.Domain.Sets;
 
 /// <summary>
-/// Предоставляет название набора.
+/// Представляет название набора.
 /// </summary>
 public readonly record struct SetTitle
 {
@@ -17,8 +17,7 @@ public readonly record struct SetTitle
     /// <summary>
     /// Создаёт название из сырой строки, нормализуя её.
     /// </summary>
-    /// <param name="raw">Строковое представление названия; <see langword="null"/>
-    /// и пробельная строка означают, что названия нет.</param>
+    /// <param name="raw">Сырое значение; <see langword="null"/> и пробельная строка недопустимы.</param>
     /// <returns>
     /// Нормализованное название либо ошибка:
     /// <see cref="SetErrors.TitleRequired"/>, <see cref="SetErrors.TitleTooLong"/>.

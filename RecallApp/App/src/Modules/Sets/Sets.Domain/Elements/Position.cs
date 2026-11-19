@@ -1,4 +1,4 @@
-using ErrorOr;
+using System;
 
 namespace Sets.Domain.Elements;
 
@@ -6,8 +6,10 @@ namespace Sets.Domain.Elements;
 /// Представляет позицию элемента в наборе.
 /// </summary>
 /// <remarks>
-/// Позиция - строковый ранг.
-/// Сравнение - порядковое (ordinal).
+/// <para>Позиция - строковый ранг: между любыми двумя значениями можно получить третье,
+/// не меняя соседей.</para>
+/// <para>Сравнение порядковое (ordinal), поэтому строки в базе сортируются побайтово -
+/// столбец объявлен с <c>COLLATE "C"</c>.</para>
 /// </remarks>
 public readonly record struct Position : IComparable<Position>
 {
@@ -19,19 +21,9 @@ public readonly record struct Position : IComparable<Position>
     public string Value { get; }
 
     /// <summary>
-    /// Создаёт позицию из строкового ранга.
+    /// Восстанавливает позицию из уже проверенного значения.
     /// </summary>
-    /// <param name="value">Ранг в формате «бакет|значение».</param>
-    /// <returns>Позиция либо ошибка <see cref="ElementErrors.PositionInvalid"/>.</returns>
-    public static ErrorOr<Position> Create(string? value) =>
-        string.IsNullOrWhiteSpace(value)
-            ? ElementErrors.PositionInvalid(value)
-            : new Position(value);
-
-    /// <summary>
-    /// Восстанавливает позицию из уже проверенного значения: курсора или строки из хранилища.
-    /// </summary>
-    /// <param name="value">Ранг, прошедший проверку ранее.</param>
+    /// <param name="value">Ранг из генератора или из хранилища; считается корректным.</param>
     public static Position FromStorage(string value) => new(value);
 
     /// <summary>

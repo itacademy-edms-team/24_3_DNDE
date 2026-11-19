@@ -6,21 +6,32 @@ namespace Sets.Domain.Elements;
 /// Предоставляет правила порядка элементов набора.
 /// </summary>
 /// <remarks>
-/// Порядок задаётся рангами: новый элемент получает ранг между соседями, остальные элементы
-/// не меняются. Правило решает, куда именно попадает элемент, а вычисление значения ранга
-/// делегируется <see cref="IPositionGenerator"/>.
+/// Порядок задаётся рангами. Новый элемент получает ранг между соседями,
+/// остальные при этом не меняются.
+/// Правило решает, куда именно попадает элемент,
+/// а вычисление значения ранга делегируется <see cref="IPositionGenerator"/>.
 /// </remarks>
 public static class SetOrdering
 {
     /// <summary>
     /// Вычисляет позицию для перемещаемого элемента по его соседям.
     /// </summary>
+    /// <remarks>
+    /// Существование перемещаемого элемента проверяет вызывающий код: 
+    /// здесь проверяются только соседи.
+    /// Поэтому метод не возвращает <see cref="ElementErrors.NotFound"/>.
+    /// </remarks>
     /// <param name="generator">Вычислитель рангов.</param>
     /// <param name="current">Активные элементы набора по порядку.</param>
     /// <param name="elementId">Перемещаемый элемент.</param>
-    /// <param name="previousId">Сосед перед элементом; <see langword="null"/> — начало набора.</param>
-    /// <param name="nextId">Сосед после элемента; <see langword="null"/> — конец набора.</param>
-    /// <returns>Новая позиция либо ошибка правила порядка.</returns>
+    /// <param name="previousId">Сосед перед элементом; <see langword="null"/> - начало набора.</param>
+    /// <param name="nextId">Сосед после элемента; <see langword="null"/> - конец набора.</param>
+    /// <returns>
+    /// Позиция для элемента либо ошибка:
+    /// <see cref="ElementErrors.OrderNeighboursRequired"/> (не задан ни один сосед),
+    /// <see cref="ElementErrors.OrderInvalid"/> (некорректная пара соседей),
+    /// <see cref="ElementErrors.OrderNeighbourNotFound"/> (сосед не найден среди активных элементов).
+    /// </returns>
     public static ErrorOr<Position> PositionFor(
         IPositionGenerator generator,
         IReadOnlyList<Element> current,
@@ -63,7 +74,8 @@ public static class SetOrdering
     /// Вычисляет позицию для нового элемента в конце набора.
     /// </summary>
     /// <param name="generator">Вычислитель рангов.</param>
-    /// <param name="last">Последний элемент набора; <see langword="null"/>, если набор пуст.</param>
+    /// <param name="last">Элемент, после которого встаёт новый; должен быть последним по порядку
+    /// (например, из <c>GetLastAsync</c>); <see langword="null"/>, если набор пуст.</param>
     /// <returns>Позиция после последнего элемента.</returns>
     public static Position PositionAtEnd(IPositionGenerator generator, Element? last) =>
         generator.Between(last is null ? null : Position.FromStorage(last.Position), null);

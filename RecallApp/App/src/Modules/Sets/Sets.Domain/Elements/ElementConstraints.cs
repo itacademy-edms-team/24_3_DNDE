@@ -1,9 +1,12 @@
 namespace Sets.Domain.Elements;
 
 /// <summary>
-/// Числовые ограничения элемента набора. Единственный источник значений для EF-конфигурации,
-/// value objects и валидаторов (ADR 0038); значения закреплены тестом-якорем.
+/// Предоставляет числовые ограничения элемента набора.
 /// </summary>
+/// <remarks>
+/// Единственный источник значений для EF-конфигурации, value objects и валидаторов (ADR 0038);
+/// значения закреплены тестом-якорем.
+/// </remarks>
 public static class ElementConstraints
 {
     /// <summary>Максимальная длина термина после trim.</summary>
@@ -13,13 +16,29 @@ public static class ElementConstraints
     public const int DefinitionMaxLength = 2000;
 }
 
-/// <summary>Границы постраничной выдачи элементов набора (ADR 0039).</summary>
+/// <summary>
+/// Предоставляет ограничения постраничной выдачи элементов набора.
+/// </summary>
+/// <remarks>
+/// Значения задают допустимый диапазон <c>pageSize</c> в запросе списка элементов (ADR 0039).
+/// </remarks>
 public static class ElementListConstraints
 {
+    /// <summary>
+    /// Минимальный размер страницы.
+    /// </summary>
     public const int MinPageSize = 1;
 
-    /// <summary>Дефолт совпадает с верхней границей: редактор грузит набор целиком за один запрос.</summary>
+    /// <summary>
+    /// Максимальный размер страницы.
+    /// </summary>
     public const int MaxPageSize = 100;
 
+    /// <summary>
+    /// Размер страницы по умолчанию, если клиент его не указал.
+    /// </summary>
+    /// <remarks>
+    /// Находится в пределах нижней и верхней границ.
+    /// </remarks>
     public const int DefaultPageSize = 100;
 }

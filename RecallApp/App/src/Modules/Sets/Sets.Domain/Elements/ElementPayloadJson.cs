@@ -4,19 +4,24 @@ using ErrorOr;
 namespace Sets.Domain.Elements;
 
 /// <summary>
-/// Сериализация payload элемента в JSON и обратно: единая точка для хранения и контракта.
-/// <para>
-/// Хранение (<see cref="ToStorageJson"/>): плоский объект с дискриминатором,
-/// например <c>{"type":"flashcard","term":"…","definition":"…"}</c> - конвертер EF не видит
-/// соседнюю колонку <c>type</c>, поэтому тип дублируется внутри документа.
-/// </para>
-/// <para>
-/// Контракт (<see cref="ToContractJson"/>): только поля формата, без дискриминатора -
-/// наружу тип отдаётся один раз, отдельным полем элемента.
-/// </para>
+/// Предоставляет сериализацию содержимого элемента в JSON и обратно.
 /// </summary>
+/// <remarks>
+/// <para>Один и тот же разбор работает и на чтении из БД, и на приёме тела запроса.</para>
+/// <para>Для хранения используется плоский объект с дискриминатором <c>type</c>: EF-конвертер не видит
+/// соседний столбец, поэтому тип дублируется внутри документа.</para>
+/// <para>В ответе API дискриминатора в payload нет: тип элемента приходит отдельным полем.</para>
+/// </remarks>
 public static class ElementPayloadJson
 {
+    /// <summary>
+    /// Сериализует содержимое для хранения в столбце <c>payload</c>.
+    /// </summary>
+    /// <param name="payload">Содержимое элемента.</param>
+    /// <returns>JSON-объект с дискриминатором <c>type</c>.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Для этого типа содержимого нет ветки сериализации: добавлен новый наследник без правила обработки.
+    /// </exception>
     public static string ToStorageJson(ElementPayload payload) => payload switch
     {
         FlashcardPayload flashcard => JsonSerializer.Serialize(new
@@ -30,6 +35,14 @@ public static class ElementPayloadJson
         _ => throw new ArgumentOutOfRangeException(nameof(payload), payload.GetType(), "Unknown payload type."),
     };
 
+    /// <summary>
+    /// Сериализует содержимое для ответа API.
+    /// </summary>
+    /// <param name="payload">Содержимое элемента.</param>
+    /// <returns>JSON-объект только с полями формата, без дискриминатора.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Для этого типа содержимого нет ветки сериализации: добавлен новый наследник без правила обработки.
+    /// </exception>
     public static string ToContractJson(ElementPayload payload) => payload switch
     {
         FlashcardPayload flashcard => JsonSerializer.Serialize(new
@@ -43,9 +56,13 @@ public static class ElementPayloadJson
     };
 
     /// <summary>
-    /// Восстанавливает элемент из БД.
-    /// Повреждённый документ - <see cref="JsonException"/>: молча подставлять пустой payload нельзя, иначе невалидный элемент уйдёт в прохождение.
+    /// Восстанавливает содержимое из документа в столбце <c>payload</c>.
     /// </summary>
+    /// <param name="json">Документ из хранилища.</param>
+    /// <returns>Восстановленное содержимое.</returns>
+    /// <exception cref="JsonException">
+    /// Документ повреждён, не содержит дискриминатора или не проходит проверку полей.
+    /// </exception>
     public static ElementPayload FromStorageJson(string json)
     {
         using var document = JsonDocument.Parse(json);
@@ -62,9 +79,17 @@ public static class ElementPayloadJson
     }
 
     /// <summary>
-    /// Собирает payload из JSON-объекта по типу элемента. 
-    /// Используется и при чтении из БД, и при разборе тела запроса - правила проверки в обоих случаях одни и те же.
+    /// Создаёт содержимое из JSON-объекта по типу элемента.
     /// </summary>
+    /// <param name="type">Тип элемента, определяющий схему полей.</param>
+    /// <param name="payload">JSON-объект с полями формата.</param>
+    /// <returns>
+    /// Содержимое элемента либо ошибка:
+    /// <see cref="ElementErrors.TypeUnsupported"/>, <see cref="ElementErrors.PayloadInvalid"/>,
+    /// <see cref="ElementErrors.TermRequired"/>, <see cref="ElementErrors.TermTooLong"/>,
+    /// <see cref="ElementErrors.DefinitionRequired"/>, <see cref="ElementErrors.DefinitionTooLong"/>
+    /// или <see cref="ElementErrors.ImageInvalid"/>.
+    /// </returns>
     public static ErrorOr<ElementPayload> Create(ElementType type, JsonElement payload) => type switch
     {
         ElementType.Flashcard => CreateFlashcard(payload),

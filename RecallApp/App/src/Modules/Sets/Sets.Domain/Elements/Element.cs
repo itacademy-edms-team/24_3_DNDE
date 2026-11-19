@@ -9,8 +9,8 @@ namespace Sets.Domain.Elements;
 /// </summary>
 /// <remarks>
 /// <para>Элемент всегда принадлежит одному набору и без него не существует.</para>
-/// <para>Позиция уникальна среди активных элементов набора и меняется только целым пересчётом
-/// порядка: домен вычисляет назначения, инфраструктура применяет их к строкам.</para>
+/// <para>Позиция - строковый ранг, уникальный среди активных элементов набора:
+/// перестановка меняет только перемещаемый элемент, остальные остаются на месте.</para>
 /// <para>Чужие элементы неотличимы от несуществующих:
 /// операции с ними завершаются ошибкой <see cref="ElementErrors.NotFound"/>.</para>
 /// <para>Жизненный цикл: активен -> помечен на удаление -> удалён физически.
@@ -38,8 +38,8 @@ public sealed class Element : HasDomainEventsBase
     /// <remarks>
     /// Меняется только через <see cref="MoveTo"/> по соседям, вычисленным правилом порядка:
     /// остальные элементы набора при этом не затрагиваются.
-    /// Строка (а не <see cref="Position"/>) - чтобы запросы могли сравнивать и сортировать
-    /// колонку напрямую.
+    /// Строка (а не <see cref="Position"/>) - чтобы БД-запросы могли
+    /// сравнивать и сортировать столбец напрямую.
     /// </remarks>
     public string Position { get; private set; } = string.Empty;
     
@@ -89,12 +89,11 @@ public sealed class Element : HasDomainEventsBase
     /// </remarks>
     /// <param name="setId">Идентификатор набора.</param>
     /// <param name="payload">Содержимое элемента; тип элемента выводится из payload.</param>
-    /// <param name="position">Позиция в наборе; нумерация начинается с нуля</param>
+    /// <param name="position">Позиция в наборе; нумерация начинается с нуля.</param>
     /// <param name="utcNow">Момент создания в UTC. Задаётся вызывающим кодом.</param>
     /// <returns>
     /// Новый элемент на указанной позиции или ошибка:
-    /// <see cref="ElementErrors.SetRequired"/>, <see cref="ElementErrors.PayloadRequired"/>,
-    /// <see cref="ElementErrors.PositionInvalid"/>.
+    /// <see cref="ElementErrors.SetRequired"/>, <see cref="ElementErrors.PayloadRequired"/>.
     /// </returns>
     public static ErrorOr<Element> Create(Guid setId, ElementPayload payload, Position position, DateTime utcNow)
     {

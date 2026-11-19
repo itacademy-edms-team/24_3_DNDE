@@ -2,13 +2,26 @@ using ErrorOr;
 
 namespace Sets.Domain.Elements;
 
-/// <summary>Термин карточки.</summary>
+/// <summary>
+/// Представляет термин флеш-карточки.
+/// </summary>
 public readonly record struct CardTerm
 {
     private CardTerm(string value) => Value = value;
 
+    /// <summary>
+    /// Возвращает значение термина в виде строки.
+    /// </summary>
     public string Value { get; }
 
+    /// <summary>
+    /// Создаёт термин из сырой строки, нормализуя её.
+    /// </summary>
+    /// <param name="raw">Сырая строка.</param>
+    /// <returns>
+    /// Новый термин или ошибка:
+    /// <see cref="ElementErrors.TermRequired"/>, <see cref="ElementErrors.TermTooLong"/>.
+    /// </returns>
     public static ErrorOr<CardTerm> Create(string? raw)
     {
         var trimmed = raw?.Trim();
@@ -21,8 +34,15 @@ public readonly record struct CardTerm
         return new CardTerm(trimmed);
     }
 
-    /// <summary>Восстановление из БД (EF-конвертер и JSON payload): данные уже прошли валидацию при записи.</summary>
+    /// <summary>
+    /// Восстанавливает термин из сохранённого значения.
+    /// </summary>
+    /// <param name="value">Значение из хранилища; считается уже прошедшим проверку при записи.</param>
+    /// <returns>Термин.</returns>
     public static CardTerm FromStorage(string value) => new(value);
 
+    /// <summary>
+    /// Возвращает представление термина в виде строки.
+    /// </summary>
     public override string ToString() => Value;
 }
