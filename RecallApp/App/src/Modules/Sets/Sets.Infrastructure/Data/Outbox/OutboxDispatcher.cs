@@ -13,8 +13,6 @@ namespace Sets.Infrastructure.Data.Outbox;
 /// <para>В тестах воркер выключается флагом <see cref="OutboxOptions.Enabled"/>: прогон
 /// вызывает обработку явно, без гонки с фоновым циклом.</para>
 /// <para>Ошибка прохода логируется и не останавливает цикл.</para>
-/// <para>Пауза отсчитывается <c>PeriodicTimer</c>,
-/// поэтому интервал не смещается на время обработки - в отличие от <c>Task.Delay</c> после работы.</para>
 /// </remarks>
 internal sealed class OutboxDispatcher(
     IServiceScopeFactory scopeFactory,
@@ -30,8 +28,6 @@ internal sealed class OutboxDispatcher(
         // В тестах воркер выключен: прогон вызывает обработку явно, без гонки с фоновым циклом.
         if (!settings.Enabled)
             return;
-
-        using var timer = new PeriodicTimer(settings.Interval);
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -56,7 +52,7 @@ internal sealed class OutboxDispatcher(
 
             try
             {
-                await timer.WaitForNextTickAsync(stoppingToken);
+                await Task.Delay(settings.Interval, stoppingToken);
             }
             catch (OperationCanceledException)
             {
