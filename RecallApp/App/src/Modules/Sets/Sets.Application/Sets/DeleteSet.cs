@@ -8,14 +8,18 @@ using Sets.Domain.Sets;
 
 namespace Sets.Application.Sets;
 
+/// <summary>
+/// Удаляет набор текущего пользователя вместе с его элементами.
+/// </summary>
+/// <param name="Id">Идентификатор набора.</param>
+/// <remarks>
+/// <para>Удаление мягкое: набор и элементы помечаются, строки остаются до фоновой чистки
+/// (онтология §6.6; ADR 0036).</para>
+/// <para>Пометка идёт под локом набора: иначе параллельная вставка успеет добавить элемент
+/// в уже удаляемый набор.</para>
+/// </remarks>
 public sealed record DeleteSetCommand(Guid Id) : IRequest<ErrorOr<Deleted>>;
 
-/// <summary>
-/// Мягкое удаление набора и всех его элементов в одной операции: набор скрывается,
-/// строки остаются до фоновой чистки (онтология §6.6, ступень 1; ADR 0036).
-/// Пометить набор и его элементы нужно под локом набора: иначе параллельная вставка
-/// успеет добавить элемент в уже удаляемый набор.
-/// </summary>
 public sealed class DeleteSetHandler(
     ISetRepository sets,
     IElementRepository elements,

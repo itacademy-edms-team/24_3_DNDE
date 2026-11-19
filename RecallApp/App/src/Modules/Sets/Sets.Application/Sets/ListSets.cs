@@ -7,8 +7,16 @@ using Sets.Domain.Sets;
 
 namespace Sets.Application.Sets;
 
-/// <param name="Cursor">Непрозрачный nextCursor предыдущей страницы; null - первая страница.</param>
-/// <param name="PageSize">Размер страницы; null - значение по умолчанию.</param>
+/// <summary>
+/// Возвращает страницу наборов текущего пользователя.
+/// </summary>
+/// <param name="Cursor">Непрозрачный курсор предыдущей страницы; <see langword="null"/> - первая страница.</param>
+/// <param name="PageSize">Размер страницы; <see langword="null"/> - значение по умолчанию.</param>
+/// <remarks>
+/// Порядок - от новых к старым (<c>created_at DESC, id DESC</c>, ADR 0039).
+/// Битый курсор и размер вне диапазона возвращают ошибки 
+/// <see cref="SetErrors.CursorInvalid"/> и <see cref="SetErrors.PageSizeInvalid"/>.
+/// </remarks>
 public sealed record ListSetsQuery(string? Cursor, int? PageSize)
     : IRequest<ErrorOr<KeysetPage<SetSummaryResponse>>>;
 

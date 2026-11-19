@@ -4,18 +4,22 @@ using Sets.Domain.Elements;
 namespace Sets.Application.Abstractions;
 
 /// <summary>
-/// Репозиторий элементов набора в схеме sets.
-/// Владение набором проверяет вызывающий код, поэтому выборки ограничены только id набора.
+/// Определяет хранилище элементов набора.
 /// </summary>
+/// <remarks>
+/// Владение набором проверяет вызывающий код.
+/// Выборки ограничены только идентификатором набора, а не владельцем.
+/// </remarks>
 public interface IElementRepository
 {
     /// <summary>
-    /// Страница элементов набора в порядке <c>position ASC, id ASC</c>.
+    /// Возвращает страницу элементов набора в порядке рангов.
     /// </summary>
     /// <param name="setId">Набор, владение которым проверено.</param>
-    /// <param name="after">Курсор предыдущей страницы; null - первая страница.</param>
+    /// <param name="after">Курсор предыдущей страницы; <see langword="null"/> - первая страница.</param>
     /// <param name="take">Сколько строк вернуть (вызывающий берёт на одну больше).</param>
     /// <param name="cancellationToken">Токен отмены.</param>
+    /// <returns>Элементы страницы, не больше <paramref name="take"/>.</returns>
     Task<IReadOnlyList<Element>> ListBySetAsync(
         Guid setId,
         ElementCursor? after,
@@ -23,39 +27,87 @@ public interface IElementRepository
         CancellationToken cancellationToken);
 
     /// <summary>
-    /// Все активные элементы набора по порядку. Нужен, чтобы найти соседей при перестановке
-    /// и последний элемент при создании - правила в <see cref="SetOrdering"/>.
+    /// Возвращает все активные элементы набора по порядку.
     /// </summary>
+    /// <remarks>
+    /// <para>Объекты возвращаются без отслеживания изменений: чтобы изменить элемент,
+    /// загрузите его отдельно через <see cref="FindAsync"/>.</para>
+    /// <para>При перестановке из него берутся соседи перемещаемого элемента,
+    /// при создании - последний элемент набора.</para>
+    /// </remarks>
+    /// <param name="setId">Набор, владение которым проверено.</param>
+    /// <param name="cancellationToken">Токен отмены.</param>
+    /// <returns>Активные элементы в порядке их рангов.</returns>
     Task<IReadOnlyList<Element>> ListForOrderingAsync(Guid setId, CancellationToken cancellationToken);
 
-    /// <summary>Последний по порядку активный элемент набора или <see langword="null"/>, если набор пуст.</summary>
+    /// <summary>
+    /// Возвращает последний по порядку активный элемент набора.
+    /// </summary>
+    /// <param name="setId">Набор, владение которым проверено.</param>
+    /// <param name="cancellationToken">Токен отмены.</param>
+    /// <returns>Элемент или <see langword="null"/>, если набор пуст.</returns>
     Task<Element?> GetLastAsync(Guid setId, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Находит активный элемент набора и ставит его на отслеживание.
+    /// </summary>
+    /// <remarks>
+    /// В отличие от <see cref="ListForOrderingAsync"/>, объект отслеживается:
+    /// изменения, сделанные через его методы, попадут в базу при сохранении.
+    /// </remarks>
+    /// <param name="setId">Набор, владение которым проверено.</param>
+    /// <param name="elementId">Идентификатор элемента.</param>
+    /// <param name="cancellationToken">Токен отмены.</param>
+    /// <returns>Элемент или <see langword="null"/>, если элемента нет в наборе или он удалён.</returns>
     Task<Element?> FindAsync(Guid setId, Guid elementId, CancellationToken cancellationToken);
 
-    /// <summary>Id активных элементов набора: нужен для проверки полноты присланного порядка.</summary>
-    Task<IReadOnlyList<Guid>> ListActiveIdsAsync(Guid setId, CancellationToken cancellationToken);
-
-    /// <summary>Считает число активных элементов набора.</summary>
+    /// <summary>
+    /// Считает число активных элементов набора.
+    /// </summary>
+    /// <param name="setId">Набор, владение которым проверено.</param>
+    /// <param name="cancellationToken">Токен отмены.</param>
+    /// <returns>Количество активных элементов.</returns>
     Task<int> CountActiveAsync(Guid setId, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Выполняет действие над составом набора в транзакции с блокировкой строки набора
-    /// (<c>SELECT … FOR UPDATE</c>). Параметр действия - число активных элементов, посчитанное
-    /// под блокировкой: оно не изменится до конца транзакции.
-    /// Все мутации состава идут через этот метод, включая проверку инварианта (например,
-    /// сверку присланного порядка с текущим составом): проверка вне лока оставляет окно,
-    /// в котором состав успевает измениться.
+    /// Выполняет действие над составом набора в рамках транзакции с блокировкой строки набора.
     /// </summary>
+    /// <remarks>
+    /// <para>Реализация блокирует строку набора на время действия.
+    /// За счёт этого параллельные изменения состава одного набора выполняются последовательно.</para>
+    /// <para>Число активных элементов, переданное в действие, не изменится до конца транзакции.</para>
+    /// <para>Все мутации состава идут через этот метод: проверка соседей и вычисление ранга вне
+    /// лока оставляют окно, в котором состав успевает измениться.</para>
+    /// <para>Если действие вернуло ошибку, транзакция откатывается.</para>
+    /// </remarks>
+    /// <typeparam name="TResult">Тип результата действия.</typeparam>
+    /// <param name="setId">Набор, владение которым проверено.</param>
+    /// <param name="action">Действие, получающее число активных элементов.</param>
+    /// <param name="cancellationToken">Токен отмены.</param>
+    /// <returns>Результат действия.</returns>
     Task<TResult> ExecuteLockedAsync<TResult>(
         Guid setId,
         Func<int, CancellationToken, Task<TResult>> action,
         CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Добавляет новый элемент в хранилище без сохранения.
+    /// </summary>
+    /// <param name="element">Новый элемент.</param>
     void Add(Element element);
 
-    /// <summary>Мягко удаляет все элементы набора при удалении самого набора (онтология §6.6).</summary>
+    /// <summary>
+    /// Мягко удаляет все элементы набора при удалении самого набора.
+    /// </summary>
+    /// <param name="setId">Удаляемый набор.</param>
+    /// <param name="utcNow">Момент удаления в UTC.</param>
+    /// <param name="cancellationToken">Токен отмены.</param>
+    /// <returns>Количество затронутых элементов.</returns>
     Task<int> MarkAllDeletedAsync(Guid setId, DateTime utcNow, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Сохраняет изменения, накопленные в хранилище.
+    /// </summary>
+    /// <param name="cancellationToken">Токен отмены.</param>
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }

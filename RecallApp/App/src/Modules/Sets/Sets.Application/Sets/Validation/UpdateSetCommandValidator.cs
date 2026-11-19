@@ -3,7 +3,14 @@ using Sets.Domain.Sets;
 
 namespace Sets.Application.Sets.Validation;
 
-/// <summary>Валидатор для команды полной замены полей набора (ADR 0038).</summary>
+/// <summary>
+/// Предоставляет правила проверки команды полной замены полей набора.
+/// </summary>
+/// <remarks>
+/// <para>Здесь только ранние проверки формы - длины полей.</para>
+/// <para>Обязательность названия проверяет домен через <see cref="SetTitle.Create"/>:
+/// код <c>Set.TitleRequired</c> приходит оттуда, а не из валидатора (ADR 0038).</para>
+/// </remarks>
 public sealed class UpdateSetCommandValidator : AbstractValidator<UpdateSetCommand>
 {
     public UpdateSetCommandValidator()

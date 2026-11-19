@@ -6,7 +6,15 @@ using Sets.Domain.Sets;
 
 namespace Sets.Application.Sets;
 
-/// <param name="Id">Id набора</param>
+/// <summary>
+/// Возвращает набор текущего пользователя по идентификатору.
+/// </summary>
+/// <param name="Id">Идентификатор набора.</param>
+/// <remarks>
+/// Чужой набор неотличим от несуществующего: в обоих случаях возвращается ошибка
+/// <see cref="SetErrors.NotFound"/>.
+/// Итоговое число элементов считается отдельно и попадает в <see cref="SetResponse.ElementCount"/>.
+/// </remarks>
 public sealed record GetSetQuery(Guid Id) : IRequest<ErrorOr<SetResponse>>;
 
 public sealed class GetSetHandler(

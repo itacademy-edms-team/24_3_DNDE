@@ -1,18 +1,24 @@
 namespace Sets.Application.Sets;
 
-/// <summary>Тело POST /api/sets.</summary>
-/// <param name="Title">Название набора.</param>
-/// <param name="Description">Описание; null трактуется как пустая строка.</param>
+/// <summary>
+/// Представляет тело запроса на создание набора.
+/// </summary>
+/// <param name="Title">Название набора; обязательно.</param>
+/// <param name="Description">Описание; <see langword="null"/> и пробельная строка
+/// означают отсутствие описания.</param>
 public sealed record CreateSetRequest(string? Title, string? Description);
 
 /// <summary>
-/// Тело PUT /api/sets/{id}.
+/// Представляет тело запроса на полную замену полей набора.
 /// </summary>
-/// <param name="Title">Новое название.</param>
-/// <param name="Description">Новое описание; null трактуется как пустая строка.</param>
+/// <param name="Title">Новое название; обязательно.</param>
+/// <param name="Description">Новое описание; <see langword="null"/> и пробельная строка
+/// означают отсутствие описания.</param>
 public sealed record UpdateSetRequest(string? Title, string? Description);
 
-/// <summary>Источник Id: маршрут, а не тело запроса.</summary>
+/// <summary>
+/// Предоставляет маршруты наборов.
+/// </summary>
 public static class SetRoute
 {
     public const string Group = "/api/sets";

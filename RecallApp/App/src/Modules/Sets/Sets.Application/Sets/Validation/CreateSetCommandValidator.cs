@@ -4,8 +4,13 @@ using Sets.Domain.Sets;
 namespace Sets.Application.Sets.Validation;
 
 /// <summary>
-/// Валидатор для команды создания набора.
+/// Предоставляет правила проверки команды создания набора.
 /// </summary>
+/// <remarks>
+/// <para>Здесь только ранние проверки формы - длины полей: они дают 400 до обращения к домену.</para>
+/// <para>Обязательность названия проверяет сам домен через <see cref="SetTitle.Create"/> -
+/// код <c>Set.TitleRequired</c> приходит оттуда, а не из валидатора (ADR 0038).</para>
+/// </remarks>
 public sealed class CreateSetCommandValidator : AbstractValidator<CreateSetCommand>
 {
     public CreateSetCommandValidator()

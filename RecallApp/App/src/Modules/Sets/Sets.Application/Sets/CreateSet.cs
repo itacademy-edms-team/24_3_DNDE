@@ -7,14 +7,18 @@ using Sets.Domain.Sets;
 
 namespace Sets.Application.Sets;
 
-/// <param name="Title">Название; отсутствие или пустая строка - ошибка Set.TitleRequired.</param>
-/// <param name="Description">Описание; null считается как пустая строка.</param>
+/// <summary>
+/// Предоставляет команду для создания набора
+/// </summary>
+/// <param name="Title">Название набора; обязательно.</param>
+/// <param name="Description">Описание; <see langword="null"/> и пробельная строка
+/// означают отсутствие описания.</param>
 /// <param name="IdempotencyKey">Значение заголовка Idempotency-Key; проверяется на HTTP-слое.</param>
 public sealed record CreateSetCommand(string? Title, string? Description, string IdempotencyKey)
     : IRequest<ErrorOr<SetResponse>>
 {
     /// <summary>
-    /// Идентификатор операции в журнале идемпотентности (колонка <c>operation</c>).
+    /// Идентификатор операции в журнале идемпотентности (столбец <c>operation</c>).
     /// Значение стабильно: оно уже записано в БД и не должно меняться при переименовании класса.
     /// </summary>
     public const string Operation = "sets.create";

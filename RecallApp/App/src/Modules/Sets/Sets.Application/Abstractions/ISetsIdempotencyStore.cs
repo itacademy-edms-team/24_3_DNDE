@@ -3,8 +3,10 @@ using Common.Application.Idempotency;
 namespace Sets.Application.Abstractions;
 
 /// <summary>
-/// Журнал идемпотентности модуля Sets. Отдельный интерфейс-маркер нужен, потому что
-/// реализации у модулей свои (своя схема БД), а общий <see cref="IIdempotencyStore"/>
-/// не может быть зарегистрирован дважды в одном контейнере.
+/// Определяет журнал идемпотентности модуля Sets.
 /// </summary>
+/// <remarks>
+/// Отдельный интерфейс нужен, потому что реализация у каждого модуля своя - со своей схемой БД,
+/// - а один общий <see cref="IIdempotencyStore"/> в контейнере нельзя зарегистрировать дважды.
+/// </remarks>
 public interface ISetsIdempotencyStore : IIdempotencyStore;

@@ -6,9 +6,18 @@ using Sets.Domain.Sets;
 
 namespace Sets.Application.Sets;
 
-/// <param name="Id">Id набора.</param>
-/// <param name="Title">Новое название: PUT присылает полное состояние.</param>
-/// <param name="Description">Новое описание; null и пустая строка означают «описания нет».</param>
+/// <summary>
+/// Заменяет название и описание набора целиком.
+/// </summary>
+/// <param name="Id">Идентификатор набора.</param>
+/// <param name="Title">Новое название; обязательно.</param>
+/// <param name="Description">Новое описание; <see langword="null"/> и пробельная строка
+/// означают отсутствие описания.</param>
+/// <remarks>
+/// Запрос присылает полное состояние набора: непереданное поле не сохраняется, а заменяется.
+/// Если значения не изменились с последнего изменения,
+/// набор не перезаписывается и <c>updated_at</c> не двигается.
+/// </remarks>
 public sealed record UpdateSetCommand(Guid Id, string? Title, string? Description) : IRequest<ErrorOr<SetResponse>>;
 
 public sealed class UpdateSetHandler(

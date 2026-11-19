@@ -58,14 +58,6 @@ internal sealed class ElementRepository(SetsDbContext context) : IElementReposit
             element => element.Id == elementId && element.SetId == setId && element.DeletedAt == null,
             cancellationToken);
 
-    public async Task<IReadOnlyList<Guid>> ListActiveIdsAsync(Guid setId, CancellationToken cancellationToken) =>
-        await context.Elements
-            .AsNoTracking()
-            .Where(element => element.SetId == setId && element.DeletedAt == null)
-            .OrderBy(element => element.Position)
-            .Select(element => element.Id)
-            .ToListAsync(cancellationToken);
-
     public Task<int> CountActiveAsync(Guid setId, CancellationToken cancellationToken) =>
         context.Elements.CountAsync(
             element => element.SetId == setId && element.DeletedAt == null,
