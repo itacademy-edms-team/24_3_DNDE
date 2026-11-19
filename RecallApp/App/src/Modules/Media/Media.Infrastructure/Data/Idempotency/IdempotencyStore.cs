@@ -8,17 +8,20 @@ using Npgsql;
 namespace Media.Infrastructure.Data.Idempotency;
 
 /// <summary>
-/// Идемпотентность модуля Media в режиме A: ключ и бизнес-запись коммитятся вместе,
-/// поэтому состояния «в процессе» в БД не остаётся. Подходит для коротких операций
-/// (создание строки загрузки); подтверждение файла с сетью и CPU использует режим B.
+/// Реализует хранилище идемпотентности модуля Media (режим A).
 /// </summary>
+/// <remarks>
+/// Ключ и бизнес-запись коммитятся в одной транзакции, поэтому состояния "в процессе" в БД
+/// не остаётся. Подходит для коротких операций (создание строки загрузки);
+/// подтверждение файла с сетью и CPU-операции использует режим B.
+/// </remarks>
 internal sealed class IdempotencyStore(MediaDbContext context, TimeProvider clock) : IMediaIdempotencyStore
 {
     /// <summary>Время жизни ключа: повторы после суток считаются новым запросом.</summary>
     private static readonly TimeSpan Ttl = TimeSpan.FromHours(24);
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
-
+    
     public async Task<ErrorOr<TResponse>> ExecuteAsync<TResponse>(
         Guid ownerId,
         string key,

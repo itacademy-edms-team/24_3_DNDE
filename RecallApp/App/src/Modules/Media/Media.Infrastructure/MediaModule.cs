@@ -26,12 +26,23 @@ using Npgsql;
 namespace Media.Infrastructure;
 
 /// <summary>
-/// Композиция модуля Media: сервисы, миграции, проверка связности.
-/// Единственная публичная точка модуля наряду с контрактом.
+/// Предоставляет композицию модуля Media:
+/// регистрацию сервисов, маршруты, миграции и проверку связности.
 /// </summary>
+/// <remarks>
+/// Единственная публичная точка модуля наряду с контрактом.
+/// </remarks>
 public static class MediaModule
 {
-    /// <summary>Регистрирует модуль на общем runtime-пуле соединений (квота выдаётся хостом).</summary>
+    /// <summary>
+    /// Регистрирует модуль на общем runtime-пуле соединений.
+    /// </summary>
+    /// <remarks>
+    /// Квота соединений резервируется хостом через <c>ConnectionPoolBudget</c> до вызова.
+    /// </remarks>
+    /// <param name="services">Коллекция сервисов хоста.</param>
+    /// <param name="dataSource">Общий пул соединений приложения.</param>
+    /// <returns>Та же коллекция для цепочки регистраций.</returns>
     public static IServiceCollection AddMedia(this IServiceCollection services, NpgsqlDataSource dataSource)
     {
         services.AddDbContext<MediaDbContext>(options => options.UseNpgsql(dataSource,
@@ -75,7 +86,11 @@ public static class MediaModule
         return services;
     }
 
-    /// <summary>Регистрирует маршруты модуля.</summary>
+    /// <summary>
+    /// Регистрирует маршруты модуля.
+    /// </summary>
+    /// <param name="endpoints">Построитель маршрутов хоста.</param>
+    /// <returns>Тот же построитель для цепочки.</returns>
     public static IEndpointRouteBuilder MapMedia(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup(MediaRoute.Group).WithTags("Media").RequireAuthorization();
@@ -92,7 +107,7 @@ public static class MediaModule
                 : Results.Created($"{MediaRoute.Group}/{result.Value.MediaId}", result.Value);
         }).AddEndpointFilter<IdempotencyKeyFilter>();
 
-        group.MapPost("/uploads/{mediaId:guid}/confirm", async (
+        group.MapPost(MediaRoute.ConfirmUpload, async (
             Guid mediaId,
             HttpContext http,
             ISender sender,
@@ -109,7 +124,7 @@ public static class MediaModule
             return await MediaHttpResponse.FromAsync(result.Value, storage, cancellationToken);
         }).AddEndpointFilter<IdempotencyKeyFilter>();
 
-        group.MapGet("/{mediaId:guid}", async (
+        group.MapGet(MediaRoute.MediaItem, async (
             Guid mediaId,
             ISender sender,
             IObjectStorage storage,
@@ -121,7 +136,7 @@ public static class MediaModule
                 : await MediaHttpResponse.FromAsync(result.Value, storage, cancellationToken);
         });
 
-        group.MapDelete("/{mediaId:guid}", async (Guid mediaId, ISender sender, CancellationToken cancellationToken) =>
+        group.MapDelete(MediaRoute.MediaItem, async (Guid mediaId, ISender sender, CancellationToken cancellationToken) =>
         {
             var result = await sender.Send(new DeleteMediaCommand(mediaId), cancellationToken);
             return result.IsError ? result.Errors.ToProblem() : Results.NoContent();
@@ -145,7 +160,7 @@ public static class MediaModule
     }
 
     /// <summary>Применяет миграции модуля.</summary>
-    /// <param name="connectionString">Строка подключения пользователя, владеющего схемой media.</param>
+    /// <param name="connectionString">Строка подключения пользователя-владельца схемы media.</param>
     /// <param name="cancellationToken">Токен отмены.</param>
     public static async Task MigrateMedia(string connectionString, CancellationToken cancellationToken = default)
     {
@@ -155,6 +170,12 @@ public static class MediaModule
         await dbContext.Database.MigrateAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Проверяет, доступна ли схема модуля.
+    /// </summary>
+    /// <param name="services">Провайдер сервисов хоста.</param>
+    /// <param name="cancellationToken">Токен отмены.</param>
+    /// <returns><see langword="true"/>, если соединение с БД устанавливается.</returns>
     public static Task<bool> CanConnectMedia(this IServiceProvider services, CancellationToken cancellationToken = default) =>
         services.GetRequiredService<MediaDbContext>().Database.CanConnectAsync(cancellationToken);
 }

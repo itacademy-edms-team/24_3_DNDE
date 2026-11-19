@@ -4,9 +4,12 @@ using Media.Contracts;
 namespace Media.Infrastructure.Contracts;
 
 /// <summary>
-/// Ссылки на файлы для других модулей: тот же читатель, что и у HTTP-эндпоинта,
-/// чтобы модули и клиент видели одинаковые адреса и одинаковые правила отбора.
+/// Реализует чтение подписанных ссылок для других модулей.
 /// </summary>
+/// <remarks>
+/// Делегирует общему читателю, чтобы модули и HTTP-эндпоинт отдавали одинаковые адреса
+/// и применяли одинаковые правила отбора.
+/// </remarks>
 internal sealed class MediaLinksQuery(IMediaLinkReader reader) : IMediaLinksQuery
 {
     public Task<IReadOnlyDictionary<Guid, MediaFileLinks>> GetLinksAsync(

@@ -8,9 +8,12 @@ using Microsoft.EntityFrameworkCore;
 namespace Media.Infrastructure.Data;
 
 /// <summary>
-/// EF-реализация синхронизации ссылок: слот уникален, поэтому замена картинки - это `UPDATE` одной строки,
-/// а снятие слота - удаление строки области (онтология Media §6.4).
+/// Реализует хранилище ссылок на файлы поверх EF Core.
 /// </summary>
+/// <remarks>
+/// Слот уникален, поэтому замена картинки - это <c>UPDATE</c> одной строки,
+/// а снятие слота - удаление строки области (онтология Media §6.4).
+/// </remarks>
 internal sealed class MediaReferenceRepository(MediaDbContext context) : IMediaReferenceRepository
 {
     public async Task SyncAsync(
@@ -41,7 +44,7 @@ internal sealed class MediaReferenceRepository(MediaDbContext context) : IMediaR
             {
                 var created = MediaReference.Create(mediaId, reference, now);
                 if (created.IsError)
-                    throw new InvalidOperationException($"Ссылка '{reference}' не прошла валидацию: {created.FirstError.Code}");
+                    throw new InvalidOperationException($"Reference '{reference}' failed validation: {created.FirstError.Code}");
 
                 context.Add(created.Value);
                 continue;
@@ -49,7 +52,7 @@ internal sealed class MediaReferenceRepository(MediaDbContext context) : IMediaR
 
             var moved = row.PointTo(mediaId, now);
             if (moved.IsError)
-                throw new InvalidOperationException($"Не удалось перевести слот '{reference}': {moved.FirstError.Code}");
+                throw new InvalidOperationException($"Failed to update slot '{reference}': {moved.FirstError.Code}");
         }
 
         await context.SaveChangesAsync(cancellationToken);

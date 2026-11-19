@@ -113,7 +113,7 @@ public sealed class MediaVariant
         {
             MediaVariantName.Thumb => MediaConstraints.ThumbMaxSide,
             MediaVariantName.Display => MediaConstraints.DisplayMaxSide,
-            _ => throw new ArgumentOutOfRangeException(nameof(variant), variant, "Неизвестный вариант изображения."),
+            _ => throw new ArgumentOutOfRangeException(nameof(variant), variant, "Unknown image variant."),
         };
 
         if (Math.Max(width, height) > maxSide)

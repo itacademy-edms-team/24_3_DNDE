@@ -11,9 +11,15 @@ public static class MediaRoute
     /// <summary>Базовый префикс всех маршрутов модуля.</summary>
     public const string Group = "/api/media";
 
-    /// <summary>Подпуть загрузок: инициализация и подтверждение.</summary>
+    /// <summary>Коллекция загрузок: инициализация.</summary>
     public const string Uploads = "/uploads";
 
-    /// <summary>Подпуть подписи ссылок на чтение.</summary>
+    /// <summary>Подтверждение загрузки по идентификатору файла.</summary>
+    public const string ConfirmUpload = Uploads + "/{mediaId:guid}/confirm";
+
+    /// <summary>Одиночный файл по идентификатору.</summary>
+    public const string MediaItem = "/{mediaId:guid}";
+
+    /// <summary>Коллекция подписи ссылок на чтение.</summary>
     public const string Links = "/links";
 }

@@ -7,9 +7,12 @@ using Microsoft.EntityFrameworkCore;
 namespace Media.Infrastructure.Contracts;
 
 /// <summary>
-/// Проверка готовности файлов для других модулей: отвечает на вопрос «можно ли привязывать эти файлы»
-/// до того, как ссылка попадёт в чужие данные.
+/// Реализует проверку готовности файлов для других модулей.
 /// </summary>
+/// <remarks>
+/// Отвечает на вопрос "можно ли привязывать эти файлы" до того,
+/// как ссылка попадёт в данные другого модуля.
+/// </remarks>
 internal sealed class MediaReadiness(MediaDbContext context) : IMediaReadiness
 {
     public async Task<ErrorOr<Success>> EnsureReadyAsync(

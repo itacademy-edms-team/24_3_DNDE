@@ -6,15 +6,17 @@ using SkiaSharp;
 namespace Media.Infrastructure.Images;
 
 /// <summary>
-/// Обработчик изображений на SkiaSharp.
-/// Метаданные (EXIF/ICC) не переносятся: результат - новое изображение из пиксельной сетки.
+/// Реализует обработку изображений на SkiaSharp.
 /// </summary>
+/// <remarks>
+/// Метаданные исходника (EXIF/ICC) не переносятся:
+/// результат кодируется заново из пиксельной сетки, поэтому исходные поля теряются.
+/// </remarks>
 internal sealed class SkiaImageProcessor : IImageProcessor
 {
-    /// <summary>Качество изображения.</summary>
+    /// <summary>Качество кодирования WebP.</summary>
     private const int Quality = 82;
-
-    /// <summary>Выполняет декодирование и кодирование.</summary>
+    
     public Task<ErrorOr<ProcessedImage>> ProcessAsync(byte[] source, CancellationToken cancellationToken) =>
         // Task.Run, чтобы не забивать поток обработки запроса.
         Task.Run(() => Process(source), cancellationToken); 

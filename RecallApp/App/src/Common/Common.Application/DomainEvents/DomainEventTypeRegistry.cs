@@ -14,7 +14,7 @@ public static class DomainEventTypeRegistry
     public static void Register(string name, Type eventType)
     {
         if (!Types.TryAdd(name, eventType) && Types[name] != eventType)
-            throw new InvalidOperationException($"Имя доменного события '{name}' зарегистрировано для разных типов.");
+            throw new InvalidOperationException($"Domain event name '{name}' is registered for different types.");
     }
 
     /// <summary>Возвращает CLR-тип события по стабильному имени или null, если имя неизвестно.</summary>

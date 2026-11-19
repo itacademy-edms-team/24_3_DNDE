@@ -55,7 +55,7 @@ public readonly record struct ObjectKey
     /// <exception cref="InvalidOperationException">Значение пустое или длиннее допустимого.</exception>
     public static ObjectKey Restore(string value) =>
         string.IsNullOrWhiteSpace(value) || value.Length > MaxLength
-            ? throw new InvalidOperationException("Повреждённый ключ объекта в БД.")
+            ? throw new InvalidOperationException("Corrupt object key in database.")
             : new ObjectKey(value);
 
     public override string ToString() => Value;

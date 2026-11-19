@@ -7,11 +7,21 @@ using Microsoft.AspNetCore.Http;
 namespace Media.Infrastructure.Http;
 
 /// <summary>
-/// Представление медиа-объекта для HTTP: состояние плюс подписанные ссылки на варианты.
-/// Ссылки строятся в момент ответа, поэтому кешированный идемпотентный результат их не хранит.
+/// Преобразует представление медиа-объекта в HTTP-ответ.
 /// </summary>
+/// <remarks>
+/// Ссылки на варианты подписываются при каждой отдаче:
+/// в кеше идемпотентности лежат ключи вариантов, а не подписанные адреса.
+/// </remarks>
 internal static class MediaHttpResponse
 {
+    /// <summary>
+    /// Формирует HTTP-ответ с состоянием и подписанными ссылками на варианты.
+    /// </summary>
+    /// <param name="media">Представление медиа-объекта из прикладного слоя.</param>
+    /// <param name="storage">Объектное хранилище для подписи ссылок.</param>
+    /// <param name="cancellationToken">Токен отмены.</param>
+    /// <returns>HTTP-ответ либо ProblemDetails, если не удалось подписать хотя бы одну ссылку.</returns>
     public static async Task<IResult> FromAsync(
         MediaResponse media,
         IObjectStorage storage,

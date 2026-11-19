@@ -1,23 +1,32 @@
 namespace Media.Infrastructure.Storage;
 
 /// <summary>
-/// Настройки объектного хранилища из секции `Media:S3`.
+/// Содержит настройки объектного хранилища (секция <c>Media:S3</c>).
 /// </summary>
 internal sealed class S3Options
 {
+    /// <summary>Имя секции конфигурации.</summary>
     public const string SectionName = "Media:S3";
 
+    /// <summary>Адрес объектного хранилища.</summary>
     public string Endpoint { get; set; } = string.Empty;
 
+    /// <summary>Регион хранилища.</summary>
     public string Region { get; set; } = string.Empty;
 
+    /// <summary>Имя бакета.</summary>
     public string Bucket { get; set; } = string.Empty;
 
+    /// <summary>Идентификатор ключа доступа.</summary>
     public string AccessKeyId { get; set; } = string.Empty;
 
+    /// <summary>Секретный ключ доступа.</summary>
     public string SecretKey { get; set; } = string.Empty;
 
-    /// <summary>Возвращает имена незаполненных обязательных параметров.</summary>
+    /// <summary>
+    /// Возвращает имена незаполненных обязательных параметров.
+    /// </summary>
+    /// <returns>Имена свойств с пустым значением; пустой список, если заданы все.</returns>
     public IReadOnlyList<string> Missing()
     {
         var missing = new List<string>(5);

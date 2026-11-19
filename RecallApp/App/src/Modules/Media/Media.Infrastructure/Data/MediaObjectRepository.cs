@@ -7,9 +7,11 @@ using Microsoft.EntityFrameworkCore;
 namespace Media.Infrastructure.Data;
 
 /// <summary>
-/// EF-реализация хранилища медиа-объектов.
-/// Владение проверяется в сценариях, здесь только доступ к данным.
+/// Реализует хранилище медиа-объектов поверх EF Core.
 /// </summary>
+/// <remarks>
+/// Владение проверяется в сценариях, здесь только доступ к данным.
+/// </remarks>
 internal sealed class MediaObjectRepository(MediaDbContext context) : IMediaObjectRepository
 {
     public Task<int> CountPendingAsync(Guid ownerId, DateTime now, CancellationToken cancellationToken) =>

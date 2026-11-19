@@ -6,8 +6,12 @@ using Microsoft.Extensions.Options;
 namespace Media.Infrastructure.Data.Cleanup;
 
 /// <summary>
-/// Фоновый сервис чистки сирот модуля Media: брошенные загрузки, файлы без ссылок, надгробия.
+/// Запускает фоновую чистку осиротевших данных модуля Media.
 /// </summary>
+/// <remarks>
+/// Проходы выполняются раз в <see cref="MediaCleanupOptions.Interval"/>; ошибка прохода
+/// логируется и не останавливает цикл.
+/// </remarks>
 internal sealed class MediaCleanupService(
     IServiceScopeFactory scopeFactory,
     IOptions<MediaCleanupOptions> options,

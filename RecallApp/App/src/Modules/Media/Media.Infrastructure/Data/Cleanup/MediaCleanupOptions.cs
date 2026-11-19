@@ -1,17 +1,19 @@
 namespace Media.Infrastructure.Data.Cleanup;
 
 /// <summary>
-/// Настройки фоновой чистки сирот медиа (секция <c>Media:Cleanup</c>).
+/// Содержит настройки фоновой чистки осиротевших данных медиа (секция <c>Media:Cleanup</c>).
 /// </summary>
 internal sealed class MediaCleanupOptions
 {
-    /// <summary>Через сколько брошенная загрузка (`pending`/`failed`) удаляется вместе с объектом в `tmp/`.</summary>
+    /// <summary>Через сколько загрузка в <c>pending</c> или <c>failed</c> удаляется вместе с объектом
+    /// в <c>tmp/</c>.</summary>
     public TimeSpan AbandonedRetention { get; set; } = TimeSpan.FromHours(24);
 
     /// <summary>Через сколько готовый файл без ссылок считается сиротой (онтология Media §6.4).</summary>
     public TimeSpan UnreferencedRetention { get; set; } = TimeSpan.FromHours(24);
 
-    /// <summary>Через сколько надгробие `deleted` удаляется из БД: объекты к этому моменту уже убраны.</summary>
+    /// <summary>Через сколько надгробие <c>deleted</c> удаляется из БД; варианты удаляются
+    /// из хранилища перед строкой.</summary>
     public TimeSpan DeletedRetention { get; set; } = TimeSpan.FromDays(7);
 
     /// <summary>Интервал запуска чистки.</summary>

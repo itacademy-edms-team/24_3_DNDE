@@ -45,7 +45,7 @@ public static class MediaVariantNames
     {
         MediaVariantName.Thumb => Thumb,
         MediaVariantName.Display => Display,
-        _ => throw new ArgumentOutOfRangeException(nameof(variant), variant, "Неизвестный вариант изображения."),
+        _ => throw new ArgumentOutOfRangeException(nameof(variant), variant, "Unknown image variant."),
     };
 
     /// <summary>

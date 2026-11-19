@@ -31,6 +31,8 @@ public interface IMediaReferenceRepository
     /// не поддерживаются - вызывающий присылает только слоты этой области.</param>
     /// <param name="now">Текущий момент в UTC.</param>
     /// <param name="cancellationToken">Токен отмены.</param>
+    /// <exception cref="InvalidOperationException">Слот не прошёл валидацию: пустой ключ, ключ
+    /// длиннее допустимого или пустой идентификатор файла.</exception>
     Task SyncAsync(
         string elementScope,
         IReadOnlyCollection<MediaReferenceSlot> slots,

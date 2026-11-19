@@ -9,8 +9,7 @@ using Media.Domain.Objects;
 namespace Media.Infrastructure.Storage;
 
 /// <summary>
-/// Хранилище на S3-совместимом сервисе (cloud.ru). Детали подписи и порядка настройки клиента
-/// проверены spike-тестами и зафиксированы в ADR 0037.
+/// Реализует объектное хранилище поверх S3 (cloud.ru).
 /// </summary>
 internal sealed class S3ObjectStorage : IObjectStorage
 {
@@ -144,12 +143,16 @@ internal sealed class S3ObjectStorage : IObjectStorage
     }
 
     /// <summary>
-    /// Создаёт клиент.
-    /// Сначала указываем регион, потом ServiceURL - иначе SDK уходит
-    /// на amazonaws.com вместо cloud.ru (проверено spike-тестом, ADR 0037).
-    /// Virtual-hosted (без ForcePathStyle) обязателен: cloud.ru применяет CORS только к
-    /// URL вида {bucket}.s3.cloud.ru, а path-style обходит CORS-движок и префлайт получает 403.
+    /// Создаёт клиент объектного хранилища.
     /// </summary>
+    /// <remarks>
+    /// <para>Сначала задаётся регион, потом ServiceURL - иначе SDK уходит на amazonaws.com вместо
+    /// cloud.ru (проверено spike-тестом, ADR 0037).</para>
+    /// <para>Virtual-hosted (без ForcePathStyle) обязателен: cloud.ru применяет CORS только к URL
+    /// вида <c>{bucket}.s3.cloud.ru</c>, а path-style обходит CORS-движок, и префлайт получает 403.</para>
+    /// </remarks>
+    /// <param name="options">Настройки из секции <c>Media:S3</c>.</param>
+    /// <returns>Клиент S3 с заданным регионом и ServiceURL.</returns>
     internal static AmazonS3Client CreateClient(S3Options options)
     {
         var config = new AmazonS3Config

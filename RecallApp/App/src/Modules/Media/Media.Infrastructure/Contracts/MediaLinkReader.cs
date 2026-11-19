@@ -8,9 +8,12 @@ using Microsoft.EntityFrameworkCore;
 namespace Media.Infrastructure.Contracts;
 
 /// <summary>
-/// Подписывает ссылки на готовые варианты файлов владельца.
-/// Чужие, несуществующие и неготовые файлы в результат не попадают - вызывающий показывает заглушку.
+/// Реализует чтение подписанных ссылок поверх EF Core и объектного хранилища.
 /// </summary>
+/// <remarks>
+/// В выборку попадают только готовые файлы владельца;
+/// файл без единой подписанной ссылки в результат не включается.
+/// </remarks>
 internal sealed class MediaLinkReader(MediaDbContext context, IObjectStorage storage) : IMediaLinkReader
 {
     public async Task<IReadOnlyDictionary<Guid, MediaFileLinks>> ReadAsync(
