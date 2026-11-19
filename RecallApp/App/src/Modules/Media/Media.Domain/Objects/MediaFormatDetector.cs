@@ -1,20 +1,36 @@
 namespace Media.Domain.Objects;
 
-/// <summary>Результат определения формата по содержимому файла.</summary>
-/// <param name="Format">Формат, если он входит в белый список; иначе null.</param>
-/// <param name="IsAnimated">Анимирован ли формат.</param>
+/// <summary>
+/// Представляет результат определения формата изображения.
+/// </summary>
+/// <param name="Format">Распознанный формат; <see langword="null"/>, если сигнатура не совпала
+/// ни с одним поддерживаемым форматом.</param>
+/// <param name="IsAnimated">Признак анимации: APNG или анимированный WebP.</param>
 public readonly record struct FormatProbe(MediaFormat? Format, bool IsAnimated);
 
 /// <summary>
-/// Детектор формата объекта. Определяет формат по сигнатуре (magic bytes).
-/// Здесь же распознаётся анимация (ADR 0018).
+/// Определяет формат изображения по содержимому файла.
 /// </summary>
+/// <remarks>
+/// <para>Формат распознаётся по сигнатуре (magic bytes).
+/// Анимация определяется здесь же (ADR 0018).</para>
+/// <para>Файл не декодируется: достаточно начала содержимого.
+/// Для WebP нужно не меньше 30 байт, остальные сигнатуры короче.</para>
+/// </remarks>
 public static class MediaFormatDetector
 {
     private static ReadOnlySpan<byte> PngSignature => [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
 
     private static ReadOnlySpan<byte> JpegSignature => [0xFF, 0xD8, 0xFF];
 
+    /// <summary>
+    /// Определяет формат и признак анимации по первым байтам файла.
+    /// </summary>
+    /// <param name="content">Содержимое файла или его начало.</param>
+    /// <returns>
+    /// Распознанный формат и признак анимации;
+    /// формат <see langword="null"/>, если сигнатура не совпала ни с одним поддерживаемым форматом.
+    /// </returns>
     public static FormatProbe Detect(ReadOnlySpan<byte> content)
     {
         if (content.Length >= PngSignature.Length && content[..PngSignature.Length].SequenceEqual(PngSignature))
