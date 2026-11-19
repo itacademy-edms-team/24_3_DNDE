@@ -6,7 +6,7 @@ using Sets.Domain.Sets;
 namespace Sets.Infrastructure.Data;
 
 /// <summary>
-/// Реализует хранилища наборов поверх EF Core.
+/// Реализует хранилище наборов поверх EF Core.
 /// </summary>
 /// <remarks>
 /// Выборки фильтруют владельца и удалённые строки.

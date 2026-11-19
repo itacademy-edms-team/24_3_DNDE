@@ -8,6 +8,17 @@ using Media.Domain.Objects;
 
 namespace Media.Application.Objects;
 
+/// <summary>
+/// Инициализирует загрузку файла: создаёт <c>pending</c> запись и выдаёт политику,
+/// по которой клиент отправит файл напрямую в объектное хранилище.
+/// </summary>
+/// <remarks>
+/// <para>Через модуль файл не проходит: клиент загружает байты в хранилище по политике,
+/// модуль фиксирует только метаданные файла (ADR 0037).</para>
+/// <para>Операция идемпотентна: повтор с тем же ключом и телом возвращает уже выданную политику.</para>
+/// <para>Проверяется лимит незавершённых загрузок;
+/// истёкшие перед подсчётом переводятся в <c>failed</c>, чтобы не занимали места.</para>
+/// </remarks>
 /// <param name="ContentType">Заявленный тип файла: должен быть из белого списка.</param>
 /// <param name="SizeBytes">Заявленный размер: ограничивает политику загрузки.</param>
 /// <param name="IdempotencyKey">Значение заголовка Idempotency-Key; проверяется на HTTP-слое.</param>
@@ -15,7 +26,7 @@ public sealed record InitUploadCommand(string? ContentType, long? SizeBytes, str
     : IRequest<ErrorOr<InitUploadResponse>>
 {
     /// <summary>
-    /// Идентификатор операции в журнале идемпотентности (колонка <c>operation</c>).
+    /// Идентификатор операции в хранилище идемпотентности (столбец <c>operation</c>).
     /// </summary>
     public const string Operation = "media.init";
 }
@@ -33,10 +44,6 @@ public sealed record InitUploadResponse(
     string ObjectKey,
     int ExpiresInSeconds);
 
-/// <summary>
-/// Первый шаг загрузки: создаёт `pending` и выдаёт политику, по которой клиент отправит байты напрямую в хранилище.
-/// Через модуль файл не идёт (ADR 0037).
-/// </summary>
 public sealed class InitUploadHandler(
     IMediaObjectRepository repository,
     IObjectStorage storage,
@@ -65,10 +72,12 @@ public sealed class InitUploadHandler(
             requestHash: InitUploadRequestHash.Compute(contentType, declaredSize),
             operationBody: async token =>
             {
-                // Проверяем лимит незавершённых загрузок: слот занимают только те, чьё окно ещё живо.
+                // Проверяем лимит незавершённых загрузок: слот занимают только те,
+                // кто не истёк по сроку жизни.
                 var now = clock.GetUtcNow().UtcDateTime;
 
-                // Истёкшие загрузки подтвердить уже нельзя - переводим их в failed до подсчёта, чтобы не ждали чистки.
+                // Истёкшие загрузки подтвердить уже нельзя - переводим их в failed до подсчёта,
+                // чтобы не ждали чистки.
                 await repository.MarkExpiredUploadsAsync(ownerId, now, token);
 
                 var pending = await repository.CountPendingAsync(ownerId, now, token);

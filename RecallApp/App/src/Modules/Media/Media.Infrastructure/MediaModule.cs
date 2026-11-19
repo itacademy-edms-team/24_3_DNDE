@@ -80,7 +80,7 @@ public static class MediaModule
     {
         var group = endpoints.MapGroup(MediaRoute.Group).WithTags("Media").RequireAuthorization();
 
-        group.MapPost("/uploads", async (InitUploadRequest request, HttpContext http, ISender sender, CancellationToken cancellationToken) =>
+        group.MapPost(MediaRoute.Uploads, async (InitUploadRequest request, HttpContext http, ISender sender, CancellationToken cancellationToken) =>
         {
             var result = await sender.Send(
                 new InitUploadCommand(request.ContentType, request.SizeBytes,
@@ -127,7 +127,7 @@ public static class MediaModule
             return result.IsError ? result.Errors.ToProblem() : Results.NoContent();
         });
 
-        group.MapPost("/links", async (
+        group.MapPost(MediaRoute.Links, async (
             GetMediaLinksRequest request,
             ISender sender,
             CancellationToken cancellationToken) =>

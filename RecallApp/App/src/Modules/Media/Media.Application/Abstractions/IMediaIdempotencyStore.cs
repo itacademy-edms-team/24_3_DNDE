@@ -3,8 +3,10 @@ using Common.Application.Idempotency;
 namespace Media.Application.Abstractions;
 
 /// <summary>
-/// Журнал идемпотентности модуля Media. Отдельный интерфейс-маркер нужен, потому что
-/// реализации у модулей свои (своя схема БД), а общий <see cref="IIdempotencyStore"/>
-/// не может быть зарегистрирован дважды в одном контейнере.
+/// Определяет хранилище идемпотентности модуля Media.
 /// </summary>
+/// <remarks>
+/// Интерфейс-маркер: реализации у модулей свои, потому что каждая пишет в свою схему БД,
+/// а общий <see cref="IIdempotencyStore"/> нельзя зарегистрировать дважды в одном DI-контейнере.
+/// </remarks>
 public interface IMediaIdempotencyStore : IIdempotencyStore;

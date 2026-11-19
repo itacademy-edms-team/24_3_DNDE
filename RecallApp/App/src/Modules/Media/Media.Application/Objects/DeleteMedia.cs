@@ -7,12 +7,20 @@ using Media.Domain.Objects;
 
 namespace Media.Application.Objects;
 
+/// <summary>
+/// Удаляет файл владельца.
+/// </summary>
+/// <remarks>
+/// <para>Пока на файл ссылается хотя бы один элемент, удаление запрещено (онтология Media §6.4).</para>
+/// <para>После удаления запись становится надгробием, варианты убираются из хранилища сразу.</para>
+/// <para>Повторное удаление уже удалённого файла возвращает успех: операция идемпотентна.</para>
+/// <para>Проверка ссылок и переход в <c>deleted</c> выполняются
+/// в одной транзакции под блокировкой строки,
+/// чтобы параллельная синхронизация ссылок не привязала файл между проверкой и удалением.</para>
+/// </remarks>
+/// <param name="MediaId">Идентификатор файла, который нужно удалить.</param>
 public sealed record DeleteMediaCommand(Guid MediaId) : IRequest<ErrorOr<Deleted>>;
 
-/// <summary>
-/// Удаляет свой файл: запрещено, пока на него ссылается хотя бы один элемент (онтология Media §6.4).
-/// Запись становится надгробием, объекты вариантов убираются сразу; повторное удаление уже удалённого возвращает успех.
-/// </summary>
 public sealed class DeleteMediaHandler(
     IMediaObjectRepository repository,
     IObjectStorage storage,

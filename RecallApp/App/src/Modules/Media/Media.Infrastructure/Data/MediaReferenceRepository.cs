@@ -14,7 +14,6 @@ namespace Media.Infrastructure.Data;
 internal sealed class MediaReferenceRepository(MediaDbContext context) : IMediaReferenceRepository
 {
     public async Task SyncAsync(
-        Guid ownerId,
         string elementScope,
         IReadOnlyCollection<MediaReferenceSlot> slots,
         DateTime now,

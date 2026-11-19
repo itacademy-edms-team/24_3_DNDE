@@ -1,13 +1,19 @@
 namespace Media.Application.Objects;
 
 /// <summary>
-/// Маршруты модуля Media.
+/// Предоставляет маршруты модуля Media.
 /// </summary>
+/// <remarks>
+/// Подпути относительны и применяются к <see cref="Group"/>.
+/// </remarks>
 public static class MediaRoute
 {
+    /// <summary>Базовый префикс всех маршрутов модуля.</summary>
     public const string Group = "/api/media";
 
-    public const string Uploads = Group + "/uploads";
+    /// <summary>Подпуть загрузок: инициализация и подтверждение.</summary>
+    public const string Uploads = "/uploads";
 
-    public const string Links = Group + "/links";
+    /// <summary>Подпуть подписи ссылок на чтение.</summary>
+    public const string Links = "/links";
 }

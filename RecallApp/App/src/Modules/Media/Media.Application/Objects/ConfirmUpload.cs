@@ -8,18 +8,45 @@ using Media.Domain.Objects;
 
 namespace Media.Application.Objects;
 
+/// <summary>
+/// Подтверждает загрузку: проверяет, что файл долетел до хранилища, обрабатывает изображение,
+/// записывает полученные варианты и переводит файл в <c>ready</c>.
+/// </summary>
+/// <remarks>
+/// <para>Работа идёт вне транзакции: ключ идемпотентности держится арендой,
+/// поэтому зависшая операция может быть выполнена заново после её истечения (онтология Media §6.6).</para>
+/// <para>Повтор с тем же ключом возвращает сохранённый результат.</para>
+/// </remarks>
+/// <param name="MediaId">Идентификатор файла, загрузку которого нужно подтвердить.</param>
 /// <param name="IdempotencyKey">Значение заголовка Idempotency-Key; проверяется на HTTP-слое.</param>
 public sealed record ConfirmUploadCommand(Guid MediaId, string IdempotencyKey)
     : IRequest<ErrorOr<MediaResponse>>
 {
-    /// <summary>Идентификатор операции в журнале идемпотентности: стабилен, уже записан в БД.</summary>
+    /// <summary>Идентификатор операции в хранилище идемпотентности: стабилен, уже записан в БД.</summary>
     public const string Operation = "media.confirm";
 }
 
-/// <summary>Сведения о варианте файла. Ключ нужен для подписи ссылки, клиенту он не отдаётся.</summary>
+/// <summary>
+/// Представляет сведения о готовом варианте файла.
+/// </summary>
+/// <remarks>
+/// Ключ нужен для подписи ссылки при отдаче и в HTTP-ответ не попадает.
+/// </remarks>
+/// <param name="Variant">Вид варианта.</param>
+/// <param name="Width">Ширина в пикселях.</param>
+/// <param name="Height">Высота в пикселях.</param>
+/// <param name="SizeBytes">Размер файла в байтах.</param>
+/// <param name="ObjectKey">Ключ варианта в объектном хранилище.</param>
 public sealed record MediaVariantInfo(MediaVariantName Variant, int Width, int Height, long SizeBytes, string ObjectKey);
 
-/// <summary>Состояние файла и его готовые варианты.</summary>
+/// <summary>
+/// Представляет состояние файла и его готовые варианты.
+/// </summary>
+/// <param name="MediaId">Идентификатор файла.</param>
+/// <param name="Status">Состояние жизненного цикла.</param>
+/// <param name="FailureCode">Код причины отказа; <see langword="null"/>, если файл не отвергнут.</param>
+/// <param name="CreatedAt">Момент создания записи в UTC.</param>
+/// <param name="Variants">Готовые варианты; пустой, пока файл не готов.</param>
 public sealed record MediaResponse(
     Guid MediaId,
     MediaStatus Status,
@@ -27,6 +54,11 @@ public sealed record MediaResponse(
     DateTime CreatedAt,
     IReadOnlyList<MediaVariantInfo> Variants)
 {
+    /// <summary>
+    /// Создаёт представление из медиа-объекта.
+    /// </summary>
+    /// <param name="media">Медиа-объект.</param>
+    /// <returns>Состояние и варианты объекта.</returns>
     public static MediaResponse From(MediaObject media) => new(
         media.Id,
         media.Status,
@@ -38,11 +70,6 @@ public sealed record MediaResponse(
             .ToArray());
 }
 
-/// <summary>
-/// Второй шаг загрузки: проверяет, что объект действительно долетел, обрабатывает изображение,
-/// записывает варианты и переводит файл в `ready`. Работа идёт вне транзакции —
-/// ключ держится арендой (онтология Media §6.6).
-/// </summary>
 public sealed class ConfirmUploadHandler(
     ICurrentUser currentUser,
     IMediaObjectRepository repository,
@@ -61,7 +88,7 @@ public sealed class ConfirmUploadHandler(
         if (currentUser.UserId is not { } ownerId)
             return MediaErrors.UserUnresolved;
 
-        // Владение проверяется до идемпотентности: чужой файл не должен попадать в журнал ключей.
+        // Владение проверяется до идемпотентности: чужой файл не должен попадать в хранилище ключей.
         var media = await repository.FindAsync(command.MediaId, cancellationToken);
         if (media is null || media.OwnerId != ownerId)
             return MediaErrors.NotFound;

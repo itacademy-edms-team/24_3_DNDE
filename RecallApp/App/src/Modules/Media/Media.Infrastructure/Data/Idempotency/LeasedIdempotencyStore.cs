@@ -8,7 +8,7 @@ using Npgsql;
 namespace Media.Infrastructure.Data.Idempotency;
 
 /// <summary>
-/// Журнал идемпотентности Media для долгих операций: хранит ключ со статусом выполнения и арендой,
+/// Хранилище идемпотентности Media для долгих операций: хранит ключ со статусом выполнения и арендой,
 /// отдаёт сохранённый результат при повторе и не даёт двум запросам обрабатывать один ключ одновременно.
 /// Аренду продлевает, пока идёт работа: медленная обработка не выглядит зависшей,
 /// а оборвавшаяся - освобождает ключ по истечении срока.
@@ -189,7 +189,7 @@ internal sealed class LeasedIdempotencyStore(
     }
 
     /// <summary>
-    /// Записывает результат выполненной операции в журнал и снимает аренду.
+    /// Записывает результат выполненной операции в хранилище и снимает аренду.
     /// Срабатывает только для своей аренды.
     /// </summary>
     private async Task CompleteAsync(
@@ -199,7 +199,7 @@ internal sealed class LeasedIdempotencyStore(
         string response,
         CancellationToken cancellationToken)
     {
-        // Финализация raw-SQL: свойство <c>Response</c> - строка, а колонка `jsonb`,
+        // Финализация raw-SQL: свойство <c>Response</c> - строка, а столбец <c>jsonb</c>,
         // поэтому нужен каст `@response::jsonb`, которого не выразить в <c>ExecuteUpdate</c>.
         const string sql = """
             UPDATE media.idempotency_keys

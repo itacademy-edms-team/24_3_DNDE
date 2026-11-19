@@ -8,9 +8,14 @@ using Media.Domain.Objects;
 namespace Media.Application.Objects;
 
 /// <summary>
-/// Ссылки на чтение для набора файлов владельца: нужны, чтобы продлить адреса,
-/// не перезагружая сам контент, который их использует.
+/// Возвращает подписанные ссылки на чтение для набора файлов владельца.
 /// </summary>
+/// <remarks>
+/// <para>Нужен, чтобы обновить ссылки с истёкшим сроком, не перечитывая данные, которые
+/// на них ссылаются: клиент уже знает идентификаторы файлов, нужны только свежие подписи.</para>
+/// <para>Уникальных идентификаторов в одном запросе не больше <see cref="MediaConstraints.MaxLinksPerRequest"/>:
+/// при превышении возвращается <c>Media.LinksLimitExceeded</c>.</para>
+/// </remarks>
 /// <param name="MediaIds">Идентификаторы файлов в любом порядке; дубликаты не считаются ошибкой.</param>
 public sealed record GetMediaLinksQuery(IReadOnlyCollection<Guid> MediaIds)
     : IRequest<ErrorOr<MediaLinksResponse>>;
@@ -19,7 +24,7 @@ public sealed record GetMediaLinksQuery(IReadOnlyCollection<Guid> MediaIds)
 /// <param name="MediaIds">Отсутствующее поле трактуется как пустой список.</param>
 public sealed record GetMediaLinksRequest(IReadOnlyCollection<Guid>? MediaIds);
 
-/// <summary>Ответ на подпись ссылок: карта «файл → варианты». Чужих и неготовых файлов в ней нет.</summary>
+/// <summary>Ответ на подпись ссылок: карта "файл -> варианты". Чужих и неготовых файлов в ней нет.</summary>
 public sealed record MediaLinksResponse(IReadOnlyDictionary<Guid, MediaFileLinks> Links);
 
 public sealed class GetMediaLinksHandler(IMediaLinkReader links, ICurrentUser currentUser)

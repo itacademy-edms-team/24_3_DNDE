@@ -1,7 +1,7 @@
 namespace Media.Infrastructure.Data.Idempotency;
 
 /// <summary>
-/// Запись журнала идемпотентности модуля Media: один ключ на пару (владелец, операция).
+/// Запись хранилища идемпотентности модуля Media: один ключ на пару (владелец, операция).
 /// </summary>
 internal sealed class IdempotencyKeyRecord
 {

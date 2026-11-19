@@ -7,19 +7,25 @@ using Media.Domain.References;
 
 namespace Media.Application.References;
 
+/// <summary>
+/// Синхронизирует ссылки области с присланным набором слотов.
+/// </summary>
+/// <remarks>
+/// <para>Недостающие слоты снимаются, новые вставляются, изменённые перезаписываются на новые файлы.
+/// Набор декларативный, поэтому повтор доставки безопасен.</para>
+/// <para>Все файлы проверяются до записи: привязка не применяется частично, а чужой или неготовый
+/// файл отклоняет команду целиком.</para>
+/// </remarks>
 /// <param name="OwnerId">Владелец файлов: чужие файлы привязывать нельзя.</param>
-/// <param name="ElementScope">Область элемента (`set:{setId}:element:{elementId}`): слоты вне неё удаляются.</param>
-/// <param name="Slots">Полный текущий набор слотов элемента; всё, чего здесь нет, снимается.</param>
+/// <param name="ElementScope">Область ссылок (<c>set:{setId}:element:{elementId}</c>);
+/// присланные слоты обязаны лежать внутри неё.</param>
+/// <param name="Slots">Полный текущий набор слотов области; всё, чего здесь нет, снимается.</param>
 public sealed record SyncReferencesCommand(
     Guid OwnerId,
     string ElementScope,
     IReadOnlyList<MediaReferenceSlot> Slots)
     : IRequest<ErrorOr<Success>>;
 
-/// <summary>
-/// Приводит ссылки области элемента к присланному набору: недостающие слоты снимает,
-/// новые вставляет, изменённые перезаписывает. Декларативно, поэтому повтор безопасен.
-/// </summary>
 public sealed class SyncReferencesHandler(
     IMediaObjectRepository objects,
     IMediaReferenceRepository references,
@@ -52,7 +58,6 @@ public sealed class SyncReferencesHandler(
         }
 
         await references.SyncAsync(
-            command.OwnerId,
             command.ElementScope,
             slots,
             clock.GetUtcNow().UtcDateTime,

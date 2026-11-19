@@ -7,13 +7,16 @@ using Media.Domain.Objects;
 
 namespace Media.Application.Objects;
 
+/// <summary>
+/// Возвращает состояние файла владельца и его готовые варианты.
+/// </summary>
+/// <remarks>
+/// Заодно лениво проверяется <c>pending</c>: если объекта в хранилище ещё нет,
+/// файл сразу помечается <c>failed</c>, и клиент не ждёт фоновой чистки.
+/// </remarks>
+/// <param name="MediaId">Файл, состояние которого запрашивается.</param>
 public sealed record GetMediaQuery(Guid MediaId) : IRequest<ErrorOr<MediaResponse>>;
 
-/// <summary>
-/// Возвращает состояние своего файла и его готовые варианты.
-/// Заодно лениво проверяет `pending`: если объекта в хранилище нет, файл сразу помечается `failed`,
-/// а клиент не ждёт фоновой чистки.
-/// </summary>
 public sealed class GetMediaHandler(
     IMediaObjectRepository repository,
     IObjectStorage storage,
