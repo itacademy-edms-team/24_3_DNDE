@@ -26,11 +26,11 @@ public static class UserErrors
 
     public static Error DisplayNameTooLong(int length) => Error.Validation(
         code: "User.DisplayNameTooLong",
-        description: $"DisplayName length {length} exceeds limit {User.DisplayNameMaxLength}.",
+        description: $"DisplayName length {length} exceeds limit {UserConstraints.DisplayNameMaxLength}.",
         metadata: new Dictionary<string, object>
         {
             ["target"] = "user.displayName",
-            ["max"] = User.DisplayNameMaxLength,
+            ["max"] = UserConstraints.DisplayNameMaxLength,
         });
 
     /// <summary>Строки пользователя нет: JIT-провижининг не выполнен (ADR 0020).</summary>

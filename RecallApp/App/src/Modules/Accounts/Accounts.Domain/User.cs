@@ -3,27 +3,34 @@ using ErrorOr;
 namespace Accounts.Domain;
 
 /// <summary>
-/// Доменный пользователь: строка, представляющая человека в системе.
-/// Создаётся JIT из claims личности Keycloak (ADR 0020), ключ связи - KeycloakSub.
+/// Представляет доменного пользователя - строку, связывающую личность из Keycloak с данными приложения.
 /// </summary>
+/// <remarks>
+/// <para>Создаётся JIT при первом доменном запросе,
+/// ключ связи - <see cref="KeycloakSub"/> (ADR 0020).</para>
+/// <para>Email - кэш: источник истины в Keycloak, значение обновляется из claims.
+/// Отображаемое имя принадлежит приложению.</para>
+/// </remarks>
 public sealed class User
 {
-    public const int DisplayNameMaxLength = 100;
-
     private User() { }
 
+    /// <summary>Возвращает идентификатор пользователя.</summary>
     public Guid Id { get; private set; }
 
+    /// <summary>Возвращает идентификатор пользователя в Keycloak.</summary>
     public Guid KeycloakSub { get; private set; }
 
-    /// <summary>Кэш email для фоновых задач и уведомлений.</summary>
+    /// <summary>Возвращает кэш email для фоновых задач и уведомлений.</summary>
     public string Email { get; private set; } = string.Empty;
 
-    /// <summary>Доменное отображаемое имя; источник - приложение.</summary>
+    /// <summary>Возвращает отображаемое имя; источник истины - приложение.</summary>
     public string DisplayName { get; private set; } = string.Empty;
 
+    /// <summary>Возвращает момент создания пользователя в UTC.</summary>
     public DateTime CreatedAt { get; private set; }
 
+    /// <summary>Возвращает момент последнего доменного изменения в UTC.</summary>
     public DateTime UpdatedAt { get; private set; }
 
     public static ErrorOr<User> Create(Guid keycloakSub, string email, string displayName, DateTime utcNow)
@@ -38,7 +45,7 @@ public sealed class User
         if (name.Length == 0)
             return UserErrors.DisplayNameRequired;
 
-        if (name.Length > DisplayNameMaxLength)
+        if (name.Length > UserConstraints.DisplayNameMaxLength)
             return UserErrors.DisplayNameTooLong(name.Length);
 
         return new User
