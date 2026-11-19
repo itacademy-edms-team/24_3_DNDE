@@ -6,8 +6,16 @@ using Microsoft.Extensions.Options;
 namespace Sets.Infrastructure.Data.Purge;
 
 /// <summary>
-/// Фоновый сервис чистки мягко удалённых наборов и элементов модуля Sets.
+/// Предоставляет фоновую чистку мягко удалённых наборов и элементов.
 /// </summary>
+/// <remarks>
+/// <para>Первый проход выполняется сразу при старте,
+/// затем - раз в <see cref="SetsPurgeOptions.Interval"/>.</para>
+/// <para>За один проход удаляются строки, которые существуют позднее, чем <c>now - Retention</c>:
+/// сначала наборы (элементы удаляются каскадом), затем элементы, чьи наборы остались живы.</para>
+/// <para>Ошибка прохода логируется и не останавливает цикл: следующая попытка - по расписанию.</para>
+/// <para>На каждый проход создаётся свой scope.</para>
+/// </remarks>
 internal sealed class SetsPurgeService(
     IServiceScopeFactory scopeFactory,
     IOptions<SetsPurgeOptions> options,

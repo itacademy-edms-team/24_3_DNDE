@@ -6,6 +6,18 @@ using Sets.Domain.Elements;
 
 namespace Sets.Infrastructure.Data;
 
+/// <summary>
+/// Реализация хранилища элементов поверх EF Core.
+/// </summary>
+/// <remarks>
+/// <para>Позиция хранится строкой: и сортировка, и keyset-курсор идут по ней, а не по числу.</para>
+/// <para>Колонка объявлена с <c>COLLATE "C"</c>, поэтому база сравнивает строки побайтово -
+/// порядок совпадает с тем, что вычисляет генератор рангов (ADR 0041).</para>
+/// <para>Операции над составом выполняются под блокировкой строки набора (<see cref="ExecuteLockedAsync"/>):
+/// ошибка внутри действия откатывает транзакцию.</para>
+/// <para>Массовая пометка удаления (<see cref="MarkAllDeletedAsync"/>) выполняется одним UPDATE мимо домена:
+/// набор к этому моменту уже проверен и загружен.</para>
+/// </remarks>
 internal sealed class ElementRepository(SetsDbContext context) : IElementRepository
 {
     public async Task<IReadOnlyList<Element>> ListBySetAsync(
@@ -76,7 +88,7 @@ internal sealed class ElementRepository(SetsDbContext context) : IElementReposit
 
         var result = await action(activeCount, cancellationToken);
 
-        // Ошибка внутри лока — откат: иначе частичные записи (например, зарезервированный ключ
+        // Ошибка внутри лока - откат: иначе частичные записи (например, зарезервированный ключ
         // идемпотентности) уедут в БД вместе с пустым коммитом.
         if (result is IErrorOr { IsError: true })
         {
@@ -100,8 +112,12 @@ internal sealed class ElementRepository(SetsDbContext context) : IElementReposit
     public Task SaveChangesAsync(CancellationToken cancellationToken) => context.SaveChangesAsync(cancellationToken);
 
     /// <summary>
-    /// Блокирует набор на уровне БД для обновления.
+    /// Блокирует строку набора до конца текущей транзакции.
     /// </summary>
+    /// <remarks>
+    /// Запрос выполняется ради блокировки: результат не используется, поэтому выборка идёт без отслеживания.
+    /// Без <c>FOR UPDATE</c> параллельная вставка могла бы проскочить между подсчётом элементов и их записью.
+    /// </remarks>
     private Task LockSetAsync(Guid setId, CancellationToken cancellationToken) =>
         context.Sets
             .FromSqlInterpolated(

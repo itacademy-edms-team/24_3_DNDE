@@ -3,15 +3,22 @@ using Microsoft.EntityFrameworkCore;
 namespace Sets.Infrastructure.Data.Purge;
 
 /// <summary>
-/// Физическое удаление мягко удалённых наборов и элементов.
+/// Предоставляет физическое удаление мягко удалённых наборов и элементов.
 /// </summary>
 internal static class SetsPurger
 {
     /// <summary>
-    /// Удаляет строки с <c>deleted_at &lt;= cutoff</c> порциями.
-    /// Сначала наборы: каскад FK забирает их элементы.
-    /// Оставшиеся мягко удалённые элементы удаляются вторым проходом.
+    /// Порционно удаляет строки, отмеченные не позднее <paramref name="cutoff"/>.
     /// </summary>
+    /// <remarks>
+    /// <para>Сначала удаляются наборы (элементы удаляются каскадом).</para>
+    /// <para>Второй проход удаляет элементы, чьи наборы остались живы.</para>
+    /// <para>Каждый проход идёт порциями, пока очередная порция не окажется неполной.</para>
+    /// </remarks>
+    /// <param name="context">Контекст модуля Sets.</param>
+    /// <param name="cutoff">Граница: удаляются строки, помеченные не позже этого момента.</param>
+    /// <param name="batchSize">Сколько строк удалять за один заход.</param>
+    /// <param name="cancellationToken">Токен отмены.</param>
     /// <returns>Сколько наборов и элементов удалено физически.</returns>
     public static async Task<(int Sets, int Elements)> PurgeAsync(
         SetsDbContext context,

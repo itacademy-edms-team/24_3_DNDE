@@ -5,6 +5,15 @@ using Sets.Domain.Sets;
 
 namespace Sets.Infrastructure.Data;
 
+/// <summary>
+/// Реализует хранилища наборов поверх EF Core.
+/// </summary>
+/// <remarks>
+/// Выборки фильтруют владельца и удалённые строки.
+/// Страница читается keyset-курсором по паре <c>(created_at, id)</c>:
+/// сравнение кортежа транслируется в row comparison,
+/// по которому работает индекс <c>(owner_id, created_at DESC, id DESC)</c> (ADR 0039).
+/// </remarks>
 internal sealed class SetRepository(SetsDbContext db) : ISetRepository
 {
     public async Task<IReadOnlyList<Set>> ListOwnedAsync(
