@@ -38,14 +38,14 @@ internal sealed class IdempotencyKeyRecord
     /// ключе.</summary>
     public Guid? LeaseOwner { get; set; }
 
-    /// <summary>Возвращает или задает момент, до которого аренда жива; после истечения работу
+    /// <summary>Возвращает или задает момент в UTC, до которого аренда жива; после истечения работу
     /// перехватывает следующий запрос.</summary>
     public DateTime? LeaseUntil { get; set; }
 
-    /// <summary>Возвращает или задает момент истечения ключа: после него ключ не используется
+    /// <summary>Возвращает или задает момент истечения ключа в UTC: после него ключ не используется
     /// и удаляется чистильщиком.</summary>
     public DateTime ExpiresAt { get; set; }
 
-    /// <summary>Возвращает или задает момент создания ключа.</summary>
+    /// <summary>Возвращает или задает момент создания ключа в UTC.</summary>
     public DateTime CreatedAt { get; set; }
 }

@@ -12,7 +12,7 @@ namespace Media.Application.Storage;
 /// <param name="Url">Endpoint, куда уходит POST.</param>
 /// <param name="Fields">Уже подписанные поля формы: policy, credential, date, signature.</param>
 /// <param name="ObjectKey">Ключ, по которому сервер найдёт объект при подтверждении.</param>
-/// <param name="ExpiresAt">Момент, после которого политика недействительна.</param>
+/// <param name="ExpiresAt">Момент в UTC, после которого политика недействительна.</param>
 public sealed record UploadPolicy(
     string Url,
     IReadOnlyDictionary<string, string> Fields,

@@ -9,6 +9,7 @@ public abstract record DomainEventBase : IDomainEvent
 {
     public Guid EventId { get; init; } = Guid.NewGuid();
 
+    /// <summary>Возвращает момент возникновения события в UTC.</summary>
     public DateTime DateOccurred { get; init; } = DateTime.UtcNow;
 
     public abstract string EventType { get; }
