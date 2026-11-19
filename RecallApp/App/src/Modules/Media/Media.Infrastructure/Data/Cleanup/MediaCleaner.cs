@@ -67,23 +67,55 @@ internal sealed class MediaCleaner(MediaDbContext context, IObjectStorage storag
         return orphans.Length;
     }
 
-    /// <summary>Убирает надгробия: объекты к этому моменту уже удалены, остаётся только строка в БД.</summary>
+    /// <summary>
+    /// Убирает надгробия: удаляет их варианты из хранилища и только потом строку из БД.
+    /// </summary>
+    /// <remarks>
+    /// Строка удаляется только после того, как все варианты ушли из хранилища: при сбое S3
+    /// надгробие остаётся, и следующий цикл повторяет попытку. Так ни один объект не остаётся
+    /// в хранилище без следа.
+    /// </remarks>
     public async Task<int> PurgeDeletedAsync(DateTime cutoff, int batchSize, CancellationToken cancellationToken)
     {
-        var deleted = await context.MediaObjects
+        var tombstones = await context.MediaObjects
+            .AsNoTracking()
             .Where(media => media.Status == MediaStatus.Deleted
                             && media.DeletedAt != null
                             && media.DeletedAt < cutoff)
             .OrderBy(media => media.DeletedAt)
             .Take(batchSize)
-            .Select(media => media.Id)
+            .Include(media => media.Variants)
             .ToArrayAsync(cancellationToken);
 
-        if (deleted.Length == 0)
+        if (tombstones.Length == 0)
+            return 0;
+
+        var removable = new List<Guid>(tombstones.Length);
+
+        foreach (var media in tombstones)
+        {
+            var allRemoved = true;
+
+            foreach (var variant in media.Variants)
+            {
+                var result = await storage.DeleteAsync(variant.ObjectKey.Value, cancellationToken);
+                if (result.IsError)
+                {
+                    // Объект остался в хранилище: надгробие сохраняем, чтобы повторить в следующем цикле.
+                    allRemoved = false;
+                    break;
+                }
+            }
+
+            if (allRemoved)
+                removable.Add(media.Id);
+        }
+
+        if (removable.Count == 0)
             return 0;
 
         return await context.MediaObjects
-            .Where(media => deleted.Contains(media.Id))
+            .Where(media => removable.Contains(media.Id))
             .ExecuteDeleteAsync(cancellationToken);
     }
 }

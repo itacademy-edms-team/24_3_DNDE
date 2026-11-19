@@ -112,6 +112,32 @@ public sealed class MediaCleanupTests : IClassFixture<AppFactory>
         Assert.False(await RowExistsAsync(mediaId));
     }
 
+    [DatabaseFact]
+    public async Task PurgeDeleted_RemovesOrphanedVariantsFromStorage()
+    {
+        using var client = CreateClientForNewUser();
+        var mediaId = await InitAndUploadAsync(client, confirmed: true);
+
+        // Имитируем сбой немедленного удаления: переводим строку в Deleted напрямую, не трогая S3.
+        // Так остаются и надгробие, и осиротевшие варианты в хранилище.
+        await BackdateAsync(mediaId, setters => setters
+            .SetProperty(media => media.Status, MediaStatus.Deleted)
+            .SetProperty(media => media.DeletedAt, DateTime.UtcNow.AddDays(-30)));
+
+        var storage = CreateStorage();
+        var keys = await ReadVariantKeysAsync(mediaId);
+        Assert.NotEmpty(keys);
+        Assert.NotNull(await storage.HeadAsync(keys[0], CancellationToken.None));
+
+        var (_, _, tombstones) = await RunCleanupAsync();
+
+        Assert.True(tombstones > 0);
+        Assert.False(await RowExistsAsync(mediaId));
+
+        foreach (var key in keys)
+            Assert.Null(await storage.HeadAsync(key, CancellationToken.None));
+    }
+
     private async Task<(int Abandoned, int Unreferenced, int Deleted)> RunCleanupAsync()
     {
         using var scope = _factory.Services.CreateScope();
