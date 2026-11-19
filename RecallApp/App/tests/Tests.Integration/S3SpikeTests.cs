@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using Amazon.S3;
 using Amazon.S3.Model;
+using Media.Domain.Objects;
 using Tests.Integration.Helpers;
 
 namespace Tests.Integration;
@@ -15,8 +16,6 @@ namespace Tests.Integration;
 [Trait("Category", "S3")]
 public sealed class S3SpikeTests
 {
-    private const long MaxUploadBytes = 10 * 1024 * 1024;
-
     [Fact]
     public async Task PresignedPost_UploadsPng_AndObjectIsReadable()
     {
@@ -138,7 +137,7 @@ public sealed class S3SpikeTests
         public Task<CreatePresignedPostResponse> CreatePresignedPostAsync(
             string key,
             string contentType,
-            long maxBytes = MaxUploadBytes)
+            long maxBytes = MediaConstraints.MaxUploadBytes)
         {
             return S3.CreatePresignedPostAsync(new CreatePresignedPostRequest
             {

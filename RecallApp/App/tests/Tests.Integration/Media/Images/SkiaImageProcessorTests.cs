@@ -31,7 +31,7 @@ public sealed class SkiaImageProcessorTests
         var display = image.Variants.Single(variant => variant.Variant == MediaVariantName.Display);
 
         // Пропорции сохранены, длинная сторона в пределах своего варианта.
-        Assert.Equal(400, Math.Max(thumb.Width, thumb.Height));
+        Assert.Equal(MediaConstraints.ThumbMaxSide, Math.Max(thumb.Width, thumb.Height));
         Assert.Equal(300, Math.Min(thumb.Width, thumb.Height));
         Assert.Equal(800, Math.Max(display.Width, display.Height));
 

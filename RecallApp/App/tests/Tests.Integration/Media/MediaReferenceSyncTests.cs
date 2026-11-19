@@ -188,7 +188,7 @@ public sealed class MediaReferenceSyncTests : IClassFixture<AppFactory>
 
         var variants = new[]
         {
-            MediaVariant.Create(media.Id, ownerId, MediaVariantName.Thumb, 400, 300, 1_000, now).Value,
+            MediaVariant.Create(media.Id, ownerId, MediaVariantName.Thumb, MediaConstraints.ThumbMaxSide, 300, 1_000, now).Value,
             MediaVariant.Create(media.Id, ownerId, MediaVariantName.Display, 1_000, 750, 5_000, now).Value,
         };
 

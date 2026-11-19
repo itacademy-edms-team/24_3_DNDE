@@ -54,7 +54,7 @@ public sealed class MediaConfirmTests : IClassFixture<AppFactory>
     public async Task Confirm_RepeatedWithSameKey_ReturnsCachedResponse()
     {
         using var client = CreateClientForNewUser();
-        var mediaId = await InitAndUploadAsync(client, CreatePng(400, 300));
+        var mediaId = await InitAndUploadAsync(client, CreatePng(MediaConstraints.ThumbMaxSide, 300));
         var key = Guid.NewGuid().ToString();
 
         var first = await ConfirmAsync(client, mediaId, key);
