@@ -4,12 +4,19 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Api;
 
 /// <summary>
-/// Сквозная ступень JIT-провижининга (ADR 0020): для аутентифицированного запроса
-/// гарантирует существование доменных строк, дергая все зарегистрированные провижинеры модулей,
-/// и публикует id доменного пользователя в <see cref="ICurrentUser"/> (ADR 0036).
+/// Предоставляет ступень JIT-провижининга (ADR 0020).
 /// </summary>
+/// <remarks>
+/// Для аутентифицированного запроса вызывает все зарегистрированные провижинеры модулей
+/// и публикует идентификатор доменного пользователя в <see cref="ICurrentUser"/> (ADR 0036).
+/// </remarks>
 public static class DomainProvisioning
 {
+    /// <summary>
+    /// Подключает провижининг доменных строк в конвейер запросов.
+    /// </summary>
+    /// <param name="app">Построитель приложения.</param>
+    /// <returns>Тот же построитель для цепочки.</returns>
     public static IApplicationBuilder UseDomainProvisioning(this IApplicationBuilder app) => app.Use(async (context, next) =>
     {
         if (context.User.Identity is { IsAuthenticated: true })
