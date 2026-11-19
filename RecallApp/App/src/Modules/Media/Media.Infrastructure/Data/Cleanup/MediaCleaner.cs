@@ -6,12 +6,23 @@ using Microsoft.EntityFrameworkCore;
 namespace Media.Infrastructure.Data.Cleanup;
 
 /// <summary>
-/// Чистильщик сирот модуля Media: брошенные загрузки, готовые файлы без ссылок и надгробия удалённых записей.
-/// Каждая категория обрабатывается отдельно, чтобы сбой на одной не задерживал остальные (онтология Media §6.1, §7.3).
+/// Удаляет осиротевшие данные модуля Media: брошенные загрузки, готовые файлы без ссылок
+/// и надгробия удалённых записей.
 /// </summary>
+/// <remarks>
+/// Каждая категория обрабатывается отдельным методом, чтобы сбой на одной не задерживал
+/// остальные (онтология Media §6.1, §7.3).
+/// </remarks>
 internal sealed class MediaCleaner(MediaDbContext context, IObjectStorage storage, TimeProvider clock)
 {
-    /// <summary>Удаляет `pending`/`failed` старше срока вместе с временными объектами в хранилище.</summary>
+    /// <summary>
+    /// Удаляет загрузки в <c>pending</c> или <c>failed</c> старше срока вместе с их временными
+    /// объектами в хранилище.
+    /// </summary>
+    /// <remarks>
+    /// Строка удаляется только после того, как объект ушёл из хранилища: при сбое строка остаётся
+    /// и попытка повторяется в следующем цикле.
+    /// </remarks>
     public async Task<int> PurgeAbandonedAsync(DateTime cutoff, int batchSize, CancellationToken cancellationToken)
     {
         var abandoned = await context.MediaObjects
@@ -26,18 +37,29 @@ internal sealed class MediaCleaner(MediaDbContext context, IObjectStorage storag
         if (abandoned.Length == 0)
             return 0;
 
+        var removable = new List<Guid>(abandoned.Length);
+
         foreach (var mediaId in abandoned)
         {
-            // Объект мог не долететь: удаление идемпотентно, ошибку не считаем поводом оставить строку.
-            await storage.DeleteAsync(ObjectKey.Upload(mediaId).Value, cancellationToken);
+            // Объект мог не долететь: удаление идемпотентно. При сбое строку не трогаем,
+            // чтобы следующий цикл повторил попытку и объект не остался в хранилище без следа.
+            var result = await storage.DeleteAsync(ObjectKey.Upload(mediaId).Value, cancellationToken);
+            if (!result.IsError)
+                removable.Add(mediaId);
         }
 
+        if (removable.Count == 0)
+            return 0;
+
         return await context.MediaObjects
-            .Where(media => abandoned.Contains(media.Id))
+            .Where(media => removable.Contains(media.Id))
             .ExecuteDeleteAsync(cancellationToken);
     }
 
-    /// <summary>Помечает `deleted` готовые файлы без ссылок старше срока и убирает их варианты из хранилища.</summary>
+    /// <summary>
+    /// Переводит в <c>deleted</c> готовые файлы без ссылок старше срока и убирает их варианты
+    /// из хранилища.
+    /// </summary>
     public async Task<int> PurgeUnreferencedAsync(DateTime cutoff, int batchSize, CancellationToken cancellationToken)
     {
         var orphans = await context.MediaObjects
