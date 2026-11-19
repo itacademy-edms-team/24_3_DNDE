@@ -3,7 +3,7 @@ using Common.Application.Idempotency;
 namespace Sets.Application.Abstractions;
 
 /// <summary>
-/// Определяет журнал идемпотентности модуля Sets.
+/// Определяет хранилище идемпотентности модуля Sets.
 /// </summary>
 /// <remarks>
 /// Отдельный интерфейс нужен, потому что реализация у каждого модуля своя - со своей схемой БД,

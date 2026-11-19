@@ -29,7 +29,7 @@ public sealed record CreateElementCommand(
     : IRequest<ErrorOr<ElementResponse>>
 {
     /// <summary>
-    /// Идентификатор операции в журнале идемпотентности.
+    /// Идентификатор операции в хранилище идемпотентности.
     /// </summary>
     public const string Operation = "elements.create";
 }

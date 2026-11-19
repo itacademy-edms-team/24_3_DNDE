@@ -11,7 +11,7 @@ namespace Sets.Infrastructure.Data;
 /// </summary>
 /// <remarks>
 /// <para>Позиция хранится строкой: и сортировка, и keyset-курсор идут по ней, а не по числу.</para>
-/// <para>Колонка объявлена с <c>COLLATE "C"</c>, поэтому база сравнивает строки побайтово -
+/// <para>Столбец объявлен с <c>COLLATE "C"</c>, поэтому база сравнивает строки побайтово -
 /// порядок совпадает с тем, что вычисляет генератор рангов (ADR 0041).</para>
 /// <para>Операции над составом выполняются под блокировкой строки набора (<see cref="ExecuteLockedAsync"/>):
 /// ошибка внутри действия откатывает транзакцию.</para>
@@ -33,7 +33,7 @@ internal sealed class ElementRepository(SetsDbContext context) : IElementReposit
         if (after is not null)
         {
             // Ранг хранится строкой: keyset идёт по (position, id) в лексикографическом порядке
-            // (коллация "C" на колонке). string.Compare Npgsql транслирует в сравнение строк.
+            // (коллация "C" на столбце). string.Compare Npgsql транслирует в сравнение строк.
             var cursorPosition = after.Position;
             var cursorId = after.Id;
 

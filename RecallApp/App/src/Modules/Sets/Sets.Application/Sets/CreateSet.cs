@@ -18,7 +18,7 @@ public sealed record CreateSetCommand(string? Title, string? Description, string
     : IRequest<ErrorOr<SetResponse>>
 {
     /// <summary>
-    /// Идентификатор операции в журнале идемпотентности (столбец <c>operation</c>).
+    /// Идентификатор операции в хранилище идемпотентности (столбец <c>operation</c>).
     /// Значение стабильно: оно уже записано в БД и не должно меняться при переименовании класса.
     /// </summary>
     public const string Operation = "sets.create";

@@ -1,7 +1,7 @@
 namespace Sets.Infrastructure.Data.Idempotency;
 
 /// <summary>
-/// Содержит настройки фоновой чистки журнала идемпотентности (секция <c>Sets:Idempotency</c>).
+/// Содержит настройки фоновой чистки хранилища идемпотентности (секция <c>Sets:Idempotency</c>).
 /// </summary>
 internal sealed class IdempotencyCleanupOptions
 {

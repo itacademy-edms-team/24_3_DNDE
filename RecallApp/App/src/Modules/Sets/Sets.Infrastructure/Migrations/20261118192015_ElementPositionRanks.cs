@@ -13,7 +13,7 @@ namespace Sets.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // 1. Новая колонка: строки сортируются побайтово (COLLATE "C") - так же, как считает генератор рангов.
+            // 1. Новый столбец: строки сортируются побайтово (COLLATE "C") - так же, как считает генератор рангов.
             migrationBuilder.Sql("""
                 ALTER TABLE sets.elements ADD COLUMN position_rank text COLLATE "C";
                 """);
@@ -29,7 +29,7 @@ namespace Sets.Infrastructure.Migrations
                 WHERE e.id = numbered.id;
                 """);
 
-            // 3. Замена колонки: старые индексы уходят вместе с ней.
+            // 3. Замена столбца: старые индексы уходят вместе с ним.
             migrationBuilder.Sql("""
                 ALTER TABLE sets.elements DROP COLUMN position;
                 ALTER TABLE sets.elements RENAME COLUMN position_rank TO position;
