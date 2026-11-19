@@ -70,21 +70,7 @@ public sealed class ElementIdempotencyTests : IClassFixture<AppFactory>
         Assert.Single(await ReadElementsAsync(client, setId));
     }
 
-    [DatabaseFact]
-    public async Task CreateElement_SameKeyDifferentPosition_Returns409WithKeyReusedCode()
-    {
-        using var client = CreateClientForNewUser();
-        var setId = await CreateSetAsync(client);
-        var key = Guid.NewGuid().ToString();
-        var payload = new { type = "flashcard", payload = new { term = "Позиция", definition = "d" } };
-
-        var first = await PostElementAsync(client, setId, key, new { payload.type, payload.payload, position = 0 });
-        var second = await PostElementAsync(client, setId, key, new { payload.type, payload.payload, position = 1 });
-
-        Assert.Equal(HttpStatusCode.Created, first.StatusCode);
-        Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
-    }
-
+    /// <summary>Неудачная попытка создания не должна сжигать ключ: следующий корректный запрос выполняется.</summary>
     [DatabaseFact]
     public async Task CreateElement_FailedAttempt_DoesNotBurnKey()
     {
@@ -92,14 +78,14 @@ public sealed class ElementIdempotencyTests : IClassFixture<AppFactory>
         var setId = await CreateSetAsync(client);
         var key = Guid.NewGuid().ToString();
 
-        // Позиция за пределами набора: операция падает, ключ должен освободиться (откат транзакции).
+        // Пустой термин: операция падает, ключ должен освободиться (откат транзакции).
         var failed = await PostElementAsync(
-            client, setId, key, new { type = "flashcard", payload = new { term = "Позиция", definition = "d" }, position = 5 });
+            client, setId, key, new { type = "flashcard", payload = new { term = "   ", definition = "d" } });
         Assert.Equal(HttpStatusCode.BadRequest, failed.StatusCode);
 
         // Повтор с тем же ключом, но корректным телом: 201, а не 409 KeyReused.
         var retried = await PostElementAsync(
-            client, setId, key, new { type = "flashcard", payload = new { term = "Позиция", definition = "d" }, position = 0 });
+            client, setId, key, new { type = "flashcard", payload = new { term = "Позиция", definition = "d" } });
         Assert.Equal(HttpStatusCode.Created, retried.StatusCode);
 
         Assert.Single(await ReadElementsAsync(client, setId));

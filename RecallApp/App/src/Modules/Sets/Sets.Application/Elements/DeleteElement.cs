@@ -11,9 +11,8 @@ namespace Sets.Application.Elements;
 public sealed record DeleteElementCommand(Guid SetId, Guid ElementId) : IRequest<ErrorOr<Deleted>>;
 
 /// <summary>
-/// Мягкое удаление элемента с уплотнением позиций: набор остаётся плотным `0..n-1`
+/// Мягко удаляет элемент: соседние элементы сохраняют свои позиции, дырка в порядке допустима
 /// (онтология §6.5), а сам набор живёт дальше.
-/// За решение по сдвигу отвечает (<see cref="SetOrdering.ForRemoval"/>).
 /// </summary>
 public sealed class DeleteElementHandler(
     ISetRepository sets,
@@ -47,17 +46,9 @@ public sealed class DeleteElementHandler(
                 element.RegisterDomainEvent(new MediaReferencesChanged(
                     ownerId, ElementMediaSlots.ElementScope(command.SetId, element.Id), []));
 
-                // Удаление фиксируется до сдвига: частичный уникальный индекс 
-                // не пустит соседа на ещё занятую позицию.
-                await elements.SaveChangesAsync(token);
-
-                var remaining = await elements.ListForOrderingAsync(command.SetId, token);
-                await elements.ApplyPositionsAsync(
-                    command.SetId,
-                    SetOrdering.ForRemoval(remaining, element.Position),
-                    token);
-
                 set.MarkElementsChanged(now);
+
+                await elements.SaveChangesAsync(token);
                 await sets.SaveChangesAsync(token);
                 return Result.Deleted;
             },

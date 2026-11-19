@@ -34,7 +34,7 @@ import { useElements } from "@/features/sets/api/useElements";
 import {
   useCreateElement,
   useDeleteElement,
-  useReorderElements,
+  useMoveElement,
   useUpdateElement,
 } from "@/features/sets/api/useElementMutations";
 import { ElementCard, type EditorCard } from "@/features/sets/ui/ElementCard";
@@ -149,7 +149,7 @@ function EditorBoard({
   const create = useCreateElement(setId);
   const update = useUpdateElement(setId);
   const remove = useDeleteElement(setId);
-  const reorder = useReorderElements(setId);
+  const move = useMoveElement(setId);
 
   // Один батч-запрос на все картинки набора: ссылки живут 15 минут и продлеваются фоном.
   useMediaLinks(cards.flatMap(cardMediaIds));
@@ -260,20 +260,35 @@ function EditorBoard({
     if (card && !card.isDraft) remove.mutate(id, { onError: fail });
   };
 
-  const persistOrder = (next: EditorCard[]) => {
+  const persistOrder = (next: EditorCard[], movedId: string) => {
     setCards(next);
-    reorder.mutate(
-      next.filter((c) => !c.isDraft).map((c) => c.id),
-      { onError: fail },
-    );
+
+    const moved = next.find((card) => card.id === movedId);
+    // Черновик живёт только на клиенте: переставлять на сервере нечего.
+    if (!moved || moved.isDraft) return;
+
+    const index = next.findIndex((card) => card.id === movedId);
+    const previousId = neighbourId(next, index, -1);
+    const nextId = neighbourId(next, index, 1);
+    // Единственный элемент в наборе: соседей нет, менять нечего.
+    if (!previousId && !nextId) return;
+
+    move.mutate({ elementId: movedId, previousId, nextId }, { onError: fail });
+  };
+
+  // Ближайший сохранённый сосед в направлении dir: черновики пропускаются.
+  const neighbourId = (list: EditorCard[], index: number, dir: -1 | 1): string | null => {
+    for (let i = index + dir; i >= 0 && i < list.length; i += dir) {
+      if (!list[i].isDraft) return list[i].id;
+    }
+    return null;
   };
 
   const moveCard = (id: string, dir: -1 | 1) => {
     const idx = cards.findIndex((c) => c.id === id);
     const target = idx + dir;
     if (idx < 0 || target < 0 || target >= cards.length) return;
-    if (cards[idx].isDraft) return;
-    persistOrder(arrayMove(cards, idx, target));
+    persistOrder(arrayMove(cards, idx, target), id);
   };
 
   // DnD: commit нового порядка по факту drop (active -> позиция over).
@@ -283,21 +298,24 @@ function EditorBoard({
     const oldIndex = cards.findIndex((c) => c.id === active.id);
     const newIndex = cards.findIndex((c) => c.id === over.id);
     if (oldIndex < 0 || newIndex < 0) return;
-    persistOrder(arrayMove(cards, oldIndex, newIndex));
+    persistOrder(arrayMove(cards, oldIndex, newIndex), String(active.id));
   };
 
   return (
     <Stack gap="md">
       <Group justify="space-between" align="center">
         <Title order={2}>{title ?? "Набор"}</Title>
-        <Button
-          variant="default"
-          component={Link}
-          to="/sets"
-          leftSection={<ArrowLeft size={16} />}
-        >
-          Назад
-        </Button>
+        <Group gap="xs" align="center">
+          {move.isPending && <Loader size="xs" />}
+          <Button
+            variant="default"
+            component={Link}
+            to="/sets"
+            leftSection={<ArrowLeft size={16} />}
+          >
+            Назад
+          </Button>
+        </Group>
       </Group>
 
       {saveError && (
@@ -321,6 +339,9 @@ function EditorBoard({
           collisionDetection={closestCenter}
           onDragEnd={handleDragEnd}
         >
+          <div
+            style={move.isPending ? { pointerEvents: "none", opacity: 0.6 } : undefined}
+          >
           <SortableContext
             items={cards.map((c) => c.id)}
             strategy={verticalListSortingStrategy}
@@ -339,6 +360,7 @@ function EditorBoard({
               />
             ))}
           </SortableContext>
+          </div>
         </DndContext>
       )}
 

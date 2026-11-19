@@ -29,6 +29,9 @@ export const restCodeMessages: Record<string, string> = {
   "Element.DefinitionTooLong": "Определение слишком длинное.",
   "Element.TypeUnsupported": "Тип элемента не поддерживается.",
   "Element.PayloadInvalid": "Неверный формат содержимого карточки.",
+  "Element.OrderNeighboursRequired": "Не удалось определить, куда перенести карточку.",
+  "Element.OrderInvalid": "Некорректные соседи для перестановки.",
+  "Element.OrderNeighbourNotFound": "Карточка-сосед не найдена в наборе.",
   // Домен Media
   "Media.NotFound": "Файл не найден.",
   "Media.LinksLimitExceeded": "Слишком много изображений в запросе.",

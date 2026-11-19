@@ -14,7 +14,6 @@ public sealed record CreateElementCommand(
     Guid SetId,
     string? Type,
     System.Text.Json.JsonElement? Payload,
-    int? Position,
     string IdempotencyKey)
     : IRequest<ErrorOr<ElementResponse>>
 {
@@ -25,15 +24,16 @@ public sealed record CreateElementCommand(
 }
 
 /// <summary>
-/// Создаёт элемент и ставит его в указанную позицию (по умолчанию - в конец).
+/// Создаёт элемент и ставит его в конец набора.
 /// Внутри лока набора сначала проверяется ключ идемпотентности,
-/// и только для новой операции считается позиция, выполняется сдвиг и вставка.
+/// и только для новой операции вычисляется ранг и выполняется вставка.
 /// </summary>
 public sealed class CreateElementHandler(
     ISetRepository sets,
     IElementRepository elements,
     ISetsIdempotencyStore idempotency,
     IMediaReadiness mediaReadiness,
+    IPositionGenerator positionGenerator,
     ICurrentUser currentUser,
     TimeProvider clock)
     : IRequestHandler<CreateElementCommand, ErrorOr<ElementResponse>>
@@ -58,9 +58,6 @@ public sealed class CreateElementHandler(
         if (command.Payload is not { } payloadJson)
             return ElementErrors.PayloadRequired;
 
-        if (command.Position is < 0)
-            return ElementErrors.PositionInvalid(command.Position.Value);
-
         // Схема payload определяется типом: новый формат - правка ElementPayloadJson
         var payload = ElementPayloadJson.Create(type, payloadJson);
         if (payload.IsError)
@@ -72,30 +69,25 @@ public sealed class CreateElementHandler(
         if (ready.IsError)
             return ready.Errors;
 
-        var requestHash = CreateElementRequestHash.Compute(type, payload.Value, command.Position);
+        var requestHash = CreateElementRequestHash.Compute(type, payload.Value);
         var now = clock.GetUtcNow().UtcDateTime;
 
         return await elements.ExecuteLockedAsync<ErrorOr<ElementResponse>>(
             command.SetId,
-            async (activeCount, token) => await idempotency.ExecuteAsync<ElementResponse>(
+            async (_, token) => await idempotency.ExecuteAsync<ElementResponse>(
                 ownerId,
                 command.IdempotencyKey,
                 CreateElementCommand.Operation,
                 requestHash,
                 operationBody: async innerToken =>
                 {
-                    var current = await elements.ListForOrderingAsync(command.SetId, innerToken);
-                    var position = command.Position ?? current.Count;
-
-                    var shifted = SetOrdering.ForInsert(current, position);
-                    if (shifted.IsError)
-                        return shifted.Errors;
+                    var last = await elements.GetLastAsync(command.SetId, innerToken);
+                    var position = SetOrdering.PositionAtEnd(positionGenerator, last);
 
                     var created = Element.Create(command.SetId, payload.Value, position, now);
                     if (created.IsError)
                         return created.Errors;
 
-                    await elements.ApplyPositionsAsync(command.SetId, shifted.Value, innerToken);
                     elements.Add(created.Value);
                     set.MarkElementsChanged(now);
 

@@ -64,7 +64,6 @@ export type ElementType = "flashcard";
 interface ElementBase {
   id: string;
   images: ElementImages | null;
-  position: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -110,7 +109,6 @@ export type ElementPayloadInput = FlashcardPayloadInput;
 export interface CreateElementInput {
   type: ElementType;
   payload: ElementPayloadInput;
-  position?: number | null;
 }
 
 /** Тело PUT /api/sets/{setId}/elements/{elementId}: тип неизменяем, только payload. */

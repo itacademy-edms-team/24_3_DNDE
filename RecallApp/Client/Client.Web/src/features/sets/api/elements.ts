@@ -25,7 +25,7 @@ export async function listElements(
 
 /**
  * Все элементы набора — прокручивает курсор до конца.
- * Редактору нужен полный список: перестановка отправляет все id одним запросом.
+ * Редактору нужен полный список: перестановка считается по соседям из него.
  */
 export async function listAllElements(
   setId: string,
@@ -77,10 +77,19 @@ export async function deleteElement(
   await apiClient.delete(`/sets/${setId}/elements/${elementId}`);
 }
 
-/** Перестановка: все активные id набора ровно один раз в новом порядке. */
-export async function reorderElements(
+/**
+ * Перестановка элемента по соседям (POST .../elements/{elementId}/move).
+ * Соседи определяются на клиенте после drag&drop: элемент встаёт между ними.
+ */
+export async function moveElement(
   setId: string,
-  elementIds: string[],
-): Promise<void> {
-  await apiClient.put(`/sets/${setId}/elements/order`, { elementIds });
+  elementId: string,
+  previousId: string | null,
+  nextId: string | null,
+): Promise<Element> {
+  const { data } = await apiClient.post<Element>(
+    `/sets/${setId}/elements/${elementId}/move`,
+    { previousId, nextId },
+  );
+  return data;
 }

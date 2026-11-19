@@ -23,13 +23,13 @@ public interface IElementRepository
         CancellationToken cancellationToken);
 
     /// <summary>
-    /// Все активные элементы набора по порядку (0, 1, 2, ...). Нужен, чтобы посчитать новые
-    /// позиции при вставке, удалении или перестановке - это делают правила в <see cref="SetOrdering"/>.
-    /// Объекты возвращаются без отслеживания изменений: позиции записывает отдельный вызов
-    /// <see cref="ApplyPositionsAsync"/> - одним SQL с временным сдвигом, иначе уникальный индекс
-    /// не даст поменять позиции местами.
+    /// Все активные элементы набора по порядку. Нужен, чтобы найти соседей при перестановке
+    /// и последний элемент при создании - правила в <see cref="SetOrdering"/>.
     /// </summary>
     Task<IReadOnlyList<Element>> ListForOrderingAsync(Guid setId, CancellationToken cancellationToken);
+
+    /// <summary>Последний по порядку активный элемент набора или <see langword="null"/>, если набор пуст.</summary>
+    Task<Element?> GetLastAsync(Guid setId, CancellationToken cancellationToken);
 
     Task<Element?> FindAsync(Guid setId, Guid elementId, CancellationToken cancellationToken);
 
@@ -53,21 +53,6 @@ public interface IElementRepository
         CancellationToken cancellationToken);
 
     void Add(Element element);
-
-    /// <summary>
-    /// Применяет доменные назначения позиций.
-    /// Двухфазная запись (временный сдвиг за пределы диапазона, затем целевые значения)
-    /// нужна, потому что частичный уникальный индекс не допускает промежуточных коллизий.
-    /// </summary>
-    /// <remarks>
-    /// Единственное место, где позиции попадают в базу: в домене сеттер закрыт.
-    /// Что кому достанется, решает домен - здесь значения только применяются.
-    /// Загруженные элементы не меняются после вызова и их нельзя использовать.
-    /// </remarks>
-    Task ApplyPositionsAsync(
-        Guid setId,
-        IReadOnlyList<ElementPosition> positions,
-        CancellationToken cancellationToken);
 
     /// <summary>Мягко удаляет все элементы набора при удалении самого набора (онтология §6.6).</summary>
     Task<int> MarkAllDeletedAsync(Guid setId, DateTime utcNow, CancellationToken cancellationToken);

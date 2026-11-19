@@ -24,7 +24,12 @@ internal sealed class ElementConfiguration : IEntityTypeConfiguration<Element>
                 value => ParseStoredType(value))
             .IsRequired();
 
-        builder.Property(element => element.Position).HasColumnName("position").IsRequired();
+        // Строки сортируются побайтово (COLLATE "C"), чтобы правильно работало сравнение
+        builder.Property(element => element.Position)
+            .HasColumnName("position")
+            .HasColumnType("text")
+            .UseCollation("C")
+            .IsRequired();
 
         // Документное поле типа (ADR 0015): реляционная часть общая, состав payload задаёт тип.
         // Один конвертер на один тип. Новый тип - новый конвертер и добавление новго HasConversion.
@@ -47,7 +52,7 @@ internal sealed class ElementConfiguration : IEntityTypeConfiguration<Element>
             .OnDelete(DeleteBehavior.Cascade) // с удалением набора удаляем и привязанные к нему элементы
             .HasConstraintName("fk_elements_sets_set_id");
 
-        // Плотные уникальные позиции среди активных элементов
+        // Уникальные ранги среди активных элементов: конфликт ловится базой, а не логикой.
         builder.HasIndex(element => new { element.SetId, element.Position })
             .IsUnique()
             .HasDatabaseName("ux_elements_set_id_position")

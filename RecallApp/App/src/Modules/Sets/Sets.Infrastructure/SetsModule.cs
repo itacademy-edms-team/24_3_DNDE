@@ -12,6 +12,7 @@ using Npgsql;
 using Sets.Application.Abstractions;
 using Sets.Application.Elements;
 using Sets.Application.Sets;
+using Sets.Domain.Elements;
 using Sets.Infrastructure.Data;
 using Sets.Infrastructure.Data.Idempotency;
 using Sets.Infrastructure.Data.Outbox;
@@ -41,6 +42,7 @@ public static class SetsModule
         services.AddCommandValidators(typeof(ISetRepository));
         services.AddScoped<ISetRepository, SetRepository>();
         services.AddScoped<IElementRepository, ElementRepository>();
+        services.AddScoped<IPositionGenerator, LexoRankPositionGenerator>();
         services.AddScoped<ISetsIdempotencyStore, IdempotencyStore>();
         services.AddScoped<OutboxProcessor>();
 
@@ -126,7 +128,7 @@ public static class SetsModule
         group.MapPost("/", async (Guid setId, CreateElementRequest request, HttpContext http, ISender sender, CancellationToken cancellationToken) =>
         {
             var result = await sender.Send(
-                new CreateElementCommand(setId, request.Type, request.Payload, request.Position,
+                new CreateElementCommand(setId, request.Type, request.Payload,
                     IdempotencyKeyFilter.GetCanonicalKey(http)),
                 cancellationToken);
 
@@ -155,11 +157,19 @@ public static class SetsModule
             return result.IsError ? result.Errors.ToProblem() : Results.NoContent();
         });
 
-        // Полная перестановка: маршрут с фиксированным сегментом не конфликтует с {elementId:guid}.
-        group.MapPut("/order", async (Guid setId, ReorderElementsRequest request, ISender sender, CancellationToken cancellationToken) =>
+        // Перестановка по соседям: элемент встаёт между prev и next, остальные не меняются.
+        group.MapPost("/{elementId:guid}/move", async (
+            Guid setId,
+            Guid elementId,
+            MoveElementRequest request,
+            ISender sender,
+            CancellationToken cancellationToken) =>
         {
-            var result = await sender.Send(new ReorderElementsCommand(setId, request.ElementIds), cancellationToken);
-            return result.IsError ? result.Errors.ToProblem() : Results.NoContent();
+            var result = await sender.Send(
+                new MoveElementCommand(setId, elementId, request.PreviousId, request.NextId),
+                cancellationToken);
+
+            return result.IsError ? result.Errors.ToProblem() : Results.Ok(result.Value);
         });
     }
 

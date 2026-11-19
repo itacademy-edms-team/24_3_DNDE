@@ -79,31 +79,29 @@ public static class ElementErrors
             ["max"] = ElementConstraints.DefinitionMaxLength,
         });
 
-    public static Error PositionInvalid(int position) => Error.Validation(
+    /// <summary>Ранг позиции пуст или не задан.</summary>
+    public static Error PositionInvalid(string? position) => Error.Validation(
         code: "Element.PositionInvalid",
-        description: $"Position {position} must be non-negative.",
+        description: $"Position rank '{position}' must not be empty.",
         metadata: new Dictionary<string, object> { ["target"] = "element.position" });
 
-    /// <summary>Позиция за пределами текущего состава набора: вставка допустима в 0..count.</summary>
-    public static Error PositionOutOfRange(int position, int maxPosition) => Error.Validation(
-        code: "Element.PositionOutOfRange",
-        description: $"Position {position} is outside the allowed range 0..{maxPosition}.",
-        metadata: new Dictionary<string, object>
-        {
-            ["target"] = "element.position",
-            ["max"] = maxPosition,
-        });
+    /// <summary>Перестановка без соседей: непонятно, куда ставить элемент.</summary>
+    public static readonly Error OrderNeighboursRequired = Error.Validation(
+        code: "Element.OrderNeighboursRequired",
+        description: "At least one neighbour (previous or next) is required to position the element.",
+        metadata: new Dictionary<string, object> { ["target"] = "body" });
 
-    /// <summary>Набор элементов изменился между чтением клиента и перестановкой: порядок не применён.</summary>
-    public static readonly Error OrderMismatch = Error.Conflict(
-        code: "Element.OrderMismatch",
-        description: "The supplied order does not match the current set elements; reload the set and retry.");
+    /// <summary>Соседи заданы так, что позиция между ними не определена.</summary>
+    public static Error OrderInvalid(string reason) => Error.Validation(
+        code: "Element.OrderInvalid",
+        description: $"Order neighbours are invalid: {reason}.",
+        metadata: new Dictionary<string, object> { ["target"] = "body" });
 
-    /// <summary>Тело перестановки без списка id: запрос не сформирован, переставлять нечего.</summary>
-    public static readonly Error OrderRequired = Error.Validation(
-        code: "Element.OrderRequired",
-        description: "Order must contain element ids.",
-        metadata: new Dictionary<string, object> { ["target"] = "body.elementIds" });
+    /// <summary>Указанный сосед не найден среди активных элементов набора.</summary>
+    public static Error OrderNeighbourNotFound(Guid elementId) => Error.Validation(
+        code: "Element.OrderNeighbourNotFound",
+        description: $"Neighbour element '{elementId}' is not an active element of this set.",
+        metadata: new Dictionary<string, object> { ["target"] = "body" });
 
     /// <summary>Курсор пагинации не разбирается или не того формата.</summary>
     public static readonly Error CursorInvalid = Error.Validation(

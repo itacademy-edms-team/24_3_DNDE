@@ -14,7 +14,6 @@ public sealed record ElementResponse(
     string Type,
     JsonElement Payload,
     IReadOnlyDictionary<string, IReadOnlyDictionary<string, MediaImageLink>>? Images,
-    int Position,
     DateTime CreatedAt,
     DateTime UpdatedAt)
 {
@@ -25,7 +24,6 @@ public sealed record ElementResponse(
         element.Type.ToContractValue(),
         ToJsonElement(ElementPayloadJson.ToContractJson(element.Payload)),
         BuildImages(element.Payload, links),
-        element.Position,
         element.CreatedAt,
         element.UpdatedAt);
 

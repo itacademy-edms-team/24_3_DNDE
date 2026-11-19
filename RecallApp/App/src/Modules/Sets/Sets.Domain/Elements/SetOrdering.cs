@@ -3,59 +3,68 @@ using ErrorOr;
 namespace Sets.Domain.Elements;
 
 /// <summary>
-/// Правила порядка элементов набора: позиции плотные `0..n-1`, перестановка - только полный список.
-/// Домен решает, кто и куда двигается; применение к строкам (без конфликта уникального индекса) -
-/// задача инфраструктуры.
+/// Предоставляет правила порядка элементов набора.
 /// </summary>
+/// <remarks>
+/// Порядок задаётся рангами: новый элемент получает ранг между соседями, остальные элементы
+/// не меняются. Правило решает, куда именно попадает элемент, а вычисление значения ранга
+/// делегируется <see cref="IPositionGenerator"/>.
+/// </remarks>
 public static class SetOrdering
 {
     /// <summary>
-    /// Проверяет присланный порядок и возвращает целевые позиции для всех элементов.
-    /// Несовпадение состава - 409.
+    /// Вычисляет позицию для перемещаемого элемента по его соседям.
     /// </summary>
-    public static ErrorOr<IReadOnlyList<ElementPosition>> Assign(
+    /// <param name="generator">Вычислитель рангов.</param>
+    /// <param name="current">Активные элементы набора по порядку.</param>
+    /// <param name="elementId">Перемещаемый элемент.</param>
+    /// <param name="previousId">Сосед перед элементом; <see langword="null"/> — начало набора.</param>
+    /// <param name="nextId">Сосед после элемента; <see langword="null"/> — конец набора.</param>
+    /// <returns>Новая позиция либо ошибка правила порядка.</returns>
+    public static ErrorOr<Position> PositionFor(
+        IPositionGenerator generator,
         IReadOnlyList<Element> current,
-        IReadOnlyList<Guid>? requested)
+        Guid elementId,
+        Guid? previousId,
+        Guid? nextId)
     {
-        if (requested is not { Count: > 0 })
-            return ElementErrors.OrderRequired;
+        if (previousId is null && nextId is null)
+            return ElementErrors.OrderNeighboursRequired;
 
-        var requestedIds = requested.ToHashSet();
-        if (requestedIds.Count != requested.Count)
-            return ElementErrors.OrderMismatch;
+        if (previousId == nextId)
+            return ElementErrors.OrderInvalid("neighbours are the same element");
 
-        if (!requestedIds.SetEquals(current.Select(element => element.Id)))
-            return ElementErrors.OrderMismatch;
+        if (elementId == previousId || elementId == nextId)
+            return ElementErrors.OrderInvalid("element cannot be its own neighbour");
 
-        return requested
-            .Select((elementId, position) => new ElementPosition(elementId, position))
-            .ToList();
+        var previous = previousId is { } previousValue
+            ? current.FirstOrDefault(element => element.Id == previousValue)
+            : null;
+
+        var next = nextId is { } nextValue
+            ? current.FirstOrDefault(element => element.Id == nextValue)
+            : null;
+
+        if (previousId is not null && previous is null)
+            return ElementErrors.OrderNeighbourNotFound(previousId.Value);
+
+        if (nextId is not null && next is null)
+            return ElementErrors.OrderNeighbourNotFound(nextId.Value);
+
+        if (previous is not null && next is not null && string.CompareOrdinal(previous.Position, next.Position) >= 0)
+            return ElementErrors.OrderInvalid("previous element is not before the next element");
+
+        return generator.Between(
+            previous is null ? null : Position.FromStorage(previous.Position),
+            next is null ? null : Position.FromStorage(next.Position));
     }
 
     /// <summary>
-    /// Позиции для вставки в <paramref name="position"/>: все элементы с позицией >= неё сдвигаются на +1.
+    /// Вычисляет позицию для нового элемента в конце набора.
     /// </summary>
-    public static ErrorOr<IReadOnlyList<ElementPosition>> ForInsert(
-        IReadOnlyList<Element> current,
-        int position)
-    {
-        if (position < 0 || position > current.Count)
-            return ElementErrors.PositionOutOfRange(position, current.Count);
-
-        return current
-            .Where(element => element.Position >= position)
-            .Select(element => new ElementPosition(element.Id, element.Position + 1))
-            .ToList();
-    }
-
-    /// <summary>
-    /// Позиции для уплотнения после удаления: все элементы ниже удалённой позиции сдвигаются на −1.
-    /// </summary>
-    public static IReadOnlyList<ElementPosition> ForRemoval(
-        IReadOnlyList<Element> current,
-        int removedPosition) =>
-        current
-            .Where(element => element.Position > removedPosition)
-            .Select(element => new ElementPosition(element.Id, element.Position - 1))
-            .ToList();
+    /// <param name="generator">Вычислитель рангов.</param>
+    /// <param name="last">Последний элемент набора; <see langword="null"/>, если набор пуст.</param>
+    /// <returns>Позиция после последнего элемента.</returns>
+    public static Position PositionAtEnd(IPositionGenerator generator, Element? last) =>
+        generator.Between(last is null ? null : Position.FromStorage(last.Position), null);
 }

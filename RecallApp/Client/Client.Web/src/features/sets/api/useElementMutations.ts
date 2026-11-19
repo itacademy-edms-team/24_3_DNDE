@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import type { CreateElementInput, UpdateElementInput } from "@/features/sets/model/types";
-import { createElement, deleteElement, reorderElements, updateElement } from "./elements";
+import { createElement, deleteElement, moveElement, updateElement } from "./elements";
 import { elementsKeys } from "./elementsKeys";
 
 /**
@@ -34,10 +34,25 @@ export function useDeleteElement(setId: string) {
   });
 }
 
-export function useReorderElements(setId: string) {
+/**
+ * Перестановка элемента между соседями.
+ * При ошибке кэш инвалидируется: следующий показ редактора возьмёт серверный порядок.
+ */
+export function useMoveElement(setId: string) {
   const queryClient = useQueryClient();
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: elementsKeys.list(setId) });
+
   return useMutation({
-    mutationFn: (elementIds: string[]) => reorderElements(setId, elementIds),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: elementsKeys.list(setId) }),
+    mutationFn: ({
+      elementId,
+      previousId,
+      nextId,
+    }: {
+      elementId: string;
+      previousId: string | null;
+      nextId: string | null;
+    }) => moveElement(setId, elementId, previousId, nextId),
+    onSuccess: invalidate,
+    onError: invalidate,
   });
 }

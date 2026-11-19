@@ -8,11 +8,6 @@ namespace Sets.Infrastructure.Data;
 
 internal sealed class ElementRepository(SetsDbContext context) : IElementRepository
 {
-    /// <summary>
-    /// Временный сдвиг позиций: частичный уникальный индекс не позволяет двигать строки «на месте».
-    /// </summary>
-    private const int ShiftOffset = 1_000_000;
-
     public async Task<IReadOnlyList<Element>> ListBySetAsync(
         Guid setId,
         ElementCursor? after,
@@ -25,13 +20,14 @@ internal sealed class ElementRepository(SetsDbContext context) : IElementReposit
 
         if (after is not null)
         {
-            // Сравнение кортежа (position, id) > курсора - Npgsql транслирует в row comparison (ADR 0039).
+            // Ранг хранится строкой: keyset идёт по (position, id) в лексикографическом порядке
+            // (коллация "C" на колонке). string.Compare Npgsql транслирует в сравнение строк.
             var cursorPosition = after.Position;
             var cursorId = after.Id;
 
-            query = query.Where(element => EF.Functions.GreaterThan(
-                ValueTuple.Create(element.Position, element.Id),
-                ValueTuple.Create(cursorPosition, cursorId)));
+            query = query.Where(element =>
+                string.Compare(element.Position, cursorPosition) > 0
+                || (string.Compare(element.Position, cursorPosition) == 0 && element.Id > cursorId));
         }
 
         return await query
@@ -49,6 +45,13 @@ internal sealed class ElementRepository(SetsDbContext context) : IElementReposit
             .Where(element => element.SetId == setId && element.DeletedAt == null)
             .OrderBy(element => element.Position)
             .ToListAsync(cancellationToken);
+
+    public Task<Element?> GetLastAsync(Guid setId, CancellationToken cancellationToken) =>
+        context.Elements
+            .AsNoTracking()
+            .Where(element => element.SetId == setId && element.DeletedAt == null)
+            .OrderByDescending(element => element.Position)
+            .FirstOrDefaultAsync(cancellationToken);
 
     public Task<Element?> FindAsync(Guid setId, Guid elementId, CancellationToken cancellationToken) =>
         context.Elements.SingleOrDefaultAsync(
@@ -94,42 +97,6 @@ internal sealed class ElementRepository(SetsDbContext context) : IElementReposit
     }
 
     public void Add(Element element) => context.Elements.Add(element);
-
-    public async Task ApplyPositionsAsync(
-        Guid setId,
-        IReadOnlyList<ElementPosition> positions,
-        CancellationToken cancellationToken)
-    {
-        if (positions.Count == 0)
-            return;
-
-        var elementIds = positions.Select(position => position.ElementId).ToArray();
-
-        // Фаза 1: уводим затрагиваемые строки за пределы диапазона.
-        // pos = pos + ShiftOffset
-        await context.Elements
-            .Where(element => element.SetId == setId
-                && element.DeletedAt == null
-                && elementIds.Contains(element.Id))
-            .ExecuteUpdateAsync(
-                update => update
-                    .SetProperty(element => element.Position, element => element.Position + ShiftOffset),
-                cancellationToken);
-
-        // Фаза 2: возвращаем в диапазон со сдвигом +1.
-        // pos = pos - ShiftOffset + 1
-        foreach (var position in positions)
-        {
-            var elementId = position.ElementId;
-            var newPosition = position.Position;
-
-            await context.Elements
-                .Where(element => element.Id == elementId && element.SetId == setId && element.DeletedAt == null)
-                .ExecuteUpdateAsync(
-                    update => update.SetProperty(element => element.Position, newPosition),
-                    cancellationToken);
-        }
-    }
 
     public Task<int> MarkAllDeletedAsync(Guid setId, DateTime utcNow, CancellationToken cancellationToken) =>
         context.Elements

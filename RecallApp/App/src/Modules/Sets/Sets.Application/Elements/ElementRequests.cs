@@ -7,8 +7,7 @@ namespace Sets.Application.Elements;
 /// </summary>
 /// <param name="Type">Тип элемента; в CREATE-01 поддерживается только <c>flashcard</c>.</param>
 /// <param name="Payload">Схема полей зависит от типа; разбор и проверка происходит в домене по контрактному типу.</param>
-/// <param name="Position">Куда вставить: 0..число существующих элементов; null - вставка в конец.</param>
-public sealed record CreateElementRequest(string? Type, JsonElement? Payload, int? Position);
+public sealed record CreateElementRequest(string? Type, JsonElement? Payload);
 
 /// <summary>
 /// Тело PUT /api/sets/{setId}/elements/{id}: полная замена содержимого.
@@ -16,8 +15,12 @@ public sealed record CreateElementRequest(string? Type, JsonElement? Payload, in
 /// </summary>
 public sealed record UpdateElementRequest(JsonElement? Payload);
 
-/// <summary>Тело PUT /api/sets/{setId}/elements/order: все активные id ровно один раз.</summary>
-public sealed record ReorderElementsRequest(IReadOnlyList<Guid>? ElementIds);
+/// <summary>
+/// Тело POST /api/sets/{setId}/elements/{id}/move: соседи, между которыми встаёт элемент.
+/// </summary>
+/// <param name="PreviousId">Сосед перед элементом; <see langword="null"/> - начало набора.</param>
+/// <param name="NextId">Сосед после элемента; <see langword="null"/> - конец набора.</param>
+public sealed record MoveElementRequest(Guid? PreviousId, Guid? NextId);
 
 /// <summary>Маршруты элементов набора: id набора всегда из пути, а не из тела.</summary>
 public static class ElementRoute
@@ -26,5 +29,5 @@ public static class ElementRoute
 
     public const string ById = "{elementId:guid}";
 
-    public const string Order = "order";
+    public const string Move = "{elementId:guid}/move";
 }

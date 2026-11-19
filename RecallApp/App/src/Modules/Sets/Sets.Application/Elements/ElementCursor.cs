@@ -5,12 +5,22 @@ namespace Sets.Application.Elements;
 /// <summary>
 /// Курсор постраничной выдачи элементов набора (ADR 0039).
 /// Хранит ключ сортировки <c>position ASC, id ASC</c>:
-/// id - tie-breaker на случай рассинхронизации. Клиент возвращает его непрозрачно.
+/// id - tie-breaker на случай совпадения ранга. Клиент возвращает его непрозрачно.
 /// </summary>
-public sealed record ElementCursor(int Position, Guid Id)
+/// <param name="Position">Строковый ранг последнего выданного элемента.</param>
+/// <param name="Id">Идентификатор последнего выданного элемента.</param>
+public sealed record ElementCursor(string Position, Guid Id)
 {
+    /// <summary>
+    /// Кодирует курсор в непрозрачную строку.
+    /// </summary>
     public string Encode() => CursorCodec.Encode(this);
 
+    /// <summary>
+    /// Разбирает курсор и проверяет содержимое.
+    /// </summary>
+    /// <param name="cursor">Непрозрачная строка от клиента.</param>
+    /// <returns>Курсор или <see langword="null"/>, если строку не удалось разобрать.</returns>
     public static ElementCursor? TryDecode(string? cursor)
     {
         if (!CursorCodec.TryDecode<ElementCursor>(cursor, out var decoded) || decoded is null)
@@ -19,5 +29,5 @@ public sealed record ElementCursor(int Position, Guid Id)
         return decoded.IsValid ? decoded : null;
     }
 
-    private bool IsValid => Position >= 0 && Id != Guid.Empty;
+    private bool IsValid => !string.IsNullOrWhiteSpace(Position) && Id != Guid.Empty;
 }

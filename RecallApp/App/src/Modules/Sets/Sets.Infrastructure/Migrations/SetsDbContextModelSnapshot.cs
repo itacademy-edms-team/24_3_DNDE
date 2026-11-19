@@ -43,9 +43,11 @@ namespace Sets.Infrastructure.Migrations
                         .HasColumnType("jsonb")
                         .HasColumnName("payload");
 
-                    b.Property<int>("Position")
-                        .HasColumnType("integer")
-                        .HasColumnName("position");
+                    b.Property<string>("Position")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("position")
+                        .UseCollation("C");
 
                     b.Property<Guid>("SetId")
                         .HasColumnType("uuid")

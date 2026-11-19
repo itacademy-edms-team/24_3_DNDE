@@ -5,8 +5,8 @@ using System.Text.Json;
 namespace Tests.Integration.Sets;
 
 /// <summary>
-/// Элементы набора: единственный тип CREATE-01 (флеш-карточка), плотные позиции,
-/// полная перестановка с 409 при расхождении состава, курсорная выдача по позиции.
+/// Элементы набора: единственный тип CREATE-01 (флеш-карточка), порядок рангами,
+/// перестановка по соседям и курсорная выдача по позиции.
 /// </summary>
 public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
 {
@@ -23,12 +23,12 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
     }
 
     [DatabaseFact]
-    public async Task CreateElement_ValidFlashcard_Returns201WithPositionZero()
+    public async Task CreateElement_ValidFlashcard_Returns201()
     {
         using var client = CreateClientForNewUser();
         var setId = await CreateSetAsync(client);
 
-        var response = await PostElementAsync(client, 
+        var response = await PostElementAsync(client,
             ElementsUrl(setId),
             new { type = "flashcard", payload = new { term = "  serendipity  ", definition = "  счастливая случайность  " } });
 
@@ -40,14 +40,13 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
         Assert.Equal("счастливая случайность", payload.GetProperty("definition").GetString());
         // Дискриминатор не дублируется в контракте: тип уже есть отдельным полем.
         Assert.False(payload.TryGetProperty("type", out _));
-        Assert.Equal(0, element.GetProperty("position").GetInt32());
         Assert.Equal(
             $"/api/sets/{setId}/elements/{element.GetProperty("id").GetGuid()}",
             response.Headers.Location?.ToString());
     }
 
     [DatabaseFact]
-    public async Task CreateElement_SecondElement_GetsNextPosition()
+    public async Task CreateElement_SecondElement_AppendsAfterFirst()
     {
         using var client = CreateClientForNewUser();
         var setId = await CreateSetAsync(client);
@@ -55,8 +54,8 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
         var first = await CreateElementAsync(client, setId, "Первый", "Определение 1");
         var second = await CreateElementAsync(client, setId, "Второй", "Определение 2");
 
-        Assert.Equal(0, first.Position);
-        Assert.Equal(1, second.Position);
+        var page = await ReadPageAsync(client, setId);
+        Assert.Equal(new[] { first.Id, second.Id }, page.Items.Select(IdOf));
     }
 
     [DatabaseFact]
@@ -65,7 +64,7 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
         using var client = CreateClientForNewUser();
         var setId = await CreateSetAsync(client);
 
-        var response = await PostElementAsync(client, 
+        var response = await PostElementAsync(client,
             ElementsUrl(setId),
             new { type = "multiple-choice", payload = new { question = "a" } });
 
@@ -81,7 +80,7 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
         using var client = CreateClientForNewUser();
         var setId = await CreateSetAsync(client);
 
-        var response = await PostElementAsync(client, 
+        var response = await PostElementAsync(client,
             ElementsUrl(setId),
             new { type = "flashcard", payload = new { term = "   ", definition = "определение" } });
 
@@ -98,7 +97,7 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
         using var stranger = CreateClientForNewUser();
         var setId = await CreateSetAsync(owner);
 
-        var response = await PostElementAsync(stranger, 
+        var response = await PostElementAsync(stranger,
             ElementsUrl(setId),
             new { type = "flashcard", payload = new { term = "a", definition = "b" } });
 
@@ -108,7 +107,7 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
     }
 
     [DatabaseFact]
-    public async Task UpdateElement_NewContent_KeepsTypeAndPosition()
+    public async Task UpdateElement_NewContent_KeepsTypeAndOrder()
     {
         using var client = CreateClientForNewUser();
         var setId = await CreateSetAsync(client);
@@ -121,18 +120,15 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var updated = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal(second.Position, updated.GetProperty("position").GetInt32());
         Assert.Equal("flashcard", updated.GetProperty("type").GetString());
         Assert.Equal("Второй, но переписан", updated.GetProperty("payload").GetProperty("term").GetString());
-        Assert.Equal("Новое определение", updated.GetProperty("payload").GetProperty("definition").GetString());
 
-        // Первый элемент не затронут.
         var page = await ReadPageAsync(client, setId);
-        Assert.Equal(first.Term, page.Items[0].GetProperty("payload").GetProperty("term").GetString());
+        Assert.Equal(new[] { first.Id, second.Id }, page.Items.Select(IdOf));
     }
 
     [DatabaseFact]
-    public async Task DeleteElement_MiddlePosition_CompactsRemaining()
+    public async Task DeleteElement_MiddleElement_KeepsOrderOfRemaining()
     {
         using var client = CreateClientForNewUser();
         var setId = await CreateSetAsync(client);
@@ -144,14 +140,11 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
         var page = await ReadPageAsync(client, setId);
-        Assert.Equal(
-            new[] { first.Id, third.Id },
-            page.Items.Select(item => item.GetProperty("id").GetGuid()));
-        Assert.Equal(new[] { 0, 1 }, page.Items.Select(item => item.GetProperty("position").GetInt32()));
+        Assert.Equal(new[] { first.Id, third.Id }, page.Items.Select(IdOf));
     }
 
     [DatabaseFact]
-    public async Task ReorderElements_ReversedOrder_ReturnsNewPositions()
+    public async Task MoveElement_ToFront_PutsElementBeforeFirst()
     {
         using var client = CreateClientForNewUser();
         var setId = await CreateSetAsync(client);
@@ -159,54 +152,113 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
         var second = await CreateElementAsync(client, setId, "Второй", "2");
         var third = await CreateElementAsync(client, setId, "Третий", "3");
 
-        var response = await client.PutAsJsonAsync(
-            $"{ElementsUrl(setId)}/order",
-            new { elementIds = new[] { third.Id, second.Id, first.Id } });
+        var response = await MoveAsync(client, setId, third.Id, previousId: null, nextId: first.Id);
 
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var page = await ReadPageAsync(client, setId);
-        Assert.Equal(
-            new[] { third.Id, second.Id, first.Id },
-            page.Items.Select(item => item.GetProperty("id").GetGuid()));
-        Assert.Equal(new[] { 0, 1, 2 }, page.Items.Select(item => item.GetProperty("position").GetInt32()));
+        Assert.Equal(new[] { third.Id, first.Id, second.Id }, page.Items.Select(IdOf));
     }
 
     [DatabaseFact]
-    public async Task ReorderElements_MissingElement_Returns409WithOrderMismatchCode()
+    public async Task MoveElement_BetweenNeighbours_PlacesElementBetween()
     {
         using var client = CreateClientForNewUser();
         var setId = await CreateSetAsync(client);
         var first = await CreateElementAsync(client, setId, "Первый", "1");
-        _ = await CreateElementAsync(client, setId, "Второй", "2");
+        var second = await CreateElementAsync(client, setId, "Второй", "2");
+        var third = await CreateElementAsync(client, setId, "Третий", "3");
 
-        var response = await client.PutAsJsonAsync(
-            $"{ElementsUrl(setId)}/order",
-            new { elementIds = new[] { first.Id } });
+        var response = await MoveAsync(client, setId, third.Id, previousId: first.Id, nextId: second.Id);
 
-        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-        var problem = await ReadProblemAsync(response);
-        Assert.Equal("Element.OrderMismatch", problem.GetProperty("title").GetString());
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var page = await ReadPageAsync(client, setId);
+        Assert.Equal(new[] { first.Id, third.Id, second.Id }, page.Items.Select(IdOf));
     }
 
     [DatabaseFact]
-    public async Task ReorderElements_DuplicateId_Returns409WithOrderMismatchCode()
+    public async Task MoveElement_ToEnd_PutsElementLast()
     {
         using var client = CreateClientForNewUser();
         var setId = await CreateSetAsync(client);
         var first = await CreateElementAsync(client, setId, "Первый", "1");
-        _ = await CreateElementAsync(client, setId, "Второй", "2");
+        var second = await CreateElementAsync(client, setId, "Второй", "2");
+        var third = await CreateElementAsync(client, setId, "Третий", "3");
 
-        var response = await client.PutAsJsonAsync(
-            $"{ElementsUrl(setId)}/order",
-            new { elementIds = new[] { first.Id, first.Id } });
+        var response = await MoveAsync(client, setId, first.Id, previousId: third.Id, nextId: null);
 
-        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-        var problem = await ReadProblemAsync(response);
-        Assert.Equal("Element.OrderMismatch", problem.GetProperty("title").GetString());
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var page = await ReadPageAsync(client, setId);
+        Assert.Equal(new[] { second.Id, third.Id, first.Id }, page.Items.Select(IdOf));
     }
 
     [DatabaseFact]
-    public async Task ListElements_PageSizeOne_ReturnsPositionsWithoutOverlap()
+    public async Task MoveElement_NoNeighbours_Returns400WithNeighboursRequiredCode()
+    {
+        using var client = CreateClientForNewUser();
+        var setId = await CreateSetAsync(client);
+        var element = await CreateElementAsync(client, setId, "Первый", "1");
+
+        var response = await MoveAsync(client, setId, element.Id, previousId: null, nextId: null);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await ReadProblemAsync(response);
+        Assert.Equal("Element.OrderNeighboursRequired", problem.GetProperty("title").GetString());
+    }
+
+    [DatabaseFact]
+    public async Task MoveElement_UnknownNeighbour_Returns400WithNeighbourNotFoundCode()
+    {
+        using var client = CreateClientForNewUser();
+        var setId = await CreateSetAsync(client);
+        var element = await CreateElementAsync(client, setId, "Первый", "1");
+
+        var response = await MoveAsync(client, setId, element.Id, previousId: Guid.NewGuid(), nextId: null);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await ReadProblemAsync(response);
+        Assert.Equal("Element.OrderNeighbourNotFound", problem.GetProperty("title").GetString());
+    }
+
+    [DatabaseFact]
+    public async Task MoveElement_ForeignSet_Returns404WithSetNotFoundCode()
+    {
+        using var owner = CreateClientForNewUser();
+        using var stranger = CreateClientForNewUser();
+        var setId = await CreateSetAsync(owner);
+        var element = await CreateElementAsync(owner, setId, "Первый", "1");
+
+        var response = await MoveAsync(stranger, setId, element.Id, previousId: null, nextId: null);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [DatabaseFact]
+    public async Task MoveElement_ChangesOrderAndBumpsSetKeepsElementTimestamps()
+    {
+        using var client = CreateClientForNewUser();
+        var setId = await CreateSetAsync(client);
+        var first = await CreateElementAsync(client, setId, "Первый", "1");
+        var second = await CreateElementAsync(client, setId, "Второй", "2");
+        var third = await CreateElementAsync(client, setId, "Третий", "3");
+
+        var setBefore = await client.GetFromJsonAsync<JsonElement>($"/api/sets/{setId}");
+        var before = await ReadPageAsync(client, setId);
+        var beforeById = before.Items.ToDictionary(IdOf, item => item.GetProperty("updatedAt").GetDateTime());
+
+        await MoveAsync(client, setId, first.Id, previousId: third.Id, nextId: null);
+
+        var after = await ReadPageAsync(client, setId);
+        var afterById = after.Items.ToDictionary(IdOf, item => item.GetProperty("updatedAt").GetDateTime());
+
+        // Смена позиции - структурное изменение набора: метки элементов не двигаются.
+        Assert.All(afterById, pair => Assert.Equal(beforeById[pair.Key], pair.Value));
+
+        var setAfter = await client.GetFromJsonAsync<JsonElement>($"/api/sets/{setId}");
+        Assert.True(setAfter.GetProperty("updatedAt").GetDateTime() > setBefore.GetProperty("updatedAt").GetDateTime());
+    }
+
+    [DatabaseFact]
+    public async Task ListElements_PageSizeOne_ReturnsOrderWithoutOverlap()
     {
         using var client = CreateClientForNewUser();
         var setId = await CreateSetAsync(client);
@@ -216,8 +268,8 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
         var firstPage = await ReadPageAsync(client, setId, pageSize: 1);
         var secondPage = await ReadPageAsync(client, setId, pageSize: 1, cursor: firstPage.NextCursor);
 
-        Assert.Equal(first.Id, firstPage.Items.Single().GetProperty("id").GetGuid());
-        Assert.Equal(second.Id, secondPage.Items.Single().GetProperty("id").GetGuid());
+        Assert.Equal(first.Id, IdOf(firstPage.Items.Single()));
+        Assert.Equal(second.Id, IdOf(secondPage.Items.Single()));
         Assert.Null(secondPage.NextCursor);
     }
 
@@ -281,7 +333,7 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
         using var client = CreateClientForNewUser();
         var setId = await CreateSetAsync(client);
 
-        var response = await PostElementAsync(client, 
+        var response = await PostElementAsync(client,
             ElementsUrl(setId),
             new { type = "flashcard", payload = "term and definition as text" });
 
@@ -296,7 +348,7 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
         using var client = CreateClientForNewUser();
         var setId = await CreateSetAsync(client);
 
-        var response = await PostElementAsync(client, 
+        var response = await PostElementAsync(client,
             ElementsUrl(setId),
             new { type = "", payload = new { term = "a", definition = "b" } });
 
@@ -306,101 +358,23 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
     }
 
     [DatabaseFact]
-    public async Task CreateElement_PositionZero_InsertsAtFrontAndShiftsOthers()
-    {
-        using var client = CreateClientForNewUser();
-        var setId = await CreateSetAsync(client);
-        var first = await CreateElementAsync(client, setId, "Первый", "1");
-        var second = await CreateElementAsync(client, setId, "Второй", "2");
-
-        var inserted = await CreateElementAsync(client, setId, "Нулевой", "0", position: 0);
-
-        Assert.Equal(0, inserted.Position);
-        var page = await ReadPageAsync(client, setId);
-        Assert.Equal(
-            new[] { inserted.Id, first.Id, second.Id },
-            page.Items.Select(item => item.GetProperty("id").GetGuid()));
-        Assert.Equal(new[] { 0, 1, 2 }, page.Items.Select(item => item.GetProperty("position").GetInt32()));
-    }
-
-    [DatabaseFact]
-    public async Task CreateElement_PositionMiddle_InsertsBetweenElements()
-    {
-        using var client = CreateClientForNewUser();
-        var setId = await CreateSetAsync(client);
-        var first = await CreateElementAsync(client, setId, "Первый", "1");
-        var second = await CreateElementAsync(client, setId, "Второй", "2");
-
-        var inserted = await CreateElementAsync(client, setId, "Между", "1.5", position: 1);
-
-        Assert.Equal(1, inserted.Position);
-        var page = await ReadPageAsync(client, setId);
-        Assert.Equal(
-            new[] { first.Id, inserted.Id, second.Id },
-            page.Items.Select(item => item.GetProperty("id").GetGuid()));
-    }
-
-    [DatabaseFact]
-    public async Task CreateElement_PositionEqualsCount_AppendsToEnd()
-    {
-        using var client = CreateClientForNewUser();
-        var setId = await CreateSetAsync(client);
-        await CreateElementAsync(client, setId, "Первый", "1");
-        await CreateElementAsync(client, setId, "Второй", "2");
-
-        var inserted = await CreateElementAsync(client, setId, "Третий", "3", position: 2);
-
-        Assert.Equal(2, inserted.Position);
-    }
-
-    [DatabaseFact]
-    public async Task CreateElement_PositionBeyondCount_Returns400WithPositionOutOfRangeCode()
-    {
-        using var client = CreateClientForNewUser();
-        var setId = await CreateSetAsync(client);
-        await CreateElementAsync(client, setId, "Первый", "1");
-
-        var response = await PostElementAsync(client, 
-            ElementsUrl(setId),
-            new { type = "flashcard", payload = new { term = "a", definition = "b" }, position = 5 });
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var problem = await ReadProblemAsync(response);
-        Assert.Equal("Element.PositionOutOfRange", problem.GetProperty("title").GetString());
-        Assert.Equal("element.position", problem.GetProperty("target").GetString());
-    }
-
-    [DatabaseFact]
-    public async Task CreateElement_NegativePosition_Returns400WithPositionInvalidCode()
+    public async Task CreateElement_TwoParallelAppends_BothCreated()
     {
         using var client = CreateClientForNewUser();
         var setId = await CreateSetAsync(client);
 
-        var response = await PostElementAsync(client, 
-            ElementsUrl(setId),
-            new { type = "flashcard", payload = new { term = "a", definition = "b" }, position = -1 });
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var problem = await ReadProblemAsync(response);
-        Assert.Equal("Element.PositionInvalid", problem.GetProperty("title").GetString());
-    }
-
-    [DatabaseFact]
-    public async Task CreateElement_TwoParallelAppends_GetDistinctDensePositions()
-    {
-        using var client = CreateClientForNewUser();
-        var setId = await CreateSetAsync(client);
-
-        var requests = Enumerable.Range(0, 2).Select(index => PostElementAsync(client, 
+        var requests = Enumerable.Range(0, 2).Select(index => PostElementAsync(client,
             ElementsUrl(setId),
             new { type = "flashcard", payload = new { term = $"Параллельный {index}", definition = "d" } }));
 
         var responses = await Task.WhenAll(requests);
 
         Assert.All(responses, response => Assert.Equal(HttpStatusCode.Created, response.StatusCode));
-        var positions = await Task.WhenAll(responses.Select(async response =>
-            (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("position").GetInt32()));
-        Assert.Equal(new[] { 0, 1 }, positions.Order());
+
+        // Оба элемента получили своё место: порядок выдаётся без дублей.
+        var page = await ReadPageAsync(client, setId);
+        Assert.Equal(2, page.Items.Length);
+        Assert.Equal(2, page.Items.Select(IdOf).Distinct().Count());
     }
 
     /// <summary>POST элемента с обязательным Idempotency-Key: каждый вызов получает свой ключ.</summary>
@@ -414,6 +388,16 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
         return client.SendAsync(request);
     }
 
+    private static Task<HttpResponseMessage> MoveAsync(
+        HttpClient client,
+        Guid setId,
+        Guid elementId,
+        Guid? previousId,
+        Guid? nextId) =>
+        client.PostAsJsonAsync(
+            $"{ElementsUrl(setId)}/{elementId}/move",
+            new { previousId, nextId });
+
     private HttpClient CreateClientForNewUser()
     {
         var client = _factory.CreateClient();
@@ -423,6 +407,8 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
     }
 
     private static string ElementsUrl(Guid setId) => $"/api/sets/{setId}/elements";
+
+    private static Guid IdOf(JsonElement item) => item.GetProperty("id").GetGuid();
 
     private static async Task<Guid> CreateSetAsync(HttpClient client)
     {
@@ -443,18 +429,16 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
         HttpClient client,
         Guid setId,
         string term,
-        string definition,
-        int? position = null)
+        string definition)
     {
-        var response = await PostElementAsync(client, 
+        var response = await PostElementAsync(client,
             ElementsUrl(setId),
-            new { type = "flashcard", payload = new { term, definition }, position });
+            new { type = "flashcard", payload = new { term, definition } });
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
         var element = await response.Content.ReadFromJsonAsync<JsonElement>();
         return new Element(
-            element.GetProperty("id").GetGuid(),
-            element.GetProperty("position").GetInt32(),
+            IdOf(element),
             element.GetProperty("payload").GetProperty("term").GetString()!);
     }
 
@@ -482,71 +466,13 @@ public sealed class ElementEndpointsTests : IClassFixture<AppFactory>
                 : body.GetProperty("nextCursor").GetString());
     }
 
-    [DatabaseFact]
-    public async Task ReorderElements_SameOrder_DoesNotTouchTimestamps()
-    {
-        using var client = CreateClientForNewUser();
-        var setId = await CreateSetAsync(client);
-        var first = await CreateElementAsync(client, setId, "Первый", "1");
-        var second = await CreateElementAsync(client, setId, "Второй", "2");
-
-        var setBefore = await client.GetFromJsonAsync<JsonElement>($"/api/sets/{setId}");
-        var elementsBefore = await ReadPageAsync(client, setId);
-
-        var response = await client.PutAsJsonAsync(
-            $"{ElementsUrl(setId)}/order",
-            new { elementIds = new[] { first.Id, second.Id } });
-
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
-
-        var setAfter = await client.GetFromJsonAsync<JsonElement>($"/api/sets/{setId}");
-        Assert.Equal(setBefore.GetProperty("updatedAt").GetDateTime(), setAfter.GetProperty("updatedAt").GetDateTime());
-
-        var elementsAfter = await ReadPageAsync(client, setId);
-        Assert.Equal(
-            elementsBefore.Items.Select(item => item.GetProperty("updatedAt").GetDateTime()),
-            elementsAfter.Items.Select(item => item.GetProperty("updatedAt").GetDateTime()));
-    }
-
-    [DatabaseFact]
-    public async Task ReorderElements_ChangedOrder_KeepsElementTimestampsAndBumpsSet()
-    {
-        using var client = CreateClientForNewUser();
-        var setId = await CreateSetAsync(client);
-        var first = await CreateElementAsync(client, setId, "Первый", "1");
-        var second = await CreateElementAsync(client, setId, "Второй", "2");
-        var third = await CreateElementAsync(client, setId, "Третий", "3");
-
-        var setBefore = await client.GetFromJsonAsync<JsonElement>($"/api/sets/{setId}");
-        var before = await ReadPageAsync(client, setId);
-        var beforeById = before.Items.ToDictionary(
-            item => item.GetProperty("id").GetGuid(),
-            item => item.GetProperty("updatedAt").GetDateTime());
-
-        // Меняем местами первые два; третий остаётся на месте.
-        await client.PutAsJsonAsync(
-            $"{ElementsUrl(setId)}/order",
-            new { elementIds = new[] { second.Id, first.Id, third.Id } });
-
-        var after = await ReadPageAsync(client, setId);
-        var afterById = after.Items.ToDictionary(
-            item => item.GetProperty("id").GetGuid(),
-            item => item.GetProperty("updatedAt").GetDateTime());
-
-        // Смена позиции - структурное изменение набора: метки элементов не двигаются.
-        Assert.All(afterById, pair => Assert.Equal(beforeById[pair.Key], pair.Value));
-
-        var setAfter = await client.GetFromJsonAsync<JsonElement>($"/api/sets/{setId}");
-        Assert.True(setAfter.GetProperty("updatedAt").GetDateTime() > setBefore.GetProperty("updatedAt").GetDateTime());
-    }
-
     private static string ToBase64Url(string value) =>
         Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(value))
             .TrimEnd('=')
             .Replace('+', '-')
             .Replace('/', '_');
 
-    private sealed record Element(Guid Id, int Position, string Term);
+    private sealed record Element(Guid Id, string Term);
 
     private sealed record Page(JsonElement[] Items, string? NextCursor);
 }
