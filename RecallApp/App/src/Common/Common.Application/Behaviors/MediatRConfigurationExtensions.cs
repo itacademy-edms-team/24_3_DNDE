@@ -4,13 +4,20 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Common.Application.Behaviors;
 
-/// <summary>Регистрация общих поведений конвейера MediatR для модуля.</summary>
+/// <summary>
+/// Предоставляет методы расширения для регистрации общих поведений MediatR.
+/// </summary>
 public static class MediatRConfigurationExtensions
 {
     /// <summary>
-    /// Подключает валидацию команд и запросов (ADR 0038).
-    /// Валидаторы модуля регистрируются отдельно через <c>AddValidatorsFromAssembly</c>.
+    /// Подключает валидацию команд и запросов в конвейер MediatR.
     /// </summary>
+    /// <remarks>
+    /// Валидаторы модуля регистрируются отдельно через <see cref="AddCommandValidators"/>
+    /// (ADR 0038).
+    /// </remarks>
+    /// <param name="configuration">Конфигурация MediatR модуля.</param>
+    /// <returns>Та же конфигурация для цепочки.</returns>
     public static MediatRServiceConfiguration AddCommandValidation(this MediatRServiceConfiguration configuration)
     {
         configuration.AddOpenBehavior(typeof(ValidationBehavior<,>));
@@ -20,6 +27,9 @@ public static class MediatRConfigurationExtensions
     /// <summary>
     /// Регистрирует валидаторы FluentValidation из сборки Application-слоя модуля.
     /// </summary>
+    /// <param name="services">Коллекция сервисов хоста.</param>
+    /// <param name="applicationAssemblyMarker">Тип из сборки Application-слоя модуля.</param>
+    /// <returns>Та же коллекция для цепочки регистраций.</returns>
     public static IServiceCollection AddCommandValidators(this IServiceCollection services, Type applicationAssemblyMarker) =>
         services.AddValidatorsFromAssembly(applicationAssemblyMarker.Assembly);
 }

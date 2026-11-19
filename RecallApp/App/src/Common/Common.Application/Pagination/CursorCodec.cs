@@ -3,17 +3,30 @@ using System.Text.Json;
 namespace Common.Application.Pagination;
 
 /// <summary>
-/// Кодировщик курсора в base64 строчку.
+/// Предоставляет кодирование курсора в base64url-строку и обратное декодирование.
 /// </summary>
 public static class CursorCodec
 {
+    /// <summary>
+    /// Кодирует полезную нагрузку курсора в строку.
+    /// </summary>
+    /// <typeparam name="TPayload">Тип полезной нагрузки курсора.</typeparam>
+    /// <param name="payload">Полезная нагрузка курсора.</param>
+    /// <returns>base64url-строка без символа заполнения.</returns>
     public static string Encode<TPayload>(TPayload payload)
         where TPayload : notnull =>
         ToBase64Url(JsonSerializer.SerializeToUtf8Bytes(payload));
 
     /// <summary>
-    /// Пробует разобрать курсор. false - строка битая или не того формата.
+    /// Пробует разобрать курсор.
     /// </summary>
+    /// <typeparam name="TPayload">Тип полезной нагрузки курсора.</typeparam>
+    /// <param name="cursor">Строка курсора из запроса.</param>
+    /// <param name="payload">Распознанная полезная нагрузка; при неудаче - значение по умолчанию.</param>
+    /// <returns>
+    /// <see langword="true"/>, если курсор разобран;
+    /// <see langword="false"/>, если строка битая или не того формата.
+    /// </returns>
     public static bool TryDecode<TPayload>(string? cursor, out TPayload? payload)
         where TPayload : class
     {

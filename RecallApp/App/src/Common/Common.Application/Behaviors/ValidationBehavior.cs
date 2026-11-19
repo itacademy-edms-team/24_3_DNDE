@@ -1,14 +1,18 @@
 using System.Reflection;
 using ErrorOr;
 using FluentValidation;
+using FluentValidation.Results;
 using MediatR;
 
 namespace Common.Application.Behaviors;
 
 /// <summary>
-/// Правила команды/запроса через FluentValidation в конвейере MediatR (ADR 0038).
-/// Ошибки возвращаются как <see cref="ErrorOr"/>-значения, исключений в штатном пути нет.
+/// Проверяет команды и запросы через FluentValidation в конвейере MediatR.
 /// </summary>
+/// <remarks>
+/// Ошибки возвращаются как <see cref="ErrorOr"/>-значения:
+/// исключений в штатном пути нет (ADR 0038).
+/// </remarks>
 public sealed class ValidationBehavior<TRequest, TResponse>(IEnumerable<IValidator<TRequest>> validators)
     : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
@@ -36,10 +40,13 @@ public sealed class ValidationBehavior<TRequest, TResponse>(IEnumerable<IValidat
     }
 
     /// <summary>
-    /// Код ошибки задаётся в валидаторе через WithErrorCode и обязан быть контрактным
-    /// (<c>&lt;Сущность&gt;.&lt;Правило&gt;</c>); если его забыли — отдаём безопасный общий код.
+    /// Код задаётся через <c>WithErrorCode</c> и обязан быть контрактным
+    /// (<c>&lt;Сущность&gt;.&lt;Правило&gt;</c>). Без <c>WithErrorCode</c> FluentValidation подставляет
+    /// имя валидатора (<c>NotNullValidator</c>, <c>PredicateValidator</c> и т.п.), которое оканчивается
+    /// на <c>Validator</c>; такой код подменяем общим кодом, чтобы наружу не утекало имя
+    /// внутреннего валидатора.
     /// </summary>
-    private static Error ToError(FluentValidation.Results.ValidationFailure failure)
+    private static Error ToError(ValidationFailure failure)
     {
         var code = string.IsNullOrWhiteSpace(failure.ErrorCode) || failure.ErrorCode.EndsWith("Validator", StringComparison.Ordinal)
             ? ValidationCodes.Default
@@ -68,7 +75,9 @@ public sealed class ValidationBehavior<TRequest, TResponse>(IEnumerable<IValidat
     }
 }
 
-/// <summary>Коды ошибок, которые формирует сам конвейер валидации.</summary>
+/// <summary>
+/// Предоставляет код-заглушку для ошибок валидации, которым валидатор не задал контрактный код.
+/// </summary>
 public static class ValidationCodes
 {
     /// <summary>Код по умолчанию, если валидатор не предоставил свой.</summary>
@@ -76,26 +85,24 @@ public static class ValidationCodes
 }
 
 /// <summary>
-/// Создаёт ответ-ошибку для поведения MediatR. Поведение объявлено как
-/// <c>ValidationBehavior&lt;TRequest, TResponse&gt;</c>, где <typeparamref name="TResponse"/>
-/// известен только как <see cref="IErrorOr"/>, поэтому вызвать
-/// <c>ErrorOr&lt;T&gt;.From(errors)</c> из него напрямую нельзя: компилятор не знает T.
-/// <para>
-/// Решение: у типа ответа ищется статический метод <c>From(List&lt;Error&gt;)</c>
-/// (он есть у каждого закрытого <c>ErrorOr&lt;T&gt;</c>), из него строится делегат и
-/// сохраняется в статическом поле закрытого генерика. CLR инициализирует это поле
-/// один раз на тип ответа, поэтому рефлексия выполняется при первом запросе такого типа,
-/// а все последующие вызовы идут через обычный делегат.
-/// </para>
-/// Если тип ответа реализует <see cref="IErrorOr"/>, но не имеет такого метода
-/// (например, свой result-тип), конструктор бросит <see cref="InvalidOperationException"/>
-/// при первом же вызове.
+/// Создаёт ответ-ошибку для поведения MediatR.
 /// </summary>
+/// <remarks>
+/// Поведение знает ответ только как <see cref="IErrorOr"/>: конкретный тип ошибки на этапе
+/// компиляции неизвестен, поэтому статический метод построения ошибки вызывается рефлексией.
+/// Метод ищется один раз на тип ответа и кешируется как делегат. Если у типа ответа такого метода
+/// нет, выбрасывается <see cref="InvalidOperationException"/>.
+/// </remarks>
 internal static class ErrorResultFactory<TResponse>
     where TResponse : IErrorOr
 {
     private static readonly Func<List<Error>, TResponse> FromErrors = CreateFromErrors();
 
+    /// <summary>
+    /// Возвращает ответ-ошибку по списку ошибок.
+    /// </summary>
+    /// <param name="errors">Ошибки валидации.</param>
+    /// <returns>Ответ-ошибка.</returns>
     public static TResponse From(List<Error> errors) => FromErrors(errors);
 
     private static Func<List<Error>, TResponse> CreateFromErrors()

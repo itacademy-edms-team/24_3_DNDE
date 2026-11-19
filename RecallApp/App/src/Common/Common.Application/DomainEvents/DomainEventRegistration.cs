@@ -6,13 +6,20 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Common.Application.DomainEvents;
 
 /// <summary>
-/// Регистрация обработчиков доменных событий: сканирует сборку на реализации
-/// <see cref="IDomainEventHandler{TEvent}"/> и регистрирует их по нашему маркеру,
-/// а заодно связывает стабильное имя события с его CLR-типом (для десериализации воркером).
+/// Предоставляет регистрацию обработчиков доменных событий.
 /// </summary>
+/// <remarks>
+/// Сканирует сборку на реализации <see cref="IDomainEventHandler{TEvent}"/>, регистрирует их в DI
+/// и заодно связывает стабильное имя события с его типом для десериализации воркером.
+/// </remarks>
 public static class DomainEventRegistration
 {
-    /// <summary>Регистрирует все реализации <see cref="IDomainEventHandler{TEvent}"/> из сборки как scoped.</summary>
+    /// <summary>
+    /// Регистрирует все реализации <see cref="IDomainEventHandler{TEvent}"/> из сборки.
+    /// </summary>
+    /// <param name="services">Коллекция сервисов хоста.</param>
+    /// <param name="assembly">Сборка модуля, содержащая обработчики.</param>
+    /// <returns>Та же коллекция для цепочки регистраций.</returns>
     public static IServiceCollection AddDomainEventHandlers(this IServiceCollection services, Assembly assembly)
     {
         foreach (var handler in assembly.GetTypes().Where(type => type is { IsAbstract: false, IsInterface: false }))
@@ -33,8 +40,9 @@ public static class DomainEventRegistration
     }
 
     /// <summary>
-    /// Стабильное имя события читается с неинициализированного экземпляра: <see cref="IDomainEvent.EventType"/>
-    /// - константа на тип и не зависит от состояния, поэтому конструктор вызывать не требуется.
+    /// Стабильное имя события читается с неинициализированного экземпляра:
+    /// <see cref="IDomainEvent.EventType"/> - константа на тип и не зависит от состояния,
+    /// поэтому конструктор вызывать не требуется.
     /// </summary>
     private static string EventNameOf(Type eventType)
     {
