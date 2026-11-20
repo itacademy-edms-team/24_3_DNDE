@@ -1,0 +1,44 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Sets.Domain.Sets;
+
+namespace Sets.Infrastructure.Data.Configurations;
+
+internal sealed class SetConfiguration : IEntityTypeConfiguration<Set>
+{
+    public void Configure(EntityTypeBuilder<Set> builder)
+    {
+        builder.ToTable("sets");
+        builder.HasKey(set => set.Id);
+
+        builder.Property(set => set.Id).HasColumnName("id");
+        builder.Property(set => set.OwnerId).HasColumnName("owner_id").IsRequired();
+
+        builder.Property(set => set.Title)
+            .HasColumnName("title")
+            .HasMaxLength(SetConstraints.TitleMaxLength)
+            .HasConversion(new ValueConverter<SetTitle, string>(title => title.Value, value => SetTitle.FromStorage(value)))
+            .IsRequired();
+
+        // Описание обязательно на уровне схемы. Если нету -> пустая строка.
+        builder.Property(set => set.Description)
+            .HasColumnName("description")
+            .HasMaxLength(SetConstraints.DescriptionMaxLength)
+            .HasConversion(new ValueConverter<SetDescription, string>(
+                description => description.Value,
+                value => SetDescription.FromStorage(value)))
+            .IsRequired();
+
+        builder.Property(set => set.CreatedAt).HasColumnName("created_at");
+        builder.Property(set => set.UpdatedAt).HasColumnName("updated_at");
+        builder.Property(set => set.DeletedAt).HasColumnName("deleted_at");
+
+        // Список «мои наборы»: keyset-пагинация по (created_at, id) DESC (ADR 0039).
+        // owner_id - просто для нахождения, дальше сканирование идёт уже в нужном порядке.
+        builder.HasIndex(set => new { set.OwnerId, set.CreatedAt, set.Id })
+            .HasDatabaseName("ix_sets_owner_id_created_at_id")
+            .IsDescending(false, true, true)
+            .HasFilter("deleted_at IS NULL");
+    }
+}

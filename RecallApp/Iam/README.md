@@ -51,6 +51,63 @@
 BFF_WEB_OIDC_CLIENT_SECRET=<ВАШ_CLIENT_SECRET_ИЗ_BFF_WEB>
 ```
 
+> Клиент создаётся с включённым `Full scope allowed`. Выключать его нужно после настройки ролей - см. раздел [Роли и audience в токене](#роли-и-audience-в-токене).
+
+## Роли и audience в токене
+
+В Keycloak 26 настройки клиента живут на вкладке `Clients -> Bff.Web -> Client details -> Bff.Web-dedicated -> Scope`: там переключатель `Full scope allowed` и таблица назначенных ролей (`Assign role`).
+
+Зачем менять дефолт: встроенный client scope `roles` содержит мапперы `realm roles` и `client roles` с **незаданным** `Client ID`. Такой маппер складывает в токен роли всех клиентов, где у пользователя есть роли (`resource_access.<client>.roles`), а `audience resolve` добавляет эти клиенты в `aud`. Состав нашего токена начинает зависеть от чужих клиентов в realm - это лишний контракт и лишние права. Вместо этого:
+
+1. Client scopes -> Create client scope:
+   1. Name: `recallapp-roles`
+   2. Type: `None`
+   3. Protocol: `openid-connect`
+   4. Display on consent screen: OFF
+   5. Include in token scope: ON
+
+2. Внутри скоупа: Mappers -> Add mapper -> By configuration -> `User Client Role` (`roles` из списка predefined не подходит - у него нет Client ID, и он пишет роли вложенно):
+   1. Name: `RecallApp client roles`
+   2. Client ID: `RecallApp` (клиент-роль-холдер, не `Bff.Web`)
+   3. Multivalued: ON
+   4. Token Claim Name: `roles`
+   5. Claim JSON Type: `String`
+   6. Client Role prefix: `RecallApp:` - префикс равен Client ID: за счёт этого одинаковые роли разных клиентов не сливаются в одном плоском claim'е
+   7. Add to access token: ON
+   8. Add to ID token: ON
+   9. Add to lightweight access token / userinfo / introspection: OFF
+
+3. Add mapper -> By configuration -> `Audience` (не `Audience Resolve`: тот вычисляет audience из разрешённых ролей и растёт вместе с realm):
+   1. Name: `RecallApp audience`
+   2. Included Client Audience: `RecallApp`
+   3. Add to access token: ON
+   4. Add to ID token: OFF (у ID-токена audience - `Bff.Web`, его проверяет OIDC-хендлер)
+
+4. Clients -> Bff.Web -> Client scopes -> Add client scope -> `recallapp-roles` -> Add -> `Default`.
+
+5. Clients -> Bff.Web -> Client details -> Bff.Web-dedicated -> Scope -> Assign role -> Filter by clients -> `RecallApp` -> `app-user` -> Assign.
+
+6. Там же: `Full scope allowed` -> OFF.
+
+7. Clients -> Bff.Web -> Client scopes -> снять встроенный `roles` (Remove). Иначе он продолжит добавлять `resource_access` в access-токен.
+
+### Проверка
+
+1. Перелогиньтесь: refresh перевыпускает токены, но cookie-тикет BFF хранит снимок claims на момент входа, поэтому `IsInRole` оживёт только после нового логина.
+2. `https://bff.recallapp.localhost/debug/session` -> `roles: ["RecallApp:app-user"]`.
+3. В access-токене: `roles: ["RecallApp:app-user"]`, `aud: "RecallApp"`, нет `resource_access` и `realm_access`.
+4. В ID-токене: `roles: ["RecallApp:app-user"]`, `aud: "Bff.Web"`.
+
+### Правило на будущее
+
+Новый роль-холдер (например, back-office) - отдельный client scope с мапперами `User Client Role` (свой `Client ID`, `Client Role prefix` равен этому `Client ID`) и `Audience`, плюс своё `Assign role` у того клиента, который выпускает токены. Роли в `roles` всегда пространственно именованы (`RecallApp:app-user`, `RecallAppBackOffice:bo-admin`), благодаря чему один BFF может безопасно обслуживать несколько роль-холдеров.
+
+Если какому-то потребителю понадобится каноничный для Keycloak вложенный формат `resource_access.<client>.roles`, в тот же скоуп добавляется второй маппер с `Token Claim Name = resource_access.<client>.roles`.
+
+### Правило на будущее
+
+Новый роль-холдер (например, back-office) - отдельный client scope с мапперами `User Client Role` (свой `Client ID`) и `Audience`, плюс своё `Assign role` у того клиента, который выпускает токены. Не смешивать мапперы разных клиентов в одном скоупе: роли сольются в один claim. Роль, заведённая в чужом клиенте, даст права в нашем, что не правильно.
+
 ## Политика сессий (ADR 0027)
 
 1. Перейдите в realm `recallapp`.
@@ -74,6 +131,8 @@ BFF_WEB_OIDC_CLIENT_SECRET=<ВАШ_CLIENT_SECRET_ИЗ_BFF_WEB>
 Нужен интеграционным тестам BFF категории `Keycloak` (`Bff/Bff.Web/tests`). Тесты получают токены через Direct Access Grants, минуя страницы входа, и затем обновляют их как BFF. Keycloak обновляет refresh-токен только тому клиенту, которому его выдал. Поэтому DAG включается на отдельном клиенте в отдельном realm, а основной `Bff.Web` и realm `recallapp` не меняются.
 
 Realm в git не хранится, настраивается вручную по шагам ниже.
+
+> Роли и audience для тестового realm не настраиваются: тесты категории `Keycloak` проверяют выдачу и обновление токенов через Direct Access Grants, роли им не нужны. Если понадобятся - повторите раздел [Роли и audience в токене](#роли-и-audience-в-токене) для клиента `Bff.Web.Test`.
 
 ### Realm и роли
 

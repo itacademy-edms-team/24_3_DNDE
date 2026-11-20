@@ -10,11 +10,20 @@ WORKDIR /src
 COPY App.sln Directory.Packages.props Directory.Build.props ./
 COPY src/Api/Api.csproj src/Api/
 COPY src/Common/Common.Application/Common.Application.csproj src/Common/Common.Application/
+COPY src/Common/Common.Domain/Common.Domain.csproj src/Common/Common.Domain/
 COPY src/Common/Common.Infrastructure/Common.Infrastructure.csproj src/Common/Common.Infrastructure/
 COPY src/Modules/Accounts/Accounts.Domain/Accounts.Domain.csproj src/Modules/Accounts/Accounts.Domain/
 COPY src/Modules/Accounts/Accounts.Application/Accounts.Application.csproj src/Modules/Accounts/Accounts.Application/
 COPY src/Modules/Accounts/Accounts.Infrastructure/Accounts.Infrastructure.csproj src/Modules/Accounts/Accounts.Infrastructure/
 COPY src/Modules/Accounts/Accounts.Contracts/Accounts.Contracts.csproj src/Modules/Accounts/Accounts.Contracts/
+COPY src/Modules/Sets/Sets.Domain/Sets.Domain.csproj src/Modules/Sets/Sets.Domain/
+COPY src/Modules/Sets/Sets.Application/Sets.Application.csproj src/Modules/Sets/Sets.Application/
+COPY src/Modules/Sets/Sets.Infrastructure/Sets.Infrastructure.csproj src/Modules/Sets/Sets.Infrastructure/
+COPY src/Modules/Sets/Sets.Contracts/Sets.Contracts.csproj src/Modules/Sets/Sets.Contracts/
+COPY src/Modules/Media/Media.Domain/Media.Domain.csproj src/Modules/Media/Media.Domain/
+COPY src/Modules/Media/Media.Application/Media.Application.csproj src/Modules/Media/Media.Application/
+COPY src/Modules/Media/Media.Infrastructure/Media.Infrastructure.csproj src/Modules/Media/Media.Infrastructure/
+COPY src/Modules/Media/Media.Contracts/Media.Contracts.csproj src/Modules/Media/Media.Contracts/
 COPY tests/Tests.Architecture/Tests.Architecture.csproj tests/Tests.Architecture/
 COPY tests/Tests.Integration/Tests.Integration.csproj tests/Tests.Integration/
 RUN dotnet restore App.sln

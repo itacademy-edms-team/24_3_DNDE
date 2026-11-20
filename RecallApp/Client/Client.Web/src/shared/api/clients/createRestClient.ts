@@ -1,6 +1,9 @@
 import axios, { type AxiosInstance } from "axios";
 
-import { isProblemDetails, RestApiError } from "@/shared/api/errors/restApiError";
+import {
+  isProblemDetails,
+  RestApiError,
+} from "@/shared/api/errors/restApiError";
 
 /** Переводит любую ошибку axios в RestApiError: тело бэкенда сохраняется, обёртка отбрасывается. */
 export function normalizeRestError(error: unknown): RestApiError {
@@ -20,7 +23,8 @@ export function normalizeRestError(error: unknown): RestApiError {
 
 /**
  * Создаёт REST-клиент для указанного адреса.
- * Cookie-сессия BFF передаётся браузером (withCredentials), ошибки нормализуются интерцептором.
+ * Cookie-сессия BFF передаётся браузером (withCredentials); мутации помечаются
+ * заголовком X-CSRF (SessionGuardMiddleware), ошибки нормализуются интерцептором.
  */
 export function createRestClient(baseURL: string): AxiosInstance {
   const client = axios.create({
@@ -30,6 +34,21 @@ export function createRestClient(baseURL: string): AxiosInstance {
     // и запросы можно подменять в тестах через stubGlobal("fetch", ...).
     adapter: "fetch",
     headers: { Accept: "application/json" },
+  });
+
+  // CSRF-защита BFF: мутации /api/** требуют кастомный заголовок (form/img не могут его
+  // поставить, а чужой origin упирается в CORS-preflight). Значение  статичный маркер.
+  client.interceptors.request.use((config) => {
+    const method = config.method?.toLowerCase();
+    if (
+      method === "post" ||
+      method === "put" ||
+      method === "patch" ||
+      method === "delete"
+    ) {
+      config.headers.set("X-CSRF", "1");
+    }
+    return config;
   });
 
   client.interceptors.response.use(

@@ -14,12 +14,14 @@ namespace Tests.Integration.Helpers;
 
 /// <summary>Сессия, которую тест засевает в обход OIDC-входа.</summary>
 /// <param name="WithoutSessionId">Не ставить bff_session_id: сессия без ключа сериализации refresh.</param>
+/// <param name="Roles">Клиентские роли RecallApp: в реальном входе их кладёт в ID-токен маппер client scope recallapp-roles.</param>
 public sealed record TestSession(
     string AccessToken,
     string? RefreshToken = "initial-refresh",
     TimeSpan? AccessLifetime = null,
     bool RememberMe = false,
-    bool WithoutSessionId = false
+    bool WithoutSessionId = false,
+    string[]? Roles = null
 );
 
 /// <summary>Состояние сессии, как его видит cookie-схема (без TokenRefreshMiddleware).</summary>
@@ -94,6 +96,7 @@ public sealed class TestSessionEndpoints : IStartupFilter
                 new Claim("sub", "user-1"),
                 new Claim("preferred_username", "testuser"),
                 new Claim("name", "Test User"),
+                .. (session.Roles ?? []).Select(role => new Claim("roles", role)),
             ],
             "Test",
             "name",

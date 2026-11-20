@@ -12,6 +12,7 @@
   <ItemGroup>
     <PackageReference Include="coverlet.collector" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="NetArchTest.Rules" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
@@ -22,7 +23,17 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\Api\Api.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Accounts\Accounts.Application\Accounts.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Accounts\Accounts.Domain\Accounts.Domain.csproj" />
     <ProjectReference Include="..\..\src\Modules\Accounts\Accounts.Infrastructure\Accounts.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Media\Media.Application\Media.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Media\Media.Contracts\Media.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Media\Media.Domain\Media.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Media\Media.Infrastructure\Media.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Sets\Sets.Application\Sets.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Sets\Sets.Domain\Sets.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Sets\Sets.Infrastructure\Sets.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

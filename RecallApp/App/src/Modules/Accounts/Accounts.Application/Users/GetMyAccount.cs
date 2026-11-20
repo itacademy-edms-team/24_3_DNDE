@@ -5,10 +5,23 @@ using MediatR;
 
 namespace Accounts.Application.Users;
 
-/// <summary>Профиль текущего пользователя из доменной строки.</summary>
+/// <summary>
+/// Представляет профиль текущего пользователя.
+/// </summary>
+/// <param name="Id">Идентификатор пользователя в приложении.</param>
+/// <param name="DisplayName">Отображаемое имя из домена.</param>
+/// <param name="Email">Email из доменного кэша.</param>
+/// <param name="EmailVerified">Подтверждён ли email провайдером личности.</param>
 public sealed record MyAccountResponse(Guid Id, string DisplayName, string Email, bool EmailVerified);
 
-/// <param name="KeycloakSub">Claim sub как есть: разбор и валидация - здесь, чтобы контракт ошибок был один.</param>
+/// <summary>
+/// Возвращает профиль текущего пользователя по claims личности.
+/// </summary>
+/// <param name="KeycloakSub">Claim <c>sub</c> как есть: разбор и валидация выполняются здесь,
+/// чтобы невалидный идентификатор всегда давал один код <c>User.KeycloakSubInvalid</c>,
+/// а не ошибку биндинга из HTTP-слоя.</param>
+/// <param name="EmailVerified">Claim <c>email_verified</c>,
+/// проставляется в ответ без проверки в домене.</param>
 public sealed record GetMyAccountQuery(string? KeycloakSub, bool EmailVerified)
     : IRequest<ErrorOr<MyAccountResponse>>;
 

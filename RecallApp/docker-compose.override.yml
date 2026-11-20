@@ -62,6 +62,7 @@ services:
       # Инициализация ролей/схем модулей: см. init-скрипт App/scripts/01-roles-and-schemas.sh
       APP_DB_RUNTIME_PASSWORD: ${APP_DB_RUNTIME_PASSWORD}
       APP_DB_ACCOUNTS_OWNER_PASSWORD: ${APP_DB_ACCOUNTS_OWNER_PASSWORD}
+      APP_DB_SETS_OWNER_PASSWORD: ${APP_DB_SETS_OWNER_PASSWORD}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U app"]
       interval: 5s
@@ -77,17 +78,36 @@ services:
       # bind-mount на Windows/WSL: события файлов не всегда доходят — polling для dotnet watch
       DOTNET_USE_POLLING_FILE_WATCHER: "true"
       Oidc__Authority: https://auth.localhost/realms/recallapp
+      # audience access-токена = клиент-роль-холдер, который выпускает токены для этого API
+      Oidc__Audience: RecallApp
       # runtime-подключение (app_runtime: только DML в accounts, без DDL)
       ConnectionStrings__Database: Host=app-db:5432;Database=app;Username=app_runtime;Password=${APP_DB_RUNTIME_PASSWORD}
       ConnectionStrings__AccountsMigrations: Host=app-db:5432;Database=app;Username=accounts_owner;Password=${APP_DB_ACCOUNTS_OWNER_PASSWORD}
+      ConnectionStrings__SetsMigrations: Host=app-db:5432;Database=app;Username=sets_owner;Password=${APP_DB_SETS_OWNER_PASSWORD}
+      ConnectionStrings__MediaMigrations: Host=app-db:5432;Database=app;Username=media_owner;Password=${APP_DB_MEDIA_OWNER_PASSWORD}
       # миграции модулей применяются при старте dev-контейнера
       Database__ApplyMigrations: "true"
+      # объектное хранилище медиа
+      Media__S3__Endpoint: ${Media__S3__Endpoint}
+      Media__S3__Region: ${Media__S3__Region}
+      Media__S3__Bucket: ${Media__S3__Bucket}
+      Media__S3__AccessKeyId: ${Media__S3__AccessKeyId}
+      Media__S3__SecretKey: ${Media__S3__SecretKey}
 
   app-tests:
     environment:
       # Тесты App: тестовая БД в app-db (runtime; owner - для миграций из тестов)
       ConnectionStrings__Database: Host=app-db:5432;Database=app;Username=app_runtime;Password=${APP_DB_RUNTIME_PASSWORD}
       ConnectionStrings__AccountsMigrations: Host=app-db:5432;Database=app;Username=accounts_owner;Password=${APP_DB_ACCOUNTS_OWNER_PASSWORD}
+      ConnectionStrings__SetsMigrations: Host=app-db:5432;Database=app;Username=sets_owner;Password=${APP_DB_SETS_OWNER_PASSWORD}
+      ConnectionStrings__MediaMigrations: Host=app-db:5432;Database=app;Username=media_owner;Password=${APP_DB_MEDIA_OWNER_PASSWORD}
       Oidc__Authority: https://auth.localhost/realms/recallapp
+      Oidc__Audience: RecallApp
+      # объектное хранилище (тесты медиа идут на реальном cloud.ru, ADR 0037)
+      Media__S3__Endpoint: ${Media__S3__Endpoint}
+      Media__S3__Region: ${Media__S3__Region}
+      Media__S3__Bucket: ${Media__S3__Bucket}
+      Media__S3__AccessKeyId: ${Media__S3__AccessKeyId}
+      Media__S3__SecretKey: ${Media__S3__SecretKey}
       # Пусто - все тесты.
       TEST_FILTER: ${APP_TEST_FILTER:-}

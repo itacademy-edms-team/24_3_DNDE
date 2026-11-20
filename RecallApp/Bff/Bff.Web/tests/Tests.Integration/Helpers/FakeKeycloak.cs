@@ -28,7 +28,8 @@ public sealed class FakeKeycloak : HttpMessageHandler
     {
         var body = new Dictionary<string, object>
         {
-            ["access_token"] = accessToken ?? TestJwt.Create("refreshed-role"),
+            // exp отличается от исходного: по нему видно, что в том же запросе читается уже обновлённый токен.
+            ["access_token"] = accessToken ?? TestJwt.Create(TestJwt.DefaultExp + 86_400),
             ["refresh_token"] = refreshToken,
             ["id_token"] = "refreshed-id",
             ["expires_in"] = expiresIn,

@@ -1,9 +1,12 @@
 using Accounts.Infrastructure;
 using Api;
+using Common.Application.Provisioning;
 using Common.Infrastructure.Data;
 using NLog;
 using NLog.Web;
 using Npgsql;
+using Sets.Infrastructure;
+using Media.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,22 +35,38 @@ try
     var poolBudget = new ConnectionPoolBudget(dataSource);
     var accountsPoolLease = poolBudget.GetPools(
         builder.Configuration.GetValue("AppDb:AccountsPoolQuota", 20));
+    var setsPoolLease = poolBudget.GetPools(
+        builder.Configuration.GetValue("AppDb:SetsPoolQuota", 20));
+    var mediaPoolLease = poolBudget.GetPools(
+        builder.Configuration.GetValue("AppDb:MediaPoolQuota", 10));
     builder.Services.AddSingleton(dataSource);
     builder.Services.AddSingleton(poolBudget);
     builder.Services.AddSingleton(new PoolLeaseHolder(accountsPoolLease));
+    builder.Services.AddSingleton(new PoolLeaseHolder(setsPoolLease));
+    builder.Services.AddSingleton(new PoolLeaseHolder(mediaPoolLease));
+
+    // Идентичность доменного пользователя для модулей: заполняется ступенью JIT-провижининга
+    builder.Services.AddScoped<CurrentUser>();
+    builder.Services.AddScoped<ICurrentUser>(services => services.GetRequiredService<CurrentUser>());
 
     builder.Services.AddAccounts(dataSource);
+    builder.Services.AddSets(dataSource);
+    builder.Services.AddMedia(dataSource);
 
     builder.Services.AddAuthentication()
         .AddJwtBearer(options =>
         {
             var authority = builder.Configuration["Oidc:Authority"]
                 ?? throw new InvalidOperationException("Set Oidc__Authority (Keycloak realm URL).");
+            var audience = builder.Configuration["Oidc:Audience"]
+                ?? throw new InvalidOperationException("Set Oidc__Audience (Keycloak client ID issued for this API).");
             options.Authority = authority;
             options.RequireHttpsMetadata = builder.Configuration.GetValue("Oidc:RequireHttpsMetadata", !builder.Environment.IsDevelopment());
             options.MapInboundClaims = false; // сырые имена claim'ов (sub, email, ...), без маппинга в ClaimTypes
-            options.TokenValidationParameters.ValidateAudience = false; // ADR 0028: aud = account in Keycloak
+            options.TokenValidationParameters.ValidateAudience = true;
+            options.TokenValidationParameters.ValidAudience = audience;
             options.TokenValidationParameters.NameClaimType = "name";
+            options.TokenValidationParameters.RoleClaimType = "roles";
         });
     builder.Services.AddAuthorization();
 
@@ -59,11 +78,20 @@ try
     app.UseDomainProvisioning();
 
     app.MapAccounts();
+    app.MapSets();
+    app.MapMedia();
     app.MapGet("/health/live", () => Results.Ok(new { Status = "alive" }));
     app.MapGet("/health/ready", async (IServiceProvider services, CancellationToken cancellationToken) =>
-        await services.CanConnectAccounts(cancellationToken)
+    {
+        var accounts = services.CanConnectAccounts(cancellationToken);
+        var sets = services.CanConnectSets(cancellationToken);
+        var media = services.CanConnectMedia(cancellationToken);
+        await Task.WhenAll(accounts, sets, media);
+
+        return accounts.Result && sets.Result && media.Result
             ? Results.Ok(new { Status = "ready" })
-            : Results.StatusCode(503));
+            : Results.StatusCode(503);
+    });
 
     var migrateOnly = args.Contains("--migrate");
     if (migrateOnly || builder.Configuration.GetValue("Database:ApplyMigrations", false))
@@ -72,6 +100,12 @@ try
         var migrationsConnectionString = builder.Configuration.GetConnectionString("AccountsMigrations")
             ?? throw new InvalidOperationException("Set ConnectionStrings__AccountsMigrations (schema owner).");
         await AccountsModule.MigrateAccounts(migrationsConnectionString);
+        var setsMigrationsConnectionString = builder.Configuration.GetConnectionString("SetsMigrations")
+            ?? throw new InvalidOperationException("Set ConnectionStrings__SetsMigrations (schema owner).");
+        await SetsModule.MigrateSets(setsMigrationsConnectionString);
+        var mediaMigrationsConnectionString = builder.Configuration.GetConnectionString("MediaMigrations")
+            ?? throw new InvalidOperationException("Set ConnectionStrings__MediaMigrations (schema owner).");
+        await MediaModule.MigrateMedia(mediaMigrationsConnectionString);
         if (migrateOnly) return;
     }
 

@@ -31,7 +31,7 @@ public sealed class ResponseContractInProcessTests : IAsyncLifetime
     public async Task ApiEndpoint_UnhandledException_ReturnsProblemJsonWithoutStackTrace()
     {
         // /api/** за SessionGuardMiddleware: чтобы дойти до исключения, нужна сессия.
-        await BffApp.SignInAsync(_browser, new TestSession(TestJwt.Create("initial-role")));
+        await BffApp.SignInAsync(_browser, new TestSession(TestJwt.Create()));
 
         var response = await _browser.GetAsync(TestSessionEndpoints.ApiThrowPath);
 
@@ -59,7 +59,7 @@ public sealed class ResponseContractInProcessTests : IAsyncLifetime
     [Fact]
     public async Task Session_Authenticated_ReturnsOnlyWhitelistedFields()
     {
-        await BffApp.SignInAsync(_browser, new TestSession(TestJwt.Create("initial-role")));
+        await BffApp.SignInAsync(_browser, new TestSession(TestJwt.Create()));
 
         var (_, body) = await BffApp.GetAppSessionAsync(_browser);
 

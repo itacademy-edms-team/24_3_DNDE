@@ -1,7 +1,7 @@
 /** Формат тела ошибки RFC 9457 ProblemDetails, как его отдаёт бэкенд. */
 export interface ProblemDetails {
   type?: string;
-  /** Машиночитаемый код ошибки в PascalCase (например, InvalidEmail, NotAuthenticated). */
+  /** Машиночитаемый код ошибки: `<Сущность>.<Правило>` у домена (например, Set.NotFound), PascalCase у BFF (NotAuthenticated). */
   title?: string;
   status?: number;
   /** Пояснение для разработчика; не всегда пригодно для показа пользователю. */

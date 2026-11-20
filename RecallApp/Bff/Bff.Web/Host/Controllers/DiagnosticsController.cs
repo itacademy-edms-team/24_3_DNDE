@@ -13,8 +13,6 @@ namespace Host.Controllers;
 [ApiController]
 public class DiagnosticsController(IOptions<DiagnosticsOptions> diagnostics) : ControllerBase
 {
-    private const string RolesClientId = "RecallApp";
-
     private readonly DiagnosticsOptions _diagnostics = diagnostics.Value;
 
     /// <summary>
@@ -44,31 +42,65 @@ public class DiagnosticsController(IOptions<DiagnosticsOptions> diagnostics) : C
                 sub = User.FindFirst("sub")?.Value,
                 name = User.Identity.Name,
                 email = User.FindFirst("email")?.Value,
-                roles = ExtractRecallAppRoles(accessToken),
+                // Теперь в id-токене есть плоский roles, по которому можно собрать роли пользователя.
+                roles = User.FindAll("roles").Select(c => c.Value).ToArray(),
                 accessTokenExpiresAt = ExtractExpiry(accessToken),
             }
         );
     }
 
-    /// <summary>Client-роли RecallApp из access-токена (resource_access, ADR 0024). В principal их нет.</summary>
-    private static string[] ExtractRecallAppRoles(string? accessToken)
+    /// <summary>
+    /// Текущие значения для access, refresh, id токенов,
+    /// полученные после входа в keycloak,
+    /// расшифрованные из base64 представления.
+    /// </summary>
+    /// <returns>
+    /// Человекочитаемый список из json-списков для каждого jwt-токена для первых 2-х его частей
+    /// в порядке: access, refresh, id.
+    /// </returns>
+    [HttpGet("/debug/keycloak/tokens")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<IActionResult> KeycloakTokens()
     {
-        if (string.IsNullOrEmpty(accessToken))
-            return [];
+        var accessToken = await HttpContext.GetTokenAsync("access_token");
+        var refreshToken = await HttpContext.GetTokenAsync("refresh_token");
+        var idToken = await HttpContext.GetTokenAsync("id_token");
 
-        var jwt = new JsonWebTokenHandler().ReadJsonWebToken(accessToken);
-        if (!jwt.TryGetPayloadValue<JsonElement>("resource_access", out var resourceAccess)
-            || !resourceAccess.TryGetProperty(RolesClientId, out var client)
-            || !client.TryGetProperty("roles", out var rolesElement)
-            || rolesElement.ValueKind != JsonValueKind.Array)
+        if (accessToken is null)
         {
-            return [];
+            return NotFound("access_token is null");
         }
 
-        return rolesElement.EnumerateArray()
-            .Select(e => e.GetString())
-            .Where(r => r is not null)
-            .ToArray()!;
+        if (refreshToken is null)
+        {
+            return NotFound("refresh_token is null");
+        }
+
+        if (idToken is null)
+        {
+            return NotFound("id_token is null");
+        }
+
+        return Ok(new []
+        {
+            accessToken.Split(".")
+                .Take(2)
+                .Select(Base64UrlTextEncoder.Decode)
+                .Select(System.Text.Encoding.UTF8.GetString)
+                .Select(jsonString => JsonDocument.Parse(jsonString).RootElement),
+            refreshToken.Split(".")
+                .Take(2)
+                .Select(Base64UrlTextEncoder.Decode)
+                .Select(System.Text.Encoding.UTF8.GetString)
+                .Select(jsonString => JsonDocument.Parse(jsonString).RootElement),
+            idToken.Split(".")
+                .Take(2)
+                .Select(Base64UrlTextEncoder.Decode)
+                .Select(System.Text.Encoding.UTF8.GetString)
+                .Select(jsonString => JsonDocument.Parse(jsonString).RootElement),
+        });
     }
 
     /// <summary>Момент истечения access-токена (claim exp) или null, если claim отсутствует.</summary>

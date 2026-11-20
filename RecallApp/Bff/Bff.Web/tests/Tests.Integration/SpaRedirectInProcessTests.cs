@@ -37,7 +37,7 @@ public sealed class SpaRedirectInProcessTests : IAsyncLifetime
     [Fact]
     public async Task Login_WithOpenSession_KeepsSearchAndPathInSpaUrl()
     {
-        await BffApp.SignInAsync(_browser, new TestSession(TestJwt.Create("initial-role")));
+        await BffApp.SignInAsync(_browser, new TestSession(TestJwt.Create()));
 
         var response = await _browser.GetAsync("/login?returnUrl=%2Faccount%3Ftab%3Dsecurity");
 
@@ -51,7 +51,7 @@ public sealed class SpaRedirectInProcessTests : IAsyncLifetime
     [Fact]
     public async Task Login_WithExternalReturnUrl_RedirectsToSpaRoot()
     {
-        await BffApp.SignInAsync(_browser, new TestSession(TestJwt.Create("initial-role")));
+        await BffApp.SignInAsync(_browser, new TestSession(TestJwt.Create()));
 
         var response = await _browser.GetAsync("/login?returnUrl=https%3A%2F%2Fevil.test%2Fsteal");
 
