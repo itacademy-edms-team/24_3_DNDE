@@ -7,13 +7,13 @@ using System.Security.Claims;
 namespace Accounts.Infrastructure.Data;
 
 /// <summary>
-/// Идемпотентный upsert доменной строки по UNIQUE(keycloak_sub) с перечитыванием (ADR 0020).
+/// Идемпотентный upsert доменной строки по UNIQUE(keycloak_sub) с возвратом id (ADR 0020).
 /// Гонка первого запроса разрешается constraint'ом: опоздавший обновит только кэш email.
 /// </summary>
 internal sealed class UserProvisioner(AccountsDbContext db, TimeProvider clock, ILogger<UserProvisioner> logger)
     : IDomainProvisioner
 {
-    public async Task EnsureProvisionedAsync(ClaimsPrincipal user, CancellationToken cancellationToken)
+    public async Task<Guid?> EnsureProvisionedAsync(ClaimsPrincipal user, CancellationToken cancellationToken)
     {
         var subClaim = user.FindFirst("sub")?.Value;
         if (!Guid.TryParse(subClaim, out var keycloakSub))
@@ -23,7 +23,7 @@ internal sealed class UserProvisioner(AccountsDbContext db, TimeProvider clock, 
             else
                 logger.LogWarning("Claim 'sub' is not UUID: JIT-provisioning skipped");
 
-            return;
+            return null;
         }
         var email = user.FindFirst("email")?.Value ?? string.Empty;
         var displayName = user.FindFirst("name")?.Value ?? string.Empty;
@@ -47,10 +47,11 @@ internal sealed class UserProvisioner(AccountsDbContext db, TimeProvider clock, 
             },
             cancellationToken);
 
-        // Перечитывание: DbContext не отслеживает результат ExecuteSql, строка нужна ниже по конвейеру.
-        var tracked = await db.Users
-            .SingleOrDefaultAsync(u => u.KeycloakSub == keycloakSub, cancellationToken);
-        if (tracked is not null)
-            db.Entry(tracked).State = EntityState.Detached;
+        // Id читается отдельным запросом: RETURNING в SqlQueryRaw не компонуется (EF оборачивает его в подзапрос).
+        return await db.Users
+            .AsNoTracking()
+            .Where(u => u.KeycloakSub == keycloakSub)
+            .Select(u => u.Id)
+            .SingleAsync(cancellationToken);
     }
 }

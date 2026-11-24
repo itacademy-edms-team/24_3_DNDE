@@ -1,3 +1,4 @@
+using Common.Application.DomainEvents;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -6,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
+using Tests.Integration.Helpers;
 
 namespace Tests.Integration;
 
@@ -23,6 +25,9 @@ public sealed class AppFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        // Типы тестовых событий нужны воркеру для десериализации; регистрация идемпотентна.
+        DomainEventTypeRegistry.Register("tests.outbox.record", typeof(OutboxTestEvent));
+        DomainEventTypeRegistry.Register("tests.outbox.fail", typeof(OutboxFailingEvent));
         // Env-first: в контейнере (app-tests) строки подключения и authority приходят из compose,
         // локально подменяем заглушками, чтобы хост стартовал без БД.
         if (Environment.GetEnvironmentVariable("ConnectionStrings__Database") is null)
@@ -30,13 +35,27 @@ public sealed class AppFactory : WebApplicationFactory<Program>
             builder = builder
                 .UseSetting("ConnectionStrings:Database", "Host=localhost;Database=unused")
                 .UseSetting("ConnectionStrings:AccountsMigrations", "Host=localhost;Database=unused")
+                .UseSetting("ConnectionStrings:SetsMigrations", "Host=localhost;Database=unused")
+                .UseSetting("ConnectionStrings:MediaMigrations", "Host=localhost;Database=unused")
+                .UseSetting("Media:S3:Endpoint", "https://s3.invalid")
+                .UseSetting("Media:S3:Region", "ru-central-1")
+                .UseSetting("Media:S3:Bucket", "unused")
+                .UseSetting("Media:S3:AccessKeyId", "tenant:key")
+                .UseSetting("Media:S3:SecretKey", "secret")
                 .UseSetting("Oidc:Authority", "http://localhost/realms/recallapp")
+                .UseSetting("Oidc:Audience", "RecallApp")
                 .UseSetting("Oidc:RequireHttpsMetadata", "false");
         }
 
         builder
             .UseEnvironment("Development")
+            .UseSetting("Sets:Outbox:Enabled", "false")
+            // Dev-очистка на старте удаляет pending-загрузки всех тестов сразу: в тестовом хосте она запрещена.
+            .UseSetting("Media:Cleanup:PurgeOnStartup", "false")
             .ConfigureServices(services => services
+                .AddSingleton<RecordingOutboxHandler>()
+                .AddSingleton<IDomainEventHandler<OutboxTestEvent>>(sp => sp.GetRequiredService<RecordingOutboxHandler>())
+                .AddSingleton<IDomainEventHandler<OutboxFailingEvent>, FailingOutboxHandler>()
                 .AddAuthentication(options =>
                 {
                     options.DefaultAuthenticateScheme = TestAuthScheme;

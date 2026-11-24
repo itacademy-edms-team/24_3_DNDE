@@ -31,7 +31,7 @@ public sealed class GetMyAccountTests : IClassFixture<AppFactory>
 
         // Код домена в title, происхождение - extension source (ADR 0031).
         var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal("InvalidKeycloakSub", problem.GetProperty("title").GetString());
+        Assert.Equal("User.KeycloakSubInvalid", problem.GetProperty("title").GetString());
         Assert.Equal("app", problem.GetProperty("source").GetString());
         Assert.Equal("user.keycloakSub", problem.GetProperty("target").GetString());
     }

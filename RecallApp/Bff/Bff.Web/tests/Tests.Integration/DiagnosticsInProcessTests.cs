@@ -4,7 +4,7 @@ using Tests.Integration.Helpers;
 namespace Tests.Integration;
 
 /// <summary>
-/// Диагностический маршрут сессии: отдаёт то, что SPA не видит (sub, роли из access-токена),
+/// Диагностический маршрут сессии: отдаёт то, что SPA не видит (sub, роли из principal),
 /// и существует только при включённом флаге Diagnostics:Session.
 /// </summary>
 [Trait("Category", "InProcess")]
@@ -26,9 +26,12 @@ public sealed class DiagnosticsInProcessTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task DiagnosticsSession_Authenticated_ReturnsRolesFromAccessToken()
+    public async Task DiagnosticsSession_Authenticated_ReturnsRolesFromPrincipal()
     {
-        await BffApp.SignInAsync(_browser, new TestSession(TestJwt.Create("app-user")));
+        await BffApp.SignInAsync(
+            _browser,
+            new TestSession(TestJwt.Create(), Roles: ["RecallApp:app-user", "RecallApp:app-admin"])
+        );
 
         var (response, body) = await BffApp.GetAppSessionAsync(_browser, "/debug/session");
 
@@ -36,11 +39,24 @@ public sealed class DiagnosticsInProcessTests : IAsyncLifetime
         Assert.Contains("no-store", response.Headers.CacheControl?.ToString());
         Assert.True(body.GetProperty("isAuthenticated").GetBoolean());
         Assert.Equal("user-1", body.GetProperty("sub").GetString());
-        Assert.Equal(["app-user"], body.GetProperty("roles").EnumerateArray().Select(r => r.GetString()));
+        Assert.Equal(
+            ["RecallApp:app-user", "RecallApp:app-admin"],
+            body.GetProperty("roles").EnumerateArray().Select(r => r.GetString())
+        );
         Assert.Equal(
             DateTimeOffset.FromUnixTimeSeconds(1_767_225_600),
             body.GetProperty("accessTokenExpiresAt").GetDateTimeOffset()
         );
+    }
+
+    [Fact]
+    public async Task DiagnosticsSession_AuthenticatedWithoutRoles_ReturnsEmptyRoles()
+    {
+        await BffApp.SignInAsync(_browser, new TestSession(TestJwt.Create()));
+
+        var (_, body) = await BffApp.GetAppSessionAsync(_browser, "/debug/session");
+
+        Assert.Empty(body.GetProperty("roles").EnumerateArray());
     }
 
     [Fact]
@@ -58,7 +74,7 @@ public sealed class DiagnosticsInProcessTests : IAsyncLifetime
     {
         await using var app = new BffApp();
         using var browser = app.CreateBrowser();
-        await BffApp.SignInAsync(browser, new TestSession(TestJwt.Create("app-user")));
+        await BffApp.SignInAsync(browser, new TestSession(TestJwt.Create()));
 
         var response = await browser.GetAsync("/debug/session");
 

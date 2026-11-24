@@ -14,15 +14,23 @@ using Npgsql;
 namespace Accounts.Infrastructure;
 
 /// <summary>
-/// Композиция модуля Accounts: регистрация сервисов, маршруты, миграции, проверка связности.
-/// Единственная публичная точка модуля; остальное - internal.
+/// Предоставляет композицию модуля Accounts:
+/// регистрацию сервисов, маршруты, миграции и проверку связности.
 /// </summary>
+/// <remarks>
+/// Единственная публичная точка модуля: всё остальное под <c>internal</c>.
+/// </remarks>
 public static class AccountsModule
 {
     /// <summary>
-    /// Регистрирует модуль на общем runtime-пуле соединений (квота резервируется хостом
-    /// через ConnectionPoolBudget до вызова).
+    /// Регистрирует модуль на общем runtime-пуле соединений.
     /// </summary>
+    /// <remarks>
+    /// Квота соединений резервируется хостом через <c>ConnectionPoolBudget</c> до вызова.
+    /// </remarks>
+    /// <param name="services">Коллекция сервисов хоста.</param>
+    /// <param name="dataSource">Общий пул соединений приложения.</param>
+    /// <returns>Та же коллекция для цепочки регистраций.</returns>
     public static IServiceCollection AddAccounts(this IServiceCollection services, NpgsqlDataSource dataSource)
     {
         services.AddDbContext<AccountsDbContext>(options => options.UseNpgsql(dataSource,
@@ -35,6 +43,11 @@ public static class AccountsModule
         return services;
     }
 
+    /// <summary>
+    /// Регистрирует маршруты модуля.
+    /// </summary>
+    /// <param name="endpoints">Построитель маршрутов хоста.</param>
+    /// <returns>Тот же построитель для цепочки.</returns>
     public static IEndpointRouteBuilder MapAccounts(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("/api/users").WithTags("Accounts");
@@ -56,8 +69,8 @@ public static class AccountsModule
     /// <summary>
     /// Применяет миграции модуля.
     /// </summary>
-    /// <param name="connectionString">Строка подключения к БД пользователя, привязанного к модулю и схеме Accounts.</param>
-    /// <param name="cancellationToken">Токен отслеживания отмены операции.</param>
+    /// <param name="connectionString">Строка подключения пользователя-владельца схемы accounts.</param>
+    /// <param name="cancellationToken">Токен отмены.</param>
     public static async Task MigrateAccounts(string connectionString, CancellationToken cancellationToken = default)
     {
         var options = new DbContextOptionsBuilder<AccountsDbContext>().UseNpgsql(connectionString,
@@ -66,6 +79,12 @@ public static class AccountsModule
         await db.Database.MigrateAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Проверяет, доступна ли схема модуля.
+    /// </summary>
+    /// <param name="services">Провайдер сервисов хоста.</param>
+    /// <param name="cancellationToken">Токен отмены.</param>
+    /// <returns><see langword="true"/>, если соединение с БД устанавливается.</returns>
     public static Task<bool> CanConnectAccounts(this IServiceProvider services, CancellationToken cancellationToken = default) =>
         services.GetRequiredService<AccountsDbContext>().Database.CanConnectAsync(cancellationToken);
 }

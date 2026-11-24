@@ -1,4 +1,9 @@
-import { AxiosError, AxiosHeaders, type InternalAxiosRequestConfig } from "axios";
+import {
+  AxiosError,
+  AxiosHeaders,
+  type AxiosResponse,
+  type InternalAxiosRequestConfig,
+} from "axios";
 import { describe, expect, it } from "vitest";
 
 import { createRestClient } from "./createRestClient";
@@ -7,7 +12,9 @@ import { RestApiError } from "@/shared/api/errors/restApiError";
 /** Adapter, который отвечает заданной ошибкой, не выходя в сеть. */
 function failingAdapter(status: number, data: unknown) {
   return async (config: InternalAxiosRequestConfig) => {
-    const headers = new AxiosHeaders({ "Content-Type": "application/problem+json" });
+    const headers = new AxiosHeaders({
+      "Content-Type": "application/problem+json",
+    });
     throw new AxiosError(
       "Request failed with status code " + status,
       String(status),
@@ -25,17 +32,41 @@ function networkFailureAdapter() {
   };
 }
 
+/** Adapter, который ловит итоговый конфиг запроса после интерцепторов и отвечает пустым 200. */
+function capturingAdapter(
+  onRequest: (config: InternalAxiosRequestConfig) => void,
+) {
+  return async (config: InternalAxiosRequestConfig): Promise<AxiosResponse> => {
+    onRequest(config);
+    return {
+      data: {},
+      status: 200,
+      statusText: "OK",
+      headers: new AxiosHeaders(),
+      config,
+    };
+  };
+}
+
 describe("createRestClient", () => {
   it("throws RestApiError with problem details from the response body", async () => {
     const client = createRestClient("https://bff.localhost/api");
-    const problem = { title: "InvalidDisplayName", status: 400, detail: "Недопустимое имя" };
+    const problem = {
+      title: "User.DisplayNameTooLong",
+      status: 400,
+      detail: "Недопустимое имя",
+    };
 
     const error = await client
       .get("/users/me", { adapter: failingAdapter(400, problem) })
       .catch((e: unknown) => e);
 
     expect(error).toBeInstanceOf(RestApiError);
-    expect(error).toMatchObject({ kind: "rest", status: 400, retryable: false });
+    expect(error).toMatchObject({
+      kind: "rest",
+      status: 400,
+      retryable: false,
+    });
     expect((error as RestApiError).problem).toEqual(problem);
   });
 
@@ -43,7 +74,9 @@ describe("createRestClient", () => {
     const client = createRestClient("https://bff.localhost/api");
 
     const error = await client
-      .get("/users/me", { adapter: failingAdapter(503, { title: "Unavailable" }) })
+      .get("/users/me", {
+        adapter: failingAdapter(503, { title: "Unavailable" }),
+      })
       .catch((e: unknown) => e);
 
     expect(error).toMatchObject({ status: 503, retryable: true });
@@ -57,17 +90,56 @@ describe("createRestClient", () => {
       .catch((e: unknown) => e);
 
     expect(error).toBeInstanceOf(RestApiError);
-    expect(error).toMatchObject({ status: null, retryable: true, problem: null });
+    expect(error).toMatchObject({
+      status: null,
+      retryable: true,
+      problem: null,
+    });
   });
 
   it("keeps non-problem body as null problem", async () => {
     const client = createRestClient("https://bff.localhost/api");
 
     const error = await client
-      .get("/users/me", { adapter: failingAdapter(502, "<html>Bad Gateway</html>") })
+      .get("/users/me", {
+        adapter: failingAdapter(502, "<html>Bad Gateway</html>"),
+      })
       .catch((e: unknown) => e);
 
     expect(error).toBeInstanceOf(RestApiError);
     expect((error as RestApiError).problem).toBeNull();
+  });
+});
+
+describe("createRestClient CSRF header", () => {
+  it.each(["post", "put", "patch", "delete"] as const)(
+    "adds X-CSRF: 1 to %s requests",
+    async (method) => {
+      const client = createRestClient("https://bff.localhost/api");
+      let captured: InternalAxiosRequestConfig | undefined;
+
+      await client.request({
+        method,
+        url: "/sets",
+        adapter: capturingAdapter((config) => {
+          captured = config;
+        }),
+      });
+
+      expect(captured?.headers.get("X-CSRF")).toBe("1");
+    },
+  );
+
+  it("does not add X-CSRF to GET requests", async () => {
+    const client = createRestClient("https://bff.localhost/api");
+    let captured: InternalAxiosRequestConfig | undefined;
+
+    await client.get("/sets", {
+      adapter: capturingAdapter((config) => {
+        captured = config;
+      }),
+    });
+
+    expect(captured?.headers.get("X-CSRF")).toBeUndefined();
   });
 });

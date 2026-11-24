@@ -4,21 +4,23 @@ using System.Text.Json;
 namespace Tests.Integration.Helpers;
 
 /// <summary>
-/// Неподписанный JWT для тестов. BFF не проверяет подпись access-токена,
-/// /session только читает из него client-роли RecallApp (resource_access).
+/// Неподписанный JWT для тестов. BFF не проверяет подпись access-токена;
+/// из него читается только exp, роли приходят в principal из ID-токена.
 /// </summary>
 public static class TestJwt
 {
-    public static string Create(string role)
+    /// <summary>exp по умолчанию: 2026-01-01T00:00:00Z.</summary>
+    public const long DefaultExp = 1_767_225_600;
+
+    public static string Create(long exp = DefaultExp)
     {
         var header = Encode(new { alg = "none", typ = "JWT" });
         var payload = Encode(
             new
             {
                 sub = "user-1",
-                // 2026-01-01T00:00:00Z: фиксированный exp, чтобы тесты не зависели от часов.
-                exp = 1_767_225_600,
-                resource_access = new { RecallApp = new { roles = new[] { role } } },
+                // Фиксированный exp: тесты не зависят от часов.
+                exp,
             }
         );
         return $"{header}.{payload}.signature";
