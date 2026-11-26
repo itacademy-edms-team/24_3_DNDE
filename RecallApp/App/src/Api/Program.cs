@@ -4,6 +4,7 @@ using Common.Application.Provisioning;
 using Common.Infrastructure.Data;
 using HttpLogging;
 using HttpLogging.Abstractions;
+using HttpLogging.RequestFilters;
 using Microsoft.EntityFrameworkCore;
 using NLog;
 using NLog.Web;
@@ -64,7 +65,7 @@ try
     builder.Services.AddDbContext<LoggingDbContext>(options => options.UseNpgsql(loggingConnectionString,
         pg => pg.MigrationsHistoryTable("__EFMigrationsHistory", "logging")));
     builder.Services.AddSingleton<IRequestFilter>(new CompositeRequestFilter(
-        new PathPrefixRequestFilter("/health", "/static"))
+        new ExcludePathPrefixRequestFilter("/health", "/static"))
     );
     builder.Services.AddHttpDatabaseLogging<LoggingDbContext>("app", options =>
     {

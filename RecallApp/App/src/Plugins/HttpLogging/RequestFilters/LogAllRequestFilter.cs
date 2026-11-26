@@ -1,7 +1,7 @@
 using HttpLogging.Abstractions;
 using Microsoft.AspNetCore.Http;
 
-namespace HttpLogging;
+namespace HttpLogging.RequestFilters;
 
 /// <summary>
 /// Фильтр по умолчанию: логирует все запросы.

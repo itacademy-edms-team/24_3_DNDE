@@ -1,21 +1,21 @@
 using HttpLogging.Abstractions;
 using Microsoft.AspNetCore.Http;
 
-namespace HttpLogging;
+namespace HttpLogging.RequestFilters;
 
 /// <summary>
 /// Фильтрует запросы по префиксам пути:
 /// запросы, путь которых начинается с одного из указанных префиксов (по границе сегмента), не логируются.
 /// </summary>
-public sealed class PathPrefixRequestFilter : IRequestFilter
+public sealed class ExcludePathPrefixRequestFilter : IRequestFilter
 {
     private readonly PathString[] _prefixes;
 
     /// <summary>
-    /// Инициализирует новый экземпляр класса <see cref="PathPrefixRequestFilter"/>.
+    /// Инициализирует новый экземпляр класса <see cref="ExcludePathPrefixRequestFilter"/>.
     /// </summary>
     /// <param name="prefixes">Префиксы путей, которые не логируются (например, "/health").</param>
-    public PathPrefixRequestFilter(params string[] prefixes)
+    public ExcludePathPrefixRequestFilter(params string[] prefixes)
         => _prefixes = Array.ConvertAll(prefixes, static prefix => new PathString(prefix));
 
     /// <summary>

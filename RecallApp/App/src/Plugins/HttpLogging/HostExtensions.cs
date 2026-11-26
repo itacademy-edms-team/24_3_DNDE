@@ -1,4 +1,5 @@
 using HttpLogging.Abstractions;
+using HttpLogging.RequestFilters;
 using HttpLogging.Sanitizers;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;

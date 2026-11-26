@@ -98,7 +98,7 @@ AddHttpDatabaseLogging<LoggingDbContext>("app",
 
 ```csharp
 builder.Services.AddSingleton<IRequestFilter>(
-    new PathPrefixRequestFilter("/health", "/static"));
+    new ExcludePathPrefixRequestFilter("/health", "/static"));
 builder.Services.AddHttpDatabaseLogging<LoggingDbContext>("app");
 ```
 
