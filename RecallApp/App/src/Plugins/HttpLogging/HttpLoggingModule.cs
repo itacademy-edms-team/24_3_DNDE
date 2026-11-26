@@ -3,6 +3,7 @@ using HttpLogging.Sanitizers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Infrastructure;
 
 namespace HttpLogging;
 
@@ -16,6 +17,8 @@ namespace HttpLogging;
 /// </remarks>
 public static class HttpLoggingModule
 {
+    private const string MigrationsHistoryTable = "__EFMigrationsHistory";
+    
     /// <summary>
     /// Регистрирует плагин на общем пуле соединений приложения.
     /// </summary>
@@ -41,24 +44,27 @@ public static class HttpLoggingModule
         NpgsqlDataSource dataSource,
         string connectionString,
         string serviceName,
-        string schema = "logging",
+        string? schema = null,
         int poolQuota = 5,
         Action<SanitizerOptions>? configureSanitizer = null,
         Action<BodyCaptureOptions>? configureBodyCapture = null,
         Action<AccessLogOptions>? configureAccessLog = null)
     {
-        services.AddSingleton(new HttpLoggingOptions
+        var logOptions = new HttpLoggingOptions
         {
             ServiceName = serviceName,
-            Schema = schema,
             PoolQuota = poolQuota,
             ConnectionString = new NpgsqlConnectionStringBuilder(connectionString)
             {
                 MaxPoolSize = poolQuota,
             }.ConnectionString,
-        });
-        services.AddDbContext<LoggingDbContext>(options => options.UseNpgsql(dataSource,
-            pg => pg.MigrationsHistoryTable("__EFMigrationsHistory", schema)));
+        };
+        if (schema is not null)
+            logOptions.Schema = schema;
+        services.AddSingleton(logOptions);
+        
+        services.AddDbContext<LoggingDbContext>(dbOptions =>
+            dbOptions.UseNpgsql(dataSource, pg => ConfigureMigrationsHistory(pg, logOptions.Schema)));
 
         return services.AddHttpDatabaseLogging<LoggingDbContext>(
             serviceName,
@@ -70,19 +76,26 @@ public static class HttpLoggingModule
     /// <summary>
     /// Применяет миграции плагина.
     /// </summary>
+    /// <remarks>
+    /// <paramref name="schema"/> согласуется с указанной в методе <see cref="AddHttpLogging"/>
+    /// </remarks>
     /// <param name="connectionString">Строка подключения пользователя-владельца схемы логов.</param>
     /// <param name="schema">Схема БД для таблицы логов.</param>
     /// <param name="cancellationToken">Токен отмены.</param>
     public static async Task MigrateHttpLogging(
         string connectionString,
-        string schema = "logging",
+        string? schema = null,
         CancellationToken cancellationToken = default)
     {
-        var options = new DbContextOptionsBuilder<LoggingDbContext>()
-            .UseNpgsql(connectionString, pg => pg.MigrationsHistoryTable("__EFMigrationsHistory", schema))
+        var logOptions = new HttpLoggingOptions();
+        if (schema is not null)
+            logOptions.Schema = schema;
+
+        var dbOptions = new DbContextOptionsBuilder<LoggingDbContext>()
+            .UseNpgsql(connectionString, pg => ConfigureMigrationsHistory(pg, logOptions.Schema))
             .Options;
 
-        await using var db = new LoggingDbContext(options, new HttpLoggingOptions { Schema = schema });
+        await using var db = new LoggingDbContext(dbOptions, logOptions);
         await db.Database.MigrateAsync(cancellationToken);
     }
 
@@ -99,4 +112,7 @@ public static class HttpLoggingModule
         this IServiceProvider services,
         CancellationToken cancellationToken = default) =>
         services.GetRequiredService<LoggingDbContext>().Database.CanConnectAsync(cancellationToken);
+
+    private static void ConfigureMigrationsHistory(NpgsqlDbContextOptionsBuilder pg, string schema) =>
+        pg.MigrationsHistoryTable(MigrationsHistoryTable, schema);
 }
