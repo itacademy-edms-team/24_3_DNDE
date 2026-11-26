@@ -2,6 +2,8 @@ using Accounts.Infrastructure;
 using Api;
 using Common.Application.Provisioning;
 using Common.Infrastructure.Data;
+using HttpLogging;
+using Microsoft.EntityFrameworkCore;
 using NLog;
 using NLog.Web;
 using Npgsql;
@@ -12,6 +14,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Remove default Microsoft logging providers
 builder.Logging.ClearProviders();
+// Let NLog control logging
+builder.Logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
 // Register NLog (nlog.config)
 builder.Host.UseNLog();
 var bootstrapLogger = LogManager.GetCurrentClassLogger();
@@ -53,6 +57,13 @@ try
     builder.Services.AddSets(dataSource);
     builder.Services.AddMedia(dataSource);
 
+    // Логирование: DbContext для миграций и источник подключения для NLog DatabaseTarget.
+    var loggingConnectionString = builder.Configuration.GetConnectionString("Logging")
+        ?? throw new InvalidOperationException("Set ConnectionStrings__Logging (app_runtime DML). See docs.");
+    builder.Services.AddDbContext<LoggingDbContext>(options => options.UseNpgsql(loggingConnectionString,
+        pg => pg.MigrationsHistoryTable("__EFMigrationsHistory", "logging")));
+    builder.Services.AddHttpDatabaseLogging<LoggingDbContext>("app");
+
     builder.Services.AddAuthentication()
         .AddJwtBearer(options =>
         {
@@ -73,6 +84,7 @@ try
     var app = builder.Build();
 
     app.UseExceptionHandler();
+    app.UseHttpDatabaseLogging();
     app.UseAuthentication();
     app.UseAuthorization();
     app.UseDomainProvisioning();
@@ -106,6 +118,9 @@ try
         var mediaMigrationsConnectionString = builder.Configuration.GetConnectionString("MediaMigrations")
             ?? throw new InvalidOperationException("Set ConnectionStrings__MediaMigrations (schema owner).");
         await MediaModule.MigrateMedia(mediaMigrationsConnectionString);
+        var loggingMigrationsConnectionString = builder.Configuration.GetConnectionString("LoggingMigrations")
+            ?? throw new InvalidOperationException("Set ConnectionStrings__LoggingMigrations (logging schema owner).");
+        await LoggingModule.MigrateLogging(loggingMigrationsConnectionString);
         if (migrateOnly) return;
     }
 

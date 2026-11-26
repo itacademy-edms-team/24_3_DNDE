@@ -5,6 +5,7 @@
     <ProjectReference Include="..\Modules\Sets\Sets.Infrastructure\Sets.Infrastructure.csproj" />
     <ProjectReference Include="..\Modules\Media\Media.Infrastructure\Media.Infrastructure.csproj" />
     <ProjectReference Include="..\Common\Common.Infrastructure\Common.Infrastructure.csproj" />
+    <ProjectReference Include="..\Plugins\HttpLogging\HttpLogging.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

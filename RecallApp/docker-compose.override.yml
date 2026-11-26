@@ -55,6 +55,8 @@ services:
       TEST_FILTER: ${BFF_TEST_FILTER:-}
 
   app-db:
+    ports:
+      - "21212:5432"
     environment:
       POSTGRES_DB: app
       POSTGRES_USER: app
@@ -63,6 +65,8 @@ services:
       APP_DB_RUNTIME_PASSWORD: ${APP_DB_RUNTIME_PASSWORD}
       APP_DB_ACCOUNTS_OWNER_PASSWORD: ${APP_DB_ACCOUNTS_OWNER_PASSWORD}
       APP_DB_SETS_OWNER_PASSWORD: ${APP_DB_SETS_OWNER_PASSWORD}
+      APP_DB_MEDIA_OWNER_PASSWORD: ${APP_DB_MEDIA_OWNER_PASSWORD}
+      APP_DB_LOGGING_OWNER_PASSWORD: ${APP_DB_LOGGING_OWNER_PASSWORD}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U app"]
       interval: 5s
@@ -83,6 +87,8 @@ services:
       ConnectionStrings__AccountsMigrations: Host=app-db:5432;Database=app;Username=accounts_owner;Password=${APP_DB_ACCOUNTS_OWNER_PASSWORD}
       ConnectionStrings__SetsMigrations: Host=app-db:5432;Database=app;Username=sets_owner;Password=${APP_DB_SETS_OWNER_PASSWORD}
       ConnectionStrings__MediaMigrations: Host=app-db:5432;Database=app;Username=media_owner;Password=${APP_DB_MEDIA_OWNER_PASSWORD}
+      ConnectionStrings__Logging: Host=app-db:5432;Database=app;Username=app_runtime;Password=${APP_DB_RUNTIME_PASSWORD}
+      ConnectionStrings__LoggingMigrations: Host=app-db:5432;Database=app;Username=logging_owner;Password=${APP_DB_LOGGING_OWNER_PASSWORD}
       # миграции модулей применяются при старте dev-контейнера
       Database__ApplyMigrations: "true"
       # объектное хранилище медиа
@@ -99,6 +105,8 @@ services:
       ConnectionStrings__AccountsMigrations: Host=app-db:5432;Database=app;Username=accounts_owner;Password=${APP_DB_ACCOUNTS_OWNER_PASSWORD}
       ConnectionStrings__SetsMigrations: Host=app-db:5432;Database=app;Username=sets_owner;Password=${APP_DB_SETS_OWNER_PASSWORD}
       ConnectionStrings__MediaMigrations: Host=app-db:5432;Database=app;Username=media_owner;Password=${APP_DB_MEDIA_OWNER_PASSWORD}
+      ConnectionStrings__Logging: Host=app-db:5432;Database=app;Username=app_runtime;Password=${APP_DB_RUNTIME_PASSWORD}
+      ConnectionStrings__LoggingMigrations: Host=app-db:5432;Database=app;Username=logging_owner;Password=${APP_DB_LOGGING_OWNER_PASSWORD}
       Oidc__Authority: https://auth.localhost/realms/recallapp
       Oidc__Audience: RecallApp
       # объектное хранилище (тесты медиа идут на реальном cloud.ru, ADR 0037)
