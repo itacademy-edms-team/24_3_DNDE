@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using HttpLogging.Abstractions;
 using HttpLogging.Extractors;
-using HttpLogging.Sanitizers;
 using Microsoft.AspNetCore.Http;
 using NLog;
 
@@ -11,37 +10,19 @@ namespace HttpLogging;
 /// Предоставляет конвейер извлечения и маскирования данных лог-события.
 /// </summary>
 /// <remarks>
-/// Хранит реестр экстракторов и санитайзер.
-/// Результат маскирования кэшируется в пределах одного <see cref="LogEventInfo"/>,
-/// чтобы обрезанная и сжатая колонки одного источника не обрабатывались дважды.
-/// Экземпляр <see cref="IHttpContextAccessor"/> проставляется
-/// хостом в <see cref="HostExtensions.UseHttpDatabaseLogging" /> до начала обработки запросов.
+/// Хранит реестр экстракторов и санитайзер. Результат маскирования кэшируется в пределах
+/// одного <see cref="LogEventInfo"/>, чтобы обрезанная и сжатая колонки одного источника
+/// не обрабатывались дважды. Регистрируется в DI и в NLog ServiceRepository.
 /// </remarks>
-internal static class HttpLoggingPipeline
+internal sealed class HttpLoggingPipeline
 {
-    /// <summary>
-    /// Префикс служебных ключей плагина в свойствах лог-события.
-    /// </summary>
+    /// <summary>Префикс служебных ключей плагина в свойствах лог-события.</summary>
     public const string CachePrefix = "__http_logging_";
     private const string ContextKey = CachePrefix + "context";
     private const string SanitizedKeyPrefix = CachePrefix + "sanitized_";
 
-    /// <summary>
-    /// Аксессор http-контекста.
-    /// </summary>
-    /// <summary>Возвращает или задает доступ к текущему <see cref="HttpContext"/> для извлечения HTTP-данных.</summary>
-    public static IHttpContextAccessor? HttpContextAccessor;
-    
-    /// <summary>
-    /// Санитайзер.
-    /// </summary>
-    /// <summary>Возвращает или задает санитайзер, маскирующий сенситивные данные.</summary>
-    public static ISanitizer Sanitizer = new DefaultSanitizer();
-
-    /// <summary>
-    /// Возвращает реестр экстракторов по именам источников.
-    /// </summary>
-    public static readonly Dictionary<string, IDataExtractor> Extractors = new(StringComparer.OrdinalIgnoreCase)
+    // Экстракторы не имеют состояния, поэтому общий immutable-реестр безопасен.
+    private static readonly Dictionary<string, IDataExtractor> Extractors = new(StringComparer.OrdinalIgnoreCase)
     {
         ["StackTrace"] = new StackTraceExtractor(),
         ["RequestQuery"] = new RequestQueryExtractor(),
@@ -54,16 +35,25 @@ internal static class HttpLoggingPipeline
         ["StartTime"] = new StartTimeExtractor(),
     };
 
+    private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly ISanitizer _sanitizer;
+
     /// <summary>
-    /// Извлекает и маскирует данные указанного источника.
+    /// Инициализирует новый экземпляр класса <see cref="HttpLoggingPipeline"/>.
     /// </summary>
+    /// <param name="sanitizer">Санитайзер, маскирующий сенситивные данные.</param>
+    /// <param name="httpContextAccessor">Аксессор текущего HTTP-контекста.</param>
+    public HttpLoggingPipeline(ISanitizer sanitizer, IHttpContextAccessor httpContextAccessor)
+    {
+        _sanitizer = sanitizer;
+        _httpContextAccessor = httpContextAccessor;
+    }
+
+    /// <summary>Извлекает и маскирует данные указанного источника.</summary>
     /// <param name="logEvent">Лог-событие, для которого извлекаются данные.</param>
     /// <param name="source">Имя источника данных (например, RequestHeaders, RequestBody).</param>
-    /// <returns>
-    /// Маскированные данные
-    /// или <see langword="null"/>, если источник не найден.
-    /// </returns>
-    public static object? GetSanitized(LogEventInfo logEvent, string source)
+    /// <returns>Маскированные данные или <see langword="null"/>, если источник не найден.</returns>
+    public object? GetSanitized(LogEventInfo logEvent, string source)
     {
         var cacheKey = SanitizedKeyPrefix + source;
         if (logEvent.Properties.TryGetValue(cacheKey, out var cached))
@@ -74,14 +64,14 @@ internal static class HttpLoggingPipeline
 
         var context = GetOrCreateContext(logEvent);
         var raw = extractor.Extract(context);
-        var sanitized = Sanitizer.Sanitize(raw);
+        var sanitized = _sanitizer.Sanitize(raw);
         if (sanitized is not null)
             logEvent.Properties[cacheKey] = sanitized;
 
         return sanitized;
     }
 
-    private static ExtractionContext GetOrCreateContext(LogEventInfo logEvent)
+    private ExtractionContext GetOrCreateContext(LogEventInfo logEvent)
     {
         if (logEvent.Properties.TryGetValue(ContextKey, out var cached) && cached is ExtractionContext context)
             return context;
@@ -89,7 +79,7 @@ internal static class HttpLoggingPipeline
         var newContext = new ExtractionContext();
         newContext.Set(logEvent);
 
-        var http = HttpContextAccessor?.HttpContext;
+        var http = _httpContextAccessor.HttpContext;
         if (http is not null)
             newContext.Set(http);
 

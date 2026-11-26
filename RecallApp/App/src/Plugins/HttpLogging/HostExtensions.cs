@@ -1,8 +1,9 @@
+using HttpLogging.Abstractions;
 using HttpLogging.Sanitizers;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using NLog;
 
 namespace HttpLogging;
 
@@ -29,12 +30,10 @@ public static class HostExtensions
         services.AddSingleton(new HttpLoggingOptions { ServiceName = serviceName });
         services.AddHostedService(sp => ActivatorUtilities.CreateInstance<NLogDatabaseConfigurator<TDbContext>>(sp));
 
-        if (configureSanitizer is not null)
-        {
-            var options = new SanitizerOptions();
-            configureSanitizer(options);
-            HttpLoggingPipeline.Sanitizer = new DefaultSanitizer(options);
-        }
+        var sanitizerOptions = new SanitizerOptions();
+        configureSanitizer?.Invoke(sanitizerOptions);
+        services.AddSingleton<ISanitizer>(new DefaultSanitizer(sanitizerOptions));
+        services.AddSingleton<HttpLoggingPipeline>();
 
         RendererRegistration.Register();
         return services;
@@ -50,8 +49,8 @@ public static class HostExtensions
     /// <returns><paramref name="app"/> для цепочки вызовов.</returns>
     public static IApplicationBuilder UseHttpDatabaseLogging(this IApplicationBuilder app)
     {
-        HttpLoggingPipeline.HttpContextAccessor =
-            app.ApplicationServices.GetRequiredService<IHttpContextAccessor>();
+        var pipeline = app.ApplicationServices.GetRequiredService<HttpLoggingPipeline>();
+        LogManager.LogFactory.ServiceRepository.RegisterService(typeof(HttpLoggingPipeline), pipeline);
 
         return app.UseMiddleware<HttpPayloadCaptureMiddleware>();
     }

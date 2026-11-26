@@ -12,11 +12,19 @@ namespace HttpLogging.Renderers;
 [LayoutRenderer("http-value")]
 public sealed class TypedValueLayoutRenderer : LayoutRenderer
 {
+    private HttpLoggingPipeline? _pipeline;
+
     public string Source { get; set; } = string.Empty;
+
+    protected override void InitializeLayoutRenderer()
+    {
+        base.InitializeLayoutRenderer();
+        _pipeline = ResolveService<HttpLoggingPipeline>();
+    }
 
     protected override void Append(StringBuilder builder, LogEventInfo logEvent)
     {
-        var value = HttpLoggingPipeline.GetSanitized(logEvent, Source);
+        var value = _pipeline!.GetSanitized(logEvent, Source);
         if (value is null)
             return;
 
