@@ -6,9 +6,12 @@ namespace HttpLogging;
 
 /// <summary>
 /// Перехватывает тела запроса/ответа в HttpContext.Items и в конце запроса пишет одну
-/// access-запись через NLog (logger HttpLogging.Access). Бинарные тела не логируются.
+/// access-запись через NLog (logger HttpLogging.Access).
 /// </summary>
-internal sealed class HttpPayloadCaptureMiddleware(RequestDelegate next)
+/// <remarks>
+/// Захват настраивается через <see cref="BodyCaptureOptions"/>.
+/// </remarks>
+internal sealed class HttpPayloadCaptureMiddleware(RequestDelegate next, BodyCaptureOptions options)
 {
     private static readonly NLog.Logger Logger = NLog.LogManager.GetLogger("HttpLogging.Access");
 
@@ -16,12 +19,12 @@ internal sealed class HttpPayloadCaptureMiddleware(RequestDelegate next)
     {
         context.Items[HttpLoggingKeys.StartTime] = DateTimeOffset.UtcNow;
 
-        var requestBody = await CaptureRequestBodyAsync(context);
-        context.Items[HttpLoggingKeys.RequestBody] = requestBody;
+        context.Items[HttpLoggingKeys.RequestBody] = await CaptureRequestBodyAsync(context);
 
         var originalBody = context.Response.Body;
-        using var capture = new MemoryStream();
-        context.Response.Body = capture;
+        using var capture = options.CaptureResponseBody ? new MemoryStream() : null;
+        if (capture is not null)
+            context.Response.Body = capture;
 
         var sw = Stopwatch.StartNew();
         Exception? capturedException = null;
@@ -42,13 +45,13 @@ internal sealed class HttpPayloadCaptureMiddleware(RequestDelegate next)
                 ? 500 
                 : context.Response.StatusCode;
 
-            context.Items[HttpLoggingKeys.ResponseBody] = ReadCapturedResponse(capture, context.Response.ContentType);
-            context.Items[HttpLoggingKeys.StatusCode] = statusCode;
-            context.Items[HttpLoggingKeys.DurationMs] = elapsedMs;
-
-            capture.Position = 0;
-            await capture.CopyToAsync(originalBody);
-            context.Response.Body = originalBody;
+            if (capture is not null)
+            {
+                context.Items[HttpLoggingKeys.ResponseBody] = ReadCapturedResponse(capture, context.Response.ContentType);
+                capture.Position = 0;
+                await capture.CopyToAsync(originalBody);
+                context.Response.Body = originalBody;
+            }
 
             var level = capturedException is not null || statusCode >= 500 
                 ? NLog.LogLevel.Error
@@ -64,35 +67,52 @@ internal sealed class HttpPayloadCaptureMiddleware(RequestDelegate next)
         }
     }
 
-    private static async Task<string?> CaptureRequestBodyAsync(HttpContext context)
+    private async Task<string?> CaptureRequestBodyAsync(HttpContext context)
     {
-        if (!IsTextual(context.Request.ContentType))
+        if (!options.CaptureRequestBody || !ShouldCapture(context.Request.ContentType))
             return null;
 
         context.Request.EnableBuffering();
-        using var reader = new StreamReader(context.Request.Body, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, bufferSize: 1024, leaveOpen: true);
-        var body = await reader.ReadToEndAsync(context.RequestAborted);
+        var body = await ReadBodyAsync(context.Request.Body, options.MaxLength, context.RequestAborted);
         context.Request.Body.Position = 0;
         return body;
     }
 
-    private static string? ReadCapturedResponse(MemoryStream capture, string? contentType)
+    private string? ReadCapturedResponse(MemoryStream capture, string? contentType)
     {
-        if (!IsTextual(contentType) || capture.Length == 0)
+        if (!ShouldCapture(contentType) || capture.Length == 0)
             return null;
 
-        return Encoding.UTF8.GetString(capture.GetBuffer(), 0, (int)capture.Length);
+        var length = options.MaxLength > 0
+            ? (int)Math.Min(capture.Length, options.MaxLength)
+            : (int)capture.Length;
+
+        return Encoding.UTF8.GetString(capture.GetBuffer(), 0, length);
     }
 
-    private static bool IsTextual(string? contentType)
+    private bool ShouldCapture(string? contentType)
     {
         if (string.IsNullOrEmpty(contentType))
             return true;
 
-        return contentType.StartsWith("application/json", StringComparison.OrdinalIgnoreCase)
-            || contentType.StartsWith("application/problem+json", StringComparison.OrdinalIgnoreCase)
-            || contentType.StartsWith("application/x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase)
-            || contentType.StartsWith("application/xml", StringComparison.OrdinalIgnoreCase)
-            || contentType.StartsWith("text/", StringComparison.OrdinalIgnoreCase);
+        foreach (var prefix in options.ContentTypes)
+        {
+            if (contentType.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static async Task<string?> ReadBodyAsync(Stream body, int maxLength, CancellationToken cancellationToken)
+    {
+        using var reader = new StreamReader(body, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, bufferSize: 1024, leaveOpen: true);
+
+        if (maxLength <= 0)
+            return await reader.ReadToEndAsync(cancellationToken);
+
+        var buffer = new char[maxLength];
+        var read = await reader.ReadBlockAsync(buffer, 0, maxLength);
+        return read == 0 ? null : new string(buffer, 0, read);
     }
 }

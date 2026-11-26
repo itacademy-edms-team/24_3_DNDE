@@ -24,12 +24,14 @@ public static class HostExtensions
     /// <param name="services">Коллекция сервисов хоста.</param>
     /// <param name="serviceName">Имя сервиса для колонки service_name.</param>
     /// <param name="configureSanitizer">Опциональная настройка маскирования сенситивных полей.</param>
+    /// <param name="configureBodyCapture">Опциональная настройка захвата тел запроса/ответа.</param>
     /// <typeparam name="TDbContext">Хостовый DbContext, в модель которого добавлен UseDatabaseLogging().</typeparam>
     /// <returns><paramref name="services"/> для цепочки вызовов.</returns>
     public static IServiceCollection AddHttpDatabaseLogging<TDbContext>(
         this IServiceCollection services,
         string serviceName,
-        Action<SanitizerOptions>? configureSanitizer = null)
+        Action<SanitizerOptions>? configureSanitizer = null,
+        Action<BodyCaptureOptions>? configureBodyCapture = null)
         where TDbContext : DbContext
     {
         services.AddHttpContextAccessor();
@@ -40,6 +42,10 @@ public static class HostExtensions
         configureSanitizer?.Invoke(sanitizerOptions);
         services.TryAddSingleton<ISanitizer>(_ => new DefaultSanitizer(sanitizerOptions));
         services.AddSingleton<HttpLoggingPipeline>();
+
+        var bodyCaptureOptions = new BodyCaptureOptions();
+        configureBodyCapture?.Invoke(bodyCaptureOptions);
+        services.AddSingleton(bodyCaptureOptions);
 
         RendererRegistration.Register();
         return services;
