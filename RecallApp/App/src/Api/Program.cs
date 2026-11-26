@@ -45,11 +45,14 @@ try
         builder.Configuration.GetValue("AppDb:SetsPoolQuota", 20));
     var mediaPoolLease = poolBudget.GetPools(
         builder.Configuration.GetValue("AppDb:MediaPoolQuota", 10));
+    var databaseLoggingPoolLease = poolBudget.GetPools(
+        builder.Configuration.GetValue("AppDb:DatabaseLoggingPoolQuota", 5));
     builder.Services.AddSingleton(dataSource);
     builder.Services.AddSingleton(poolBudget);
     builder.Services.AddSingleton(new PoolLeaseHolder(accountsPoolLease));
     builder.Services.AddSingleton(new PoolLeaseHolder(setsPoolLease));
     builder.Services.AddSingleton(new PoolLeaseHolder(mediaPoolLease));
+    builder.Services.AddSingleton(new PoolLeaseHolder(databaseLoggingPoolLease));
 
     // Идентичность доменного пользователя для модулей: заполняется ступенью JIT-провижининга
     builder.Services.AddScoped<CurrentUser>();
@@ -60,18 +63,16 @@ try
     builder.Services.AddMedia(dataSource);
 
     // Http логирование в базу
-    var loggingConnectionString = builder.Configuration.GetConnectionString("Logging")
-        ?? throw new InvalidOperationException("Set ConnectionStrings__Logging (app_runtime DML). See docs.");
-    builder.Services.AddDbContext<LoggingDbContext>(options => options.UseNpgsql(loggingConnectionString,
-        pg => pg.MigrationsHistoryTable("__EFMigrationsHistory", "logging")));
     builder.Services.AddSingleton<IRequestFilter>(new CompositeRequestFilter(
         new ExcludePathPrefixRequestFilter("/health", "/static"))
     );
-    builder.Services.AddHttpDatabaseLogging<LoggingDbContext>("app", options =>
-    {
-        options.AddSensitiveKey("displayName")
-            .AddSensitiveKey("email");
-    });
+    builder.Services.AddHttpLogging(
+        dataSource,
+        connectionString,
+        "app",
+        poolQuota: builder.Configuration.GetValue("AppDb:DatabaseLoggingPoolQuota", 5),
+        configureSanitizer: options => options.AddSensitiveKey("displayName")
+            .AddSensitiveKey("email"));
 
     builder.Services.AddAuthentication()
         .AddJwtBearer(options =>
@@ -107,7 +108,8 @@ try
         var accounts = services.CanConnectAccounts(cancellationToken);
         var sets = services.CanConnectSets(cancellationToken);
         var media = services.CanConnectMedia(cancellationToken);
-        await Task.WhenAll(accounts, sets, media);
+        var logging = services.CanConnectHttpLogging(cancellationToken);
+        await Task.WhenAll(accounts, sets, media, logging);
 
         return accounts.Result && sets.Result && media.Result
             ? Results.Ok(new { Status = "ready" })
@@ -129,7 +131,7 @@ try
         await MediaModule.MigrateMedia(mediaMigrationsConnectionString);
         var loggingMigrationsConnectionString = builder.Configuration.GetConnectionString("LoggingMigrations")
             ?? throw new InvalidOperationException("Set ConnectionStrings__LoggingMigrations (logging schema owner).");
-        await LoggingModule.MigrateLogging(loggingMigrationsConnectionString);
+        await HttpLoggingModule.MigrateHttpLogging(loggingMigrationsConnectionString);
         if (migrateOnly) return;
     }
 

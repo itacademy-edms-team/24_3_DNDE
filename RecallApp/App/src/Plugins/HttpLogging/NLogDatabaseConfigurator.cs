@@ -10,6 +10,7 @@ using NLog.Config;
 using NLog.Layouts;
 using NLog.Targets;
 using NLog.Targets.Wrappers;
+using Npgsql;
 
 namespace HttpLogging;
 
@@ -24,6 +25,8 @@ internal sealed class NLogDatabaseConfigurator<TDbContext>(
     where TDbContext : DbContext
 {
     private readonly string _serviceName = options.ServiceName;
+    private readonly int _poolQuota = options.PoolQuota;
+    private readonly string? _connectionString = options.ConnectionString;
     private readonly string _loggerName = accessLogOptions.LoggerName;
     private readonly LogLevel _minLevel = accessLogOptions.MinLevel;
     private readonly int _queueLimit = accessLogOptions.QueueLimit;
@@ -37,8 +40,11 @@ internal sealed class NLogDatabaseConfigurator<TDbContext>(
         var connection = dbContext.Database.GetDbConnection();
         var dbProviderName = connection.GetType().AssemblyQualifiedName
                              ?? throw new InvalidOperationException("Unable to determine the DbConnection type from the context.");
-        var connectionString = dbContext.Database.GetConnectionString()
-                               ?? throw new InvalidOperationException("The DbContext connection string is not configured.");
+        // NLog открывает собственные соединения (свой пул), поэтому ограничиваем его квотой отдельно от общего пула.
+        var targetConnectionString = _connectionString ?? new NpgsqlConnectionStringBuilder(GetContextConnectionString(dbContext))
+        {
+            MaxPoolSize = _poolQuota,
+        }.ConnectionString;
 
         var sqlHelper = dbContext.GetService<ISqlGenerationHelper>();
 
@@ -58,7 +64,7 @@ internal sealed class NLogDatabaseConfigurator<TDbContext>(
         var dbTarget = new DatabaseTarget(targetName)
         {
             DBProvider = dbProviderName,
-            ConnectionString = connectionString,
+            ConnectionString = targetConnectionString,
             CommandText = commandText,
             KeepConnection = false,
         };
@@ -97,6 +103,10 @@ internal sealed class NLogDatabaseConfigurator<TDbContext>(
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    private static string GetContextConnectionString(DbContext dbContext) =>
+        dbContext.Database.GetConnectionString()
+        ?? throw new InvalidOperationException("The DbContext connection string is not configured.");
 
     private static List<ColumnSpec> BuildColumns(
         IEntityType entityType,

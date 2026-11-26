@@ -4,7 +4,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace Common.Infrastructure.Migrations.Logging
+namespace HttpLogging.Infrastructure.Migrations
 {
     /// <inheritdoc />
     public partial class InitialLogging : Migration

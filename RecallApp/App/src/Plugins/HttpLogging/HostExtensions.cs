@@ -39,7 +39,7 @@ public static class HostExtensions
         where TDbContext : DbContext
     {
         services.AddHttpContextAccessor();
-        services.AddSingleton(new HttpLoggingOptions { ServiceName = serviceName });
+        services.TryAddSingleton(new HttpLoggingOptions { ServiceName = serviceName });
         services.AddHostedService(sp => ActivatorUtilities.CreateInstance<NLogDatabaseConfigurator<TDbContext>>(sp));
 
         var sanitizerOptions = new SanitizerOptions();

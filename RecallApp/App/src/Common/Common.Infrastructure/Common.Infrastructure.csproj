@@ -13,7 +13,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Common.Application\Common.Application.csproj" />
-    <ProjectReference Include="..\..\Plugins\HttpLogging\HttpLogging.csproj" />
   </ItemGroup>
 
   <ItemGroup>
