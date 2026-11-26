@@ -3,6 +3,7 @@ using HttpLogging.Sanitizers;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using NLog;
 
 namespace HttpLogging;
@@ -15,6 +16,11 @@ public static class HostExtensions
     /// <summary>
     /// Регистрирует плагин HTTP-логирования: HttpContextAccessor, middleware и NLog DatabaseTarget.
     /// </summary>
+    /// <remarks>
+    /// Чтобы полностью заменить стандартный маскировщик, зарегистрируйте собственную реализацию
+    /// <see cref="ISanitizer"/> в DI до вызова этого метода.
+    /// В таком случае <paramref name="configureSanitizer"/> игнорируется.
+    /// </remarks>
     /// <param name="services">Коллекция сервисов хоста.</param>
     /// <param name="serviceName">Имя сервиса для колонки service_name.</param>
     /// <param name="configureSanitizer">Опциональная настройка маскирования сенситивных полей.</param>
@@ -32,7 +38,7 @@ public static class HostExtensions
 
         var sanitizerOptions = new SanitizerOptions();
         configureSanitizer?.Invoke(sanitizerOptions);
-        services.AddSingleton<ISanitizer>(new DefaultSanitizer(sanitizerOptions));
+        services.TryAddSingleton<ISanitizer>(_ => new DefaultSanitizer(sanitizerOptions));
         services.AddSingleton<HttpLoggingPipeline>();
 
         RendererRegistration.Register();

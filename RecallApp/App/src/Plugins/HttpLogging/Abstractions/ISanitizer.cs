@@ -8,7 +8,7 @@ namespace HttpLogging.Abstractions;
 /// обходит вложенные структуры (JSON-объекты и массивы).
 /// Данные, не являющиеся строками, JSON-узлами или коллекциями "ключ-значение", возвращаются без изменений.
 /// </remarks>
-internal interface ISanitizer
+public interface ISanitizer
 {
     /// <summary>
     /// Маскирует сенситивные данные в указанном значении.
