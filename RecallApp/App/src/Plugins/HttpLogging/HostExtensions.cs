@@ -18,8 +18,9 @@ public static class HostExtensions
     /// </summary>
     /// <remarks>
     /// Чтобы полностью заменить стандартный маскировщик, зарегистрируйте собственную реализацию
-    /// <see cref="ISanitizer"/> в DI до вызова этого метода.
-    /// В таком случае <paramref name="configureSanitizer"/> игнорируется.
+    /// <see cref="ISanitizer"/> в DI до вызова этого метода. В таком случае
+    /// <paramref name="configureSanitizer"/> игнорируется. Аналогично можно заменить
+    /// <see cref="IRequestFilter"/> - зарегистрируйте свою реализацию до вызова.
     /// </remarks>
     /// <param name="services">Коллекция сервисов хоста.</param>
     /// <param name="serviceName">Имя сервиса для колонки service_name.</param>
@@ -46,6 +47,8 @@ public static class HostExtensions
         var bodyCaptureOptions = new BodyCaptureOptions();
         configureBodyCapture?.Invoke(bodyCaptureOptions);
         services.AddSingleton(bodyCaptureOptions);
+
+        services.TryAddSingleton<IRequestFilter>(new LogAllRequestFilter());
 
         RendererRegistration.Register();
         return services;

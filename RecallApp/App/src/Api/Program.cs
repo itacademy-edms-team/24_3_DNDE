@@ -3,6 +3,7 @@ using Api;
 using Common.Application.Provisioning;
 using Common.Infrastructure.Data;
 using HttpLogging;
+using HttpLogging.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using NLog;
 using NLog.Web;
@@ -62,6 +63,9 @@ try
         ?? throw new InvalidOperationException("Set ConnectionStrings__Logging (app_runtime DML). See docs.");
     builder.Services.AddDbContext<LoggingDbContext>(options => options.UseNpgsql(loggingConnectionString,
         pg => pg.MigrationsHistoryTable("__EFMigrationsHistory", "logging")));
+    builder.Services.AddSingleton<IRequestFilter>(new CompositeRequestFilter(
+        new PathPrefixRequestFilter("/health", "/static"))
+    );
     builder.Services.AddHttpDatabaseLogging<LoggingDbContext>("app", options =>
     {
         options.AddSensitiveKey("displayName")

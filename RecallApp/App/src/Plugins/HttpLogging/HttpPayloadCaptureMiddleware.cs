@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using HttpLogging.Abstractions;
 using Microsoft.AspNetCore.Http;
 
 namespace HttpLogging;
@@ -9,14 +10,21 @@ namespace HttpLogging;
 /// access-запись через NLog (logger HttpLogging.Access).
 /// </summary>
 /// <remarks>
-/// Захват настраивается через <see cref="BodyCaptureOptions"/>.
+/// Захват настраивается через <see cref="BodyCaptureOptions"/>,
+/// фильтрация - через <see cref="IRequestFilter"/>.
 /// </remarks>
-internal sealed class HttpPayloadCaptureMiddleware(RequestDelegate next, BodyCaptureOptions options)
+internal sealed class HttpPayloadCaptureMiddleware(RequestDelegate next, BodyCaptureOptions options, IRequestFilter filter)
 {
     private static readonly NLog.Logger Logger = NLog.LogManager.GetLogger("HttpLogging.Access");
 
     public async Task InvokeAsync(HttpContext context)
     {
+        if (!filter.ShouldLog(context))
+        {
+            await next(context);
+            return;
+        }
+
         context.Items[HttpLoggingKeys.StartTime] = DateTimeOffset.UtcNow;
 
         context.Items[HttpLoggingKeys.RequestBody] = await CaptureRequestBodyAsync(context);
