@@ -7,15 +7,19 @@ namespace HttpLogging;
 
 /// <summary>
 /// Перехватывает тела запроса/ответа в HttpContext.Items и в конце запроса пишет одну
-/// access-запись через NLog (logger HttpLogging.Access).
+/// access-запись через NLog.
 /// </summary>
 /// <remarks>
 /// Захват настраивается через <see cref="BodyCaptureOptions"/>,
 /// фильтрация - через <see cref="IRequestFilter"/>.
 /// </remarks>
-internal sealed class HttpPayloadCaptureMiddleware(RequestDelegate next, BodyCaptureOptions options, IRequestFilter filter)
+internal sealed class HttpPayloadCaptureMiddleware(
+    RequestDelegate next,
+    BodyCaptureOptions options,
+    IRequestFilter filter,
+    AccessLogOptions accessLogOptions)
 {
-    private static readonly NLog.Logger Logger = NLog.LogManager.GetLogger("HttpLogging.Access");
+    private readonly NLog.Logger _logger = NLog.LogManager.GetLogger(accessLogOptions.LoggerName);
 
     public async Task InvokeAsync(HttpContext context)
     {
@@ -71,7 +75,7 @@ internal sealed class HttpPayloadCaptureMiddleware(RequestDelegate next, BodyCap
                 ? $"HTTP {context.Request.Method} {context.Request.Path} failed with {statusCode} in {elapsedMs:0.0} ms"
                 : $"HTTP {context.Request.Method} {context.Request.Path} responded {statusCode} in {elapsedMs:0.0} ms";
 
-            Logger.Log(new NLog.LogEventInfo(level, Logger.Name, summary) { Exception = capturedException });
+            _logger.Log(new NLog.LogEventInfo(level, _logger.Name, summary) { Exception = capturedException });
         }
     }
 

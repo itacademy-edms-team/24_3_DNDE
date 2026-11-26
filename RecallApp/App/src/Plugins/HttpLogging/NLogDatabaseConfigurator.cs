@@ -16,11 +16,16 @@ namespace HttpLogging;
 /// <summary>
 /// Настраивает NLog DatabaseTarget на основе переданного <typeparamref name="TDbContext"/>.
 /// </summary>
-internal sealed class NLogDatabaseConfigurator<TDbContext>(IServiceProvider serviceProvider, HttpLoggingOptions options)
+internal sealed class NLogDatabaseConfigurator<TDbContext>(
+    IServiceProvider serviceProvider,
+    HttpLoggingOptions options,
+    AccessLogOptions accessLogOptions)
     : IHostedService
     where TDbContext : DbContext
 {
     private readonly string _serviceName = options.ServiceName;
+    private readonly string _loggerName = accessLogOptions.LoggerName;
+    private readonly LogLevel _minLevel = accessLogOptions.MinLevel;
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
@@ -83,7 +88,7 @@ internal sealed class NLogDatabaseConfigurator<TDbContext>(IServiceProvider serv
             config.AddRule(LogLevel.Trace, LogLevel.Info, nullTarget, "Microsoft.EntityFrameworkCore.*", final: true);
         }
 
-        config.AddRule(LogLevel.Info, LogLevel.Fatal, asyncWrapper, "HttpLogging.Access");
+        config.AddRule(_minLevel, LogLevel.Fatal, asyncWrapper, _loggerName);
         LogManager.Configuration = config;
 
         return Task.CompletedTask;
