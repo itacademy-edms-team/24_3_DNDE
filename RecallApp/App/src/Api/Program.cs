@@ -57,12 +57,16 @@ try
     builder.Services.AddSets(dataSource);
     builder.Services.AddMedia(dataSource);
 
-    // Логирование: DbContext для миграций и источник подключения для NLog DatabaseTarget.
+    // Http логирование в базу
     var loggingConnectionString = builder.Configuration.GetConnectionString("Logging")
         ?? throw new InvalidOperationException("Set ConnectionStrings__Logging (app_runtime DML). See docs.");
     builder.Services.AddDbContext<LoggingDbContext>(options => options.UseNpgsql(loggingConnectionString,
         pg => pg.MigrationsHistoryTable("__EFMigrationsHistory", "logging")));
-    builder.Services.AddHttpDatabaseLogging<LoggingDbContext>("app");
+    builder.Services.AddHttpDatabaseLogging<LoggingDbContext>("app", options =>
+    {
+        options.AddSensitiveKey("displayName")
+            .AddSensitiveKey("email");
+    });
 
     builder.Services.AddAuthentication()
         .AddJwtBearer(options =>
