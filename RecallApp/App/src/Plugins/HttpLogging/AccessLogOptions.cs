@@ -1,9 +1,10 @@
 using NLog;
+using NLog.Targets.Wrappers;
 
 namespace HttpLogging;
 
 /// <summary>
-/// Настройки access-лога: имя NLog-логгера и минимальный уровень записи в БД.
+/// Настройки access-лога.
 /// </summary>
 public sealed class AccessLogOptions
 {
@@ -16,4 +17,14 @@ public sealed class AccessLogOptions
     /// Возвращает или задает минимальный уровень, с которого события пишутся в БД.
     /// </summary>
     public LogLevel MinLevel { get; set; } = LogLevel.Info;
+
+    /// <summary>
+    /// Возвращает или задает максимальный размер очереди асинхронной записи.
+    /// </summary>
+    public int QueueLimit { get; set; } = 10000;
+
+    /// <summary>
+    /// Возвращает или задает поведение при переполнении очереди асинхронной записи.
+    /// </summary>
+    public AsyncTargetWrapperOverflowAction OverflowAction { get; set; } = AsyncTargetWrapperOverflowAction.Discard;
 }

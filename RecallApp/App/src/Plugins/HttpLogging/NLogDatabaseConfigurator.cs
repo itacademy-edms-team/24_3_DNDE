@@ -26,6 +26,8 @@ internal sealed class NLogDatabaseConfigurator<TDbContext>(
     private readonly string _serviceName = options.ServiceName;
     private readonly string _loggerName = accessLogOptions.LoggerName;
     private readonly LogLevel _minLevel = accessLogOptions.MinLevel;
+    private readonly int _queueLimit = accessLogOptions.QueueLimit;
+    private readonly AsyncTargetWrapperOverflowAction _overflowAction = accessLogOptions.OverflowAction;
 
     public Task StartAsync(CancellationToken cancellationToken)
     {
@@ -73,8 +75,8 @@ internal sealed class NLogDatabaseConfigurator<TDbContext>(
         var asyncWrapper = new AsyncTargetWrapper(dbTarget)
         {
             Name = $"async_{targetName}",
-            QueueLimit = 10000,
-            OverflowAction = AsyncTargetWrapperOverflowAction.Discard,
+            QueueLimit = _queueLimit,
+            OverflowAction = _overflowAction,
         };
 
         var config = LogManager.Configuration ?? new LoggingConfiguration();
