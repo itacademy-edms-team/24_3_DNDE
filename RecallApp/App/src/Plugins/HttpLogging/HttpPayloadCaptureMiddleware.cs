@@ -65,6 +65,9 @@ internal sealed class HttpPayloadCaptureMiddleware(
                 context.Response.Body = originalBody;
             }
 
+            context.Items[HttpLoggingKeys.StatusCode] = statusCode;
+            context.Items[HttpLoggingKeys.DurationMs] = elapsedMs;
+
             var level = capturedException is not null || statusCode >= 500 
                 ? NLog.LogLevel.Error
                 : statusCode >= 400 
