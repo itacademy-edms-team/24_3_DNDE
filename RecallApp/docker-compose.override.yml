@@ -75,8 +75,6 @@ services:
       - ./App/src/Api/logs:/src/src/Api/bin/Debug/net8.0/logs
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      # bind-mount на Windows/WSL: события файлов не всегда доходят — polling для dotnet watch
-      DOTNET_USE_POLLING_FILE_WATCHER: "true"
       Oidc__Authority: https://auth.localhost/realms/recallapp
       # audience access-токена = клиент-роль-холдер, который выпускает токены для этого API
       Oidc__Audience: RecallApp
