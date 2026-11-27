@@ -2,6 +2,10 @@ using Accounts.Infrastructure;
 using Api;
 using Common.Application.Provisioning;
 using Common.Infrastructure.Data;
+using HttpLogging;
+using HttpLogging.Abstractions;
+using HttpLogging.RequestFilters;
+using Microsoft.EntityFrameworkCore;
 using NLog;
 using NLog.Web;
 using Npgsql;
@@ -12,6 +16,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Remove default Microsoft logging providers
 builder.Logging.ClearProviders();
+// Let NLog control logging
+builder.Logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
 // Register NLog (nlog.config)
 builder.Host.UseNLog();
 var bootstrapLogger = LogManager.GetCurrentClassLogger();
@@ -39,11 +45,14 @@ try
         builder.Configuration.GetValue("AppDb:SetsPoolQuota", 20));
     var mediaPoolLease = poolBudget.GetPools(
         builder.Configuration.GetValue("AppDb:MediaPoolQuota", 10));
+    var databaseLoggingPoolLease = poolBudget.GetPools(
+        builder.Configuration.GetValue("AppDb:DatabaseLoggingPoolQuota", 5));
     builder.Services.AddSingleton(dataSource);
     builder.Services.AddSingleton(poolBudget);
     builder.Services.AddSingleton(new PoolLeaseHolder(accountsPoolLease));
     builder.Services.AddSingleton(new PoolLeaseHolder(setsPoolLease));
     builder.Services.AddSingleton(new PoolLeaseHolder(mediaPoolLease));
+    builder.Services.AddSingleton(new PoolLeaseHolder(databaseLoggingPoolLease));
 
     // Идентичность доменного пользователя для модулей: заполняется ступенью JIT-провижининга
     builder.Services.AddScoped<CurrentUser>();
@@ -52,6 +61,18 @@ try
     builder.Services.AddAccounts(dataSource);
     builder.Services.AddSets(dataSource);
     builder.Services.AddMedia(dataSource);
+
+    // Http логирование в базу
+    builder.Services.AddSingleton<IRequestFilter>(new CompositeRequestFilter(
+        new ExcludePathPrefixRequestFilter("/health", "/static"))
+    );
+    builder.Services.AddHttpLogging(
+        dataSource,
+        connectionString,
+        "app",
+        poolQuota: builder.Configuration.GetValue("AppDb:DatabaseLoggingPoolQuota", 5),
+        configureSanitizer: options => options.AddSensitiveKey("displayName")
+            .AddSensitiveKey("email"));
 
     builder.Services.AddAuthentication()
         .AddJwtBearer(options =>
@@ -73,6 +94,7 @@ try
     var app = builder.Build();
 
     app.UseExceptionHandler();
+    app.UseHttpDatabaseLogging();
     app.UseAuthentication();
     app.UseAuthorization();
     app.UseDomainProvisioning();
@@ -86,7 +108,8 @@ try
         var accounts = services.CanConnectAccounts(cancellationToken);
         var sets = services.CanConnectSets(cancellationToken);
         var media = services.CanConnectMedia(cancellationToken);
-        await Task.WhenAll(accounts, sets, media);
+        var logging = services.CanConnectHttpLogging(cancellationToken);
+        await Task.WhenAll(accounts, sets, media, logging);
 
         return accounts.Result && sets.Result && media.Result
             ? Results.Ok(new { Status = "ready" })
@@ -106,6 +129,9 @@ try
         var mediaMigrationsConnectionString = builder.Configuration.GetConnectionString("MediaMigrations")
             ?? throw new InvalidOperationException("Set ConnectionStrings__MediaMigrations (schema owner).");
         await MediaModule.MigrateMedia(mediaMigrationsConnectionString);
+        var loggingMigrationsConnectionString = builder.Configuration.GetConnectionString("LoggingMigrations")
+            ?? throw new InvalidOperationException("Set ConnectionStrings__LoggingMigrations (logging schema owner).");
+        await HttpLoggingModule.MigrateHttpLogging(loggingMigrationsConnectionString);
         if (migrateOnly) return;
     }
 

@@ -3,5 +3,6 @@ obj/
 .idea/
 **/bin/
 **/obj/
+**/logs/
 tests/TestResults/
 

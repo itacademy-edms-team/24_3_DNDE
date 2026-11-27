@@ -37,6 +37,7 @@ public sealed class AppFactory : WebApplicationFactory<Program>
                 .UseSetting("ConnectionStrings:AccountsMigrations", "Host=localhost;Database=unused")
                 .UseSetting("ConnectionStrings:SetsMigrations", "Host=localhost;Database=unused")
                 .UseSetting("ConnectionStrings:MediaMigrations", "Host=localhost;Database=unused")
+                .UseSetting("ConnectionStrings:LoggingMigrations", "Host=localhost;Database=unused")
                 .UseSetting("Media:S3:Endpoint", "https://s3.invalid")
                 .UseSetting("Media:S3:Region", "ru-central-1")
                 .UseSetting("Media:S3:Bucket", "unused")

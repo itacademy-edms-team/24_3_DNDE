@@ -136,12 +136,6 @@ services:
       - iam
       - app-db
     volumes:
-      - ./App:/src
-      # анонимные тома маскируют host-овые bin/obj (Windows-артефакты не мешают сборке в контейнере)
-      - /src/src/Api/bin
-      - /src/src/Api/obj
-      - /src/src/Modules/Accounts/Accounts.Infrastructure/bin
-      - /src/src/Modules/Accounts/Accounts.Infrastructure/obj
       - shared_certs:/certs:ro
     networks:
       - dev_net
